@@ -643,7 +643,7 @@ namespace AZ::ShaderCompiler
         output["space-merged"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Merged].m_logicalSpace;
     }
 
-    void CodeReflection::DumpSRGLayout(const Options& options, PreprocessorLineDirectiveFinder* lineFinder) const
+    void CodeReflection::DumpSRGLayout(const Options& options) const
     {
         uint32_t numOf32bitConst = GetNumberOf32BitConstants(options, m_ir->m_rootConstantStructUID);
         RootSigDesc rootSig = BuildSignatureDescription(options, numOf32bitConst);
@@ -661,9 +661,9 @@ namespace AZ::ShaderCompiler
             srgLayout["id"] = srgInfo->m_declNode->Name->getText();
 
             // Try to locate the original filename where this SRG is declared
-            size_t physical = srgInfo->m_declNode->getStart()->getLine();
-            srgLayout["originalFileName"]   = StdFs::absolute(lineFinder->GetVirtualFileName(physical)).lexically_normal().generic_string();
-            srgLayout["originalLineNumber"] = static_cast<Json::Value::UInt64>(lineFinder->GetVirtualLineNumber(physical));
+            ResolvedSourceLocation location = GetSourceLocation(srgInfo->m_declNode->getStart()).Resolve();
+            srgLayout["originalFileName"]   = StdFs::absolute(std::string(location.file)).lexically_normal().generic_string();
+            srgLayout["originalLineNumber"] = static_cast<Json::Value::UInt64>(location.line);
 
             auto semantic = m_ir->GetSymbolSubAs<ClassInfo>(srgInfo->m_semantic->GetName())->Get<SRGSemanticInfo>();
 

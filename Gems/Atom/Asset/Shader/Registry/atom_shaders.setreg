@@ -1,4 +1,16 @@
 {
+    "Amazon": {
+        "AssetProcessor": {
+            "Settings": {
+                "ScanFolder ShaderHeaders": {
+                    "watch": "@EXEFOLDER@/Builders/ShaderHeaders",
+                    "display": "Shader compiler headers",
+                    "recursive": 1,
+                    "order": 50000
+                }
+            }
+        }
+    },
     "O3DE": {
         "Atom": {
             "Shaders": {

@@ -42,7 +42,7 @@ def RGAtest():
         general.idle_wait_frames(1)
  
         # This is the order in which the source assets should be deployed
-        # to avoid source dependency issues with the old MCPP-based CreateJobs. 
+        # to avoid source dependency issues with the old preprocessing-based CreateJobs.
         file_list = [
             "RgaShader.shadervariantlist",
             "RgaShader.shader",

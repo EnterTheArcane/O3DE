@@ -377,19 +377,35 @@ namespace AzFramework
             {
                 AZStd::string commandLineResult;
 
-                // When re-constructing a command line from an argument list (on windows), if an argument
-                // is double-quoted, then the double-quotes must be escaped properly otherwise
-                // it will be absorbed by the native argument parser and possibly evaluated as
-                // multiple values for arguments
-                AZStd::vector<AZStd::string> preprocessedCommandArray;
-
-                for (const auto& commandArg : commandLineArray)
+                // Encode each argv element according to the Microsoft C runtime rules.
+                // https://learn.microsoft.com/en-us/cpp/c-language/parsing-c-command-line-arguments
+                for (const AZStd::string& argument : commandLineArray)
                 {
-                    AZStd::string replacedArg = commandArg;
-                    AZ::StringFunc::Replace(replacedArg, R"(")", R"("\")", false, true, true);
-                    preprocessedCommandArray.emplace_back(replacedArg);
+                    if (!commandLineResult.empty())
+                    {
+                        commandLineResult += ' ';
+                    }
+                    commandLineResult += '"';
+                    size_t backslashes = 0;
+                    for (char c : argument)
+                    {
+                        if (c == '\\')
+                        {
+                            ++backslashes;
+                            continue;
+                        }
+                        size_t escapedBackslashes = backslashes;
+                        if (c == '"')
+                        {
+                            escapedBackslashes = backslashes * 2 + 1;
+                        }
+                        commandLineResult.append(escapedBackslashes, '\\');
+                        commandLineResult += c;
+                        backslashes = 0;
+                    }
+                    commandLineResult.append(backslashes * 2, '\\');
+                    commandLineResult += '"';
                 }
-                AZ::StringFunc::Join(commandLineResult, preprocessedCommandArray.begin(), preprocessedCommandArray.end(), " ");
 
                 return commandLineResult;
             }

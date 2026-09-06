@@ -1,5 +1,5 @@
 # this test verifies that we can have a working 'transpiling rename' immediately after a line directive.
-# it seemed during mcpp library integration, -on the builder side-, that renamings got affected
+# it seemed during the original preprocessing integration, that renamings got affected
 # by line directive. (the consequence is not proven, it may have been an earlier declaration broken)
 # but better safe than sorry.
 

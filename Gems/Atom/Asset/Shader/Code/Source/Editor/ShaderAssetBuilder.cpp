@@ -191,7 +191,9 @@ namespace AZ
                 // report the failure.
             }
 
-            auto projectIncludePaths = BuildListOfIncludeDirectories(ShaderAssetBuilderName);
+            AZStd::string azslFolderPath;
+            AzFramework::StringFunc::Path::GetFolderPath(azslFullPath.c_str(), azslFolderPath);
+            AZStd::vector<AZStd::string> projectIncludePaths = BuildListOfIncludeDirectories(ShaderAssetBuilderName, azslFolderPath.c_str());
 
             AZStd::unordered_set<AZStd::string> includedFiles;
             GetListOfIncludedFiles(azslFullPath, projectIncludePaths, includedFilesParser, includedFiles);
@@ -215,11 +217,77 @@ namespace AZ
             {
                 AZ_TraceContext("For platform", platformInfo.m_identifier.data());
 
-                // Get the platform interfaces to be able to access the prepend file
+                // Get the platform interfaces to track forced-header dependencies.
                 AZStd::vector<RHI::ShaderPlatformInterface*> platformInterfaces = ShaderBuilderUtility::DiscoverValidShaderPlatformInterfaces(platformInfo);
                 if (platformInterfaces.empty())
                 {
                     continue;
+                }
+
+                ShaderBuildArgumentsManager argumentsManager;
+                argumentsManager.Init();
+                argumentsManager.PushArgumentScope(ShaderBuilderUtility::GetPlatformNameFromPlatformInfo(platformInfo));
+                for (RHI::ShaderPlatformInterface* platformInterface : platformInterfaces)
+                {
+                    argumentsManager.PushArgumentScope(platformInterface->GetAPIName().GetCStr());
+                    argumentsManager.PushArgumentScope(
+                        shaderSourceData.m_removeBuildArguments, shaderSourceData.m_addBuildArguments, shaderSourceData.m_definitions);
+                    for (const RPI::ShaderSourceData::SupervariantInfo& supervariant :
+                         ShaderBuilderUtility::GetSupervariantListFromShaderSourceData(shaderSourceData))
+                    {
+                        argumentsManager.PushArgumentScope(
+                            supervariant.m_removeBuildArguments, supervariant.m_addBuildArguments, supervariant.m_definitions);
+                        AZStd::vector<AZStd::string> arguments = NormalizePreprocessorArguments(AppendIncludePathsToArgumentList(
+                            argumentsManager.GetCurrentArguments().m_preprocessorArguments, projectIncludePaths));
+                        const AZStd::vector<AZStd::string> compilerArguments =
+                            NormalizePreprocessorArguments(argumentsManager.GetCurrentArguments().m_azslcArguments);
+                        arguments.insert(arguments.end(), compilerArguments.begin(), compilerArguments.end());
+                        AZStd::vector<AZStd::string> includeDirectories;
+                        AZStd::vector<AZStd::string> forcedIncludes;
+                        const AZStd::string header = ResolveAzslHeaderPath(platformInterface->GetAzslHeader(platformInfo));
+                        if (!header.empty())
+                        {
+                            forcedIncludes.push_back(header);
+                        }
+                        for (size_t i = 0; i < arguments.size(); ++i)
+                        {
+                            if (arguments[i] == "-I" && i + 1 < arguments.size())
+                            {
+                                includeDirectories.push_back(arguments[++i]);
+                            }
+                            else if (arguments[i].starts_with("-I") && arguments[i].size() > 2)
+                            {
+                                includeDirectories.push_back(arguments[i].substr(2));
+                            }
+                            else if (arguments[i] == "--include" && i + 1 < arguments.size())
+                            {
+                                forcedIncludes.push_back(arguments[++i]);
+                            }
+                        }
+                        // Each effective environment needs its own traversal: include ordering can select a different file.
+                        AZStd::unordered_set<AZStd::string> dependencies;
+                        GetListOfIncludedFiles(azslFullPath, includeDirectories, includedFilesParser, dependencies);
+                        for (const AZStd::string& forced : forcedIncludes)
+                        {
+                            dependencies.insert(forced); // Retain missing-file candidates too.
+                            if (IO::SystemFile::Exists(forced.c_str()))
+                            {
+                                GetListOfIncludedFiles(forced, includeDirectories, includedFilesParser, dependencies);
+                            }
+                        }
+                        for (const AZStd::string& dependency : dependencies)
+                        {
+                            if (includedFiles.insert(dependency).second)
+                            {
+                                AssetBuilderSDK::SourceFileDependency sourceDependency;
+                                sourceDependency.m_sourceFileDependencyPath = dependency;
+                                response.m_sourceFileDependencyList.push_back(AZStd::move(sourceDependency));
+                            }
+                        }
+                        argumentsManager.PopArgumentScope();
+                    }
+                    argumentsManager.PopArgumentScope();
+                    argumentsManager.PopArgumentScope();
                 }
 
                 AssetBuilderSDK::JobDescriptor jobDescriptor;
@@ -352,7 +420,7 @@ namespace AZ
             // The directory where the Azsl file was found must be added to the list of include paths
             AZStd::string azslFolderPath;
             AzFramework::StringFunc::Path::GetFolderPath(azslFullPath.c_str(), azslFolderPath);
-            auto projectIncludePaths = BuildListOfIncludeDirectories(ShaderAssetBuilderName, azslFolderPath.c_str());
+            AZStd::vector<AZStd::string> projectIncludePaths = BuildListOfIncludeDirectories(ShaderAssetBuilderName, azslFolderPath.c_str());
 
             ShaderBuildArgumentsManager buildArgsManager;
             buildArgsManager.Init();
@@ -383,29 +451,13 @@ namespace AZ
             shaderAssetCreator.SetName(AZ::Name{shaderFileName});
             shaderAssetCreator.SetDrawListName(shaderSourceData.m_drawListName);
 
-            // The ShaderOptionGroupLayout must be the same across all supervariants because
-            // there can be only a single ShaderVariantTreeAsset per ShaderAsset.
-            // We will store here the one that results when the *.azslin file is
-            // compiled for the default, nameless, supervariant.
-            // For all other supervariants we just make sure the hashes are the same
-            // as this one.
+            // The ShaderOptionGroupLayout must be the same across all supervariants because there is one ShaderVariantTreeAsset per ShaderAsset.
+            // Store the layout compiled from the original source for the default, nameless supervariant.
+            // For all other supervariants, verify that the hashes match this layout.
             RPI::Ptr<RPI::ShaderOptionGroupLayout> finalShaderOptionGroupLayout = nullptr;
 
-
-            // Time to describe the big picture.
-            // 1- Preprocess an AZSL file with MCPP (a C-Preprocessor), and generate a flat AZSL file without #include lines and any macros in it.
-            //    Let's call it the Flat-AZSL file. There are two levels of macro definition that need to be merged before we can invoke MCPP:
-            //    1.1-  From <GameProject>/Config/shader_global_build_options.json, which we have stored in the local variable @buildOptions.
-            //    1.2-  From the "Supervariant" definition key, which can be different for each supervariant.
-            // 2- There will be one Flat-AZSL per supervariant. Each Flat-AZSL will be transpiled to HLSL with AZSLc. This means there will be one HLSL file
-            //    per supervariant.
-            // 3- The generated HLSL (one HLSL per supervariant) file may contain C-Preprocessor Macros inserted by AZSLc. And that file will be given to DXC.
-            //    DXC has a preprocessor embedded in it.  DXC will be executed once for each entry function listed in the .shader file.
-            //    There will be one DXIL compiled binary for each entry function. All the DXIL compiled binaries for each supervariant will be combined
-            //    in the ROOT ShaderVariantAsset.
-
-            // Remark: In general, the work done by the ShaderVariantAssetBuilder is similar, but it will start from the HLSL file created; in step 2, mentioned above; by this builder,
-            // for each supervariant.
+            // Compile each RHI/supervariant from the original source and its complete environment.
+            // HLSL and reflection remain cached for subsequent variant jobs.
             for (RHI::ShaderPlatformInterface* shaderPlatformInterface : platformInterfaces)
             {
                 AZStd::string apiName(shaderPlatformInterface->GetAPIName().GetCStr());
@@ -417,18 +469,10 @@ namespace AZ
                 // Signal the begin of shader data for an RHI API.
                 shaderAssetCreator.BeginAPI(shaderPlatformInterface->GetAPIType());
 
-                // Each shaderPlatformInterface has its own azsli header that needs to be prepended to the AZSL file before
-                // preprocessing. We will create a new temporary file that contains the combined data.
-                RHI::PrependArguments args;
-                args.m_sourceFile = azslFullPath.c_str();
-                args.m_prependFile = shaderPlatformInterface->GetAzslHeader(request.m_platformInfo);
-                args.m_addSuffixToFileName = apiName.c_str();
-                args.m_destinationFolder = request.m_tempDirPath.c_str();
-
-                AZStd::string prependedAzslFilePath = RHI::PrependFile(args);
-                if (prependedAzslFilePath == azslFullPath)
+                const AZStd::string platformHeader = ResolveAzslHeaderPath(shaderPlatformInterface->GetAzslHeader(request.m_platformInfo));
+                if (platformHeader.empty())
                 {
-                    // The specific error is already reported by RHI::PrependFile().
+                    AZ_Error(ShaderAssetBuilderName, false, "Could not resolve the platform AZSL header");
                     response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                     return;
                 }
@@ -447,37 +491,22 @@ namespace AZ
 
                     shaderAssetCreator.BeginSupervariant(supervariantInfo.m_name);
 
-                    // Run the preprocessor.
-                    PreprocessorData output;
-                    auto preprocessorArguments = AppendIncludePathsToArgumentList(buildArgsManager.GetCurrentArguments().m_preprocessorArguments, projectIncludePaths);
-                    const bool preprocessorSuccess = PreprocessFile(prependedAzslFilePath, output, preprocessorArguments,  true);
-                    if (RHI::ReportMessages(ShaderAssetBuilderName, output.diagnostics, !preprocessorSuccess))
-                    {
-                        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-                        return;
-                    }
-
-                    // Dump the preprocessed string as a flat AZSL file with extension .azslin, which will be given to AZSLc to generate the HLSL file.
-                    AZStd::string superVariantAzslinStemName = shaderFileName;
+                    AZStd::vector<AZStd::string> arguments = NormalizePreprocessorArguments(AppendIncludePathsToArgumentList(
+                        buildArgsManager.GetCurrentArguments().m_preprocessorArguments, projectIncludePaths));
+                    arguments.push_back("--include");
+                    arguments.push_back(platformHeader);
+                    const AZStd::vector<AZStd::string> azslcArguments =
+                        NormalizePreprocessorArguments(buildArgsManager.GetCurrentArguments().m_azslcArguments);
+                    arguments.insert(arguments.end(), azslcArguments.begin(), azslcArguments.end());
+                    AZStd::string outputStem = shaderFileName;
                     if (!supervariantInfo.m_name.IsEmpty())
                     {
-                        superVariantAzslinStemName += AZStd::string::format("-%s", supervariantInfo.m_name.GetCStr());
+                        outputStem += AZStd::string::format("-%s", supervariantInfo.m_name.GetCStr());
                     }
-                    AZStd::string azslinFullPath = ShaderBuilderUtility::DumpPreprocessedCode(
-                        ShaderAssetBuilderName, output.code, request.m_tempDirPath, superVariantAzslinStemName,
-                        apiName);
-                    if (azslinFullPath.empty())
-                    {
-                        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-                        return;
-                    }
-                    AZ_TracePrintf(ShaderAssetBuilderName, "Preprocessed AZSL File: %s \n", prependedAzslFilePath.c_str());
-
-                    // Ready to transpile the azslin file into HLSL.
-                    ShaderBuilder::AzslCompiler azslc(azslinFullPath, request.m_tempDirPath);
-                    AZStd::string hlslFullPath = AZStd::string::format("%s_%s.hlsl", superVariantAzslinStemName.c_str(), apiName.c_str());
+                    ShaderBuilder::AzslCompiler azslc(azslFullPath, request.m_tempDirPath);
+                    AZStd::string hlslFullPath = AZStd::string::format("%s_%s.hlsl", outputStem.c_str(), apiName.c_str());
                     AzFramework::StringFunc::Path::Join(request.m_tempDirPath.c_str(), hlslFullPath.c_str(), hlslFullPath, true);
-                    auto emitFullOutcome = azslc.EmitFullData(buildArgsManager.GetCurrentArguments().m_azslcArguments, hlslFullPath);
+                    Outcome<ShaderBuilderUtility::AzslSubProducts::Paths> emitFullOutcome = azslc.EmitFullData(arguments, hlslFullPath);
                     if (!emitFullOutcome.IsSuccess())
                     {
                         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
@@ -506,7 +535,7 @@ namespace AZ
 
                     AZStd::shared_ptr<ShaderFiles> files(new ShaderFiles);
                     AzslData azslData(files);
-                    azslData.m_preprocessedFullPath = azslinFullPath;
+                    azslData.m_sourceFullPath = azslFullPath;
                     RPI::ShaderResourceGroupLayoutList srgLayoutList;
                     RPI::Ptr<RPI::ShaderOptionGroupLayout> shaderOptionGroupLayout = RPI::ShaderOptionGroupLayout::Create();
                     BindingDependencies bindingDependencies;
@@ -684,7 +713,7 @@ namespace AZ
                         *shaderOptionGroupLayout.get(),
                         shaderEntryPoints,
                         variantAssetId,
-                        superVariantAzslinStemName,
+                        outputStem,
                         hlslFullPath,
                         hlslSourceCode,
                         usesSpecializationConstants };
@@ -717,7 +746,7 @@ namespace AZ
                     // Time to save the root variant related assets in the cache.
                     AssetBuilderSDK::JobProduct assetProduct;
                     if (!ShaderVariantAssetBuilder::SerializeOutShaderVariantAsset(
-                            rootShaderVariantAsset, superVariantAzslinStemName, request.m_tempDirPath, *shaderPlatformInterface,
+                            rootShaderVariantAsset, outputStem, request.m_tempDirPath, *shaderPlatformInterface,
                             rootVariantProductSubId,
                             assetProduct))
                     {
@@ -773,7 +802,8 @@ namespace AZ
 
             AZ_TracePrintf(ShaderAssetBuilderName, "Finished processing %s in %.3f seconds\n", request.m_sourceFile.c_str(), timer.GetDeltaTimeInSeconds());
 
-            ShaderBuilderUtility::LogProfilingData(ShaderAssetBuilderName, shaderFileName);
+            const AZStd::string profilingPath = RHI::BuildFileNameWithExtension(azslFullPath, request.m_tempDirPath, "");
+            ShaderBuilderUtility::LogProfilingData(ShaderAssetBuilderName, profilingPath);
 
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
         }

@@ -68,7 +68,7 @@ namespace AZ::ShaderCompiler
     {
         AttributeScope    m_scope;
         AttributeCategory m_category;
-        size_t            m_lineNumber;
+        SourceLocation    m_sourceLocation;
         string            m_namespace;
         string            m_attribute;
 
@@ -204,13 +204,13 @@ namespace AZ::ShaderCompiler
                                    }, m_declNodeVt);
         }
 
-        size_t GetOriginalLineNumber() const
+        SourceLocation GetOriginalSourceLocation() const
         {
             if (GetDeclNode())
             {
-                return GetDeclNode()->start->getLine();
+                return GetSourceLocation(GetDeclNode()->start);
             }
-            return 0;
+            return {};
         }
 
         //! Gets the concrete variant kind from SubInfo
@@ -402,7 +402,7 @@ namespace AZ::ShaderCompiler
         // returns an ArrayDimensions struct const ref.
         inline const auto&         GetArrayDimensions() const;
         // Returns the line number, in the AZSL file, where this symbol is declared. 
-        inline size_t              GetOriginalLineNumber () const;
+        inline SourceLocation      GetOriginalSourceLocation () const;
 
         AstUnnamedVarDecl*         m_declNode = nullptr;
         AstEnumeratorDecl*         m_declNodeEnum = nullptr;
@@ -490,13 +490,13 @@ namespace AZ::ShaderCompiler
         return m_typeInfoExt.GetDimensions();
     }
 
-    size_t VarInfo::GetOriginalLineNumber() const
+    SourceLocation VarInfo::GetOriginalSourceLocation() const
     {
         if (m_declNode)
         {
-            return m_declNode->start->getLine();
+            return GetSourceLocation(m_declNode->start);
         }
-        return 0;
+        return {};
     }
 
     struct OverloadSetInfo
@@ -784,17 +784,17 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        size_t GetOriginalLineNumber(bool useDefNode = true) const
+        SourceLocation GetOriginalSourceLocation(bool useDefNode = true) const
         {
             if (useDefNode && m_defNode)
             {
-                return m_defNode->start->getLine();
+                return GetSourceLocation(m_defNode->start);
             }
             else if (m_declNode)
             {
-                return m_declNode->start->getLine();
+                return GetSourceLocation(m_declNode->start);
             }
-            return 0;
+            return {};
         }
 
         ExtendedTypeInfo          m_returnType;
@@ -844,9 +844,13 @@ namespace AZ::ShaderCompiler
 
         bool IsPartial() const { return m_declNode ? !!m_declNode->Partial() : false; }
 
-        size_t GetOriginalLineNumber() const
+        SourceLocation GetOriginalSourceLocation() const
         {
-            return m_declNode ? m_declNode->start->getLine() : 0;
+            if (m_declNode)
+            {
+                return GetSourceLocation(m_declNode->start);
+            }
+            return {};
         }
 
         AstSRGDeclNode*           m_declNode = nullptr;
@@ -1107,36 +1111,44 @@ namespace AZ::ShaderCompiler
         return kind.VisitSub(GetSubKindInfoTypeName_Visitor{uid, getStrategy == ForFunctionGetType::Returned});
     }
 
-    static const size_t NoLine = 0_sz;
-    struct GetOrigSourceLine_Visitor
+    static constexpr SourceLocation NoLine{};
+    struct GetOriginalSourceLocation_Visitor
     {
-        size_t operator()(const VarInfo& var) const
+        SourceLocation operator()(const VarInfo& var) const
         {
-            return var.m_declNode ? var.m_declNode->start->getLine() : NoLine;
+            if (var.m_declNode)
+            {
+                return GetSourceLocation(var.m_declNode->start);
+            }
+            return NoLine;
         }
 
-        size_t operator()(const FunctionInfo& func) const
+        SourceLocation operator()(const FunctionInfo& func) const
         {
-            return func.GetOriginalLineNumber(false /*useDefNode*/);
+            return func.GetOriginalSourceLocation(false /*useDefNode*/);
         }
 
-        size_t operator()(const ClassInfo& clInfo) const
+        SourceLocation operator()(const ClassInfo& clInfo) const
         {
-            return clInfo.GetOriginalLineNumber();
+            return clInfo.GetOriginalSourceLocation();
         }
 
-        size_t operator()(const SRGInfo& srgInfo) const
+        SourceLocation operator()(const SRGInfo& srgInfo) const
         {
-            return srgInfo.GetOriginalLineNumber();
+            return srgInfo.GetOriginalSourceLocation();
         }
 
-        size_t operator()(const TypeAliasInfo& tai) const
+        SourceLocation operator()(const TypeAliasInfo& tai) const
         {
-            return tai.m_declNode ? tai.m_declNode->start->getLine() : NoLine;
+            if (tai.m_declNode)
+            {
+                return GetSourceLocation(tai.m_declNode->start);
+            }
+            return NoLine;
         }
 
         template<typename AnyNonCovered>
-        size_t operator()(AnyNonCovered) const
+        SourceLocation operator()(AnyNonCovered) const
         {
             return NoLine;
         }
@@ -1144,16 +1156,16 @@ namespace AZ::ShaderCompiler
 
     inline string GetFirstSeenLineMessage(const KindInfo& kindInfo)
     {
-        size_t firstSeen = kindInfo.VisitSub(GetOrigSourceLine_Visitor{});
+        SourceLocation firstSeen = kindInfo.VisitSub(GetOriginalSourceLocation_Visitor{});
         if (firstSeen != NoLine)
         {
-            return "first seen line " + std::to_string(firstSeen);
+            return "first seen line " + std::to_string(firstSeen.Resolve().line);
         }
         return {};
     }
 
     //! helper for fatal semantic error of ODR violation
-    inline void ThrowRedeclarationAsDifferentKind(string_view symbolName, Kind newKind, const KindInfo& kindInfo, optional<size_t> lineNumber = none)
+    inline void ThrowRedeclarationAsDifferentKind(string_view symbolName, Kind newKind, const KindInfo& kindInfo, optional<SourceLocation> lineNumber = none)
     {
         const string errorMessage = ConcatString(
             "redeclaration of ", symbolName, " with a different kind: ", Kind::ToStr(newKind),
@@ -1166,8 +1178,11 @@ namespace AZ::ShaderCompiler
         TokensLocation operator()(const VarInfo& var) const
         {
             ParserRuleContext* node = GetParentIfIsNamedVarDecl_OtherwiseIdentity(var.m_declNode);
-            return node ? MakeTokensLocation(node, ExtractVariableNameIdentifier(var.m_declNode))
-                        : TokensLocation{{}, -1, 0, 0};
+            if (node)
+            {
+                return MakeTokensLocation(node, ExtractVariableNameIdentifier(var.m_declNode));
+            }
+            return {{}, -1, {}, 0};
         }
 
         TokensLocation operator()(const FunctionInfo& func) const
@@ -1195,7 +1210,7 @@ namespace AZ::ShaderCompiler
         template<typename AnyNonCovered>
         TokensLocation operator()(AnyNonCovered) const
         {
-            return {{}, -1, 0, 0};
+            return {{}, -1, {}, 0};
         }
     };
 

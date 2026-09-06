@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <AzCore/std/containers/span.h>
 #include <AzslData.h>
 #include <AzFramework/FileFunc/FileFunc.h>
 #include <Atom/RPI.Reflect/Base.h>
@@ -31,22 +32,22 @@ namespace AZ
         {
         public:
             //! AzslCompiler constructor
-            //! @param inputFilePath      The target input file to compile. Should be a valid AZSL file with no preprocessing directives.
+            //! @param inputFilePath      The original AZSL source file to compile. AZSLC performs preprocessing.
             AzslCompiler(const AZStd::string& inputFilePath, const AZStd::string& tempFolder);
 
             //! compile with --full and generate all .json files
             //! @param outputFile="" will use the input as base path.
-            Outcome<ShaderBuilderUtility::AzslSubProducts::Paths> EmitFullData(const AZStd::vector<AZStd::string>& azslcArguments,
-                                                                               const AZStd::string& outputFile = "") const;
+            Outcome<ShaderBuilderUtility::AzslSubProducts::Paths> EmitFullData(AZStd::span<const AZStd::string> azslcArguments,
+                                                                            const AZStd::string& outputFile = "") const;
             //! compile to HLSL independently
             bool EmitShader(AZ::IO::GenericStream& outputStream,
-                            const AZStd::string& extraCompilerParams) const;
+                            AZStd::span<const AZStd::string> extraCompilerParams) const;
             //! compile with --ia independently and populate document @output
             bool EmitInputAssembler(rapidjson::Document& output) const;
             //! compile with --om  independently
             bool EmitOutputMerger(rapidjson::Document& output) const;
             //! compile with --srg independently
-            bool EmitSrgData(rapidjson::Document& output, const AZStd::string& extraCompilerParams) const;
+            bool EmitSrgData(rapidjson::Document& output, AZStd::span<const AZStd::string> extraCompilerParams) const;
             //! compile with --option independently
             bool EmitOptionsList(rapidjson::Document& output) const;
             //! compile with --bindingdep independently
@@ -71,8 +72,8 @@ namespace AZ
             const AZStd::string& GetInputFilePath() const;
 
         protected:
-            bool Compile(const AZStd::string& CompilerParams, const AZStd::string& outputFilePath) const;
-            
+            bool Compile(AZStd::span<const AZStd::string> compilerParams, const AZStd::string& outputFilePath) const;
+
             enum class AfterRead
             {
                 Delete,
@@ -89,7 +90,7 @@ namespace AZ
 
             BuildResult CompileToFileAndPrepareJsonDocument(
                 rapidjson::Document& outputJson,
-                const char* compilerCommandSwitch,
+                AZStd::span<const AZStd::string> compilerParams,
                 const char* outputExtension,
                 AfterRead deleteOutputFileAfterReading = AfterRead::Keep) const;
 

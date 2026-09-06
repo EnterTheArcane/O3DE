@@ -46,7 +46,8 @@ def GetStatusVerbose(numPass, numFail, inputsource, suffixMessage, extraColor, e
             suffixMessage+ extraColor+ extraMessage+ style.RESET_ALL)
         return testResult(numPass, 0, numFail, 0)
 
-    if inputsource.find("wip-") >= 0:
+    existing_todos = {"wip-interface-semanticerror-lack-member2.azsl", "wip-generic-constraint-undeclared.azsl", "wip-partial-double-srg.azsl"}
+    if os.path.basename(inputsource) in existing_todos:
         print (fg.YELLOW+ style.BRIGHT+ "\\\\[ TODO ]// : {}".format(inputsource)+\
             suffixMessage+ extraColor+ extraMessage+ style.RESET_ALL)
         return testResult(numPass, numFail, 0, 0)
@@ -197,9 +198,7 @@ if __name__ == "__main__":
     try:
         import yaml
     except ImportError as err:
-        print ( fg.YELLOW + style.BRIGHT + "It seems your python environment lacks pyyaml. Run first through project-root's \"test.and.py\" (or pip install it)" + style.RESET_ALL )
-        if input("Continue (may result in false failures)? y/n:").lower() != "y":
-            exit(0)
+        sys.exit("Missing PyYAML: configure the engine test targets or install Tests/requirements.txt with this Python interpreter.")
 
     parser = ArgumentParser()
     parser.add_argument(
@@ -245,3 +244,5 @@ if __name__ == "__main__":
     print (fg.RED + style.BRIGHT + "FAIL = {}".format(numAllTests.numFail) + fg.WHITE+ " /{}".format(numTotal) + style.RESET_ALL)
     td = timedelta(seconds=(endTime - startTime))
     print (fg.CYAN + style.BRIGHT + "Time taken: " + fg.WHITE + str(td) + style.RESET_ALL)
+
+    sys.exit(1 if numAllTests.numFail or numAllTests.numEC else 0)

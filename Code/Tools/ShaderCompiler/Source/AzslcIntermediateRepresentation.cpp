@@ -15,7 +15,7 @@ namespace AZ::ShaderCompiler
 
     void IntermediateRepresentation::RegisterAttributeSpecifier(AttributeScope scope,
                                                                 AttributeCategory category,
-                                                                size_t declarationLine,
+                                                                SourceLocation declarationLine,
                                                                 string_view space,
                                                                 string_view name,
                                                                 azslParser::AttributeArgumentListContext* argList)
@@ -23,7 +23,7 @@ namespace AZ::ShaderCompiler
         AttributeInfo attrInfo;
         attrInfo.m_scope      = scope;
         attrInfo.m_category   = category;
-        attrInfo.m_lineNumber = declarationLine;
+        attrInfo.m_sourceLocation = declarationLine;
         attrInfo.m_namespace  = space;
         attrInfo.m_attribute  = name;
 
@@ -110,8 +110,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! execute any logic that relates to intermediate treatment that would need to be done between front end and back end
-    void IntermediateRepresentation::MiddleEnd(const MiddleEndConfiguration& middleEndconfigration,
-                                               PreprocessorLineDirectiveFinder* lineFinder)
+    void IntermediateRepresentation::MiddleEnd(const MiddleEndConfiguration& middleEndconfigration)
     {
         // At this point we have an order apparition vector that stores symbols in the immediate naive
         // order in which they are first seen in the source code.
@@ -131,7 +130,7 @@ namespace AZ::ShaderCompiler
 
         if (!middleEndconfigration.m_skipAlignmentValidation)
         {
-            ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(middleEndconfigration, lineFinder);
+            ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(middleEndconfigration);
         }
     }
 
@@ -343,7 +342,7 @@ namespace AZ::ShaderCompiler
             case Kind::Enum:
             {
                 auto& sub = sym.GetSubRefAs<ClassInfo>();
-                cout << "  line: " << sub.GetOriginalLineNumber() << "\n";
+                cout << "  line: " << sub.GetOriginalSourceLocation() << "\n";
                 cout << "  members:\n";
                 for (auto&& member : sub.GetOrderedMembers())
                 {
@@ -356,7 +355,7 @@ namespace AZ::ShaderCompiler
             case Kind::Function:
             {
                 auto& sub = sym.GetSubRefAs<FunctionInfo>();
-                cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
+                cout << "  line: " << sym.VisitSub(GetOriginalSourceLocation_Visitor{}) << "\n";
                 cout << "  def line: " << (sub.IsUndefinedFunction() ? "undef" : std::to_string(sub.m_defNode->start->getLine())) << "\n";
                 cout << "  must override: " << sub.m_mustOverride << "\n";
                 cout << "  is method: " << sub.m_isMethod << "\n";
@@ -415,7 +414,7 @@ namespace AZ::ShaderCompiler
             case Kind::TypeAlias:
             {
                 auto& sub = sym.GetSubRefAs<TypeAliasInfo>();
-                cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
+                cout << "  line: " << sym.VisitSub(GetOriginalSourceLocation_Visitor{}) << "\n";
                 cout << "  canonical type:\n" << ToYaml(sub.m_canonicalType, ir, "    ") << "\n";
             }
             break;
@@ -637,8 +636,7 @@ namespace AZ::ShaderCompiler
         m_rootConstantStructUID = rootConstantStructUid;
     }
 
-    void IntermediateRepresentation::ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration,
-                                                                                              PreprocessorLineDirectiveFinder* lineFinder)
+    void IntermediateRepresentation::ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration)
     {
         //! Helper lambda to check if a symbol is a matrix, it also returns
         //! the number of columns in @numColumns
@@ -884,19 +882,20 @@ namespace AZ::ShaderCompiler
             // Let's get the line number where @insertBeforeThisUid was found in the flat AZSL file.
             const auto* constThis = this; // To disambiguate which cv-version of GetSymbolSubAs<> to call.
             const auto* varInfo = constThis->GetSymbolSubAs<VarInfo>(insertBeforeThisUid.GetName());
-            size_t lineOfDeclaration = varInfo->GetOriginalLineNumber();
-            const LineDirectiveInfo* lineInfo = lineFinder->GetNearestPreprocessorLineDirective(lineOfDeclaration);
-            if (!lineInfo || lineOfDeclaration == 0)
+            const SourceLocation source = varInfo->GetOriginalSourceLocation();
+            if (!source)
             {
-                // When the LineDirectiveInfo* is null (or at 0), it means We have detected a variable that was added
-                // by AZSLc itself. e.g. Root Constant padding, etc.
-                // In such case, this is not an issue We want to interfere with.
                 return {};
             }
-            const auto virtualLine = lineFinder->GetVirtualLineNumber(*lineInfo, lineOfDeclaration);
+            const ResolvedSourceLocation location = source.Resolve();
+            int paddingComponentCount = 3;
+            if (prepadType == PrepadType::Float2)
+            {
+                paddingComponentCount = 2;
+            }
             string solution = FormatString("- A 'float%d' variable should be added before the variable '%s' in '%s %s' at Line number %zu of '%s'\n",
-                                           prepadType == PrepadType::Float2 ? 2 : 3, insertBeforeThisUid.GetNameLeaf().c_str(), typeName.c_str(), parentName.data(),
-                                           virtualLine, lineInfo->m_containingFilename.c_str());
+                                           paddingComponentCount, insertBeforeThisUid.GetNameLeaf().c_str(), typeName.c_str(), parentName.data(),
+                                           location.line, std::string(location.file).c_str());
             return solution;
         };
 

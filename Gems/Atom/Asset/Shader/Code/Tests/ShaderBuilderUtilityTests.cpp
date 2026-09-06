@@ -71,6 +71,94 @@ namespace UnitTest
         ExpectHasIncludeFile(fileList, true, "..\\Relative\\Path\\To\\File.azsi");
     }
 
+    TEST_F(ShaderBuilderUtilityTests, IncludedFilesParserPreservesSpacesInDependencyPaths)
+    {
+        AZ::ShaderBuilder::ShaderBuilderUtility::IncludedFilesParser parser;
+        const AZStd::vector<AZStd::string> files = parser.ParseStringAndGetIncludedFiles(R"(#include "folder with spaces/file.azsli"
+#include <another folder/file.azsli>
+)");
+        ASSERT_EQ(files.size(), 2);
+        ExpectHasIncludeFile(files, true, "folder with spaces/file.azsli");
+        ExpectHasIncludeFile(files, true, "another folder/file.azsli");
+    }
+
+    TEST_F(ShaderBuilderUtilityTests, IncludedFilesParserTracksHeaderQueriesAndDigraphs)
+    {
+        AZ::ShaderBuilder::ShaderBuilderUtility::IncludedFilesParser parser;
+        const auto files = parser.ParseStringAndGetIncludedFiles(R"(
+#if __has_include("optional header.azsli") && __has_include(<another/header.azsli>)
+#endif
+%:include"digraph.azsli"
+#include"adjacent.azsli"
+)");
+        ASSERT_EQ(files.size(), 4);
+        ExpectHasIncludeFile(files, true, "optional header.azsli");
+        ExpectHasIncludeFile(files, true, "another/header.azsli");
+        ExpectHasIncludeFile(files, true, "digraph.azsli");
+        ExpectHasIncludeFile(files, true, "adjacent.azsli");
+    }
+
+    TEST_F(ShaderBuilderUtilityTests, IncludedFilesParserHandlesLargeFilesAndOperatorBoundaries)
+    {
+        AZ::ShaderBuilder::ShaderBuilderUtility::IncludedFilesParser parser;
+        AZStd::string haystack(256 * 1024, ' ');
+        for (size_t i = 0; i < 8192; ++i)
+        {
+            haystack += "static float shader_value = 0;\n";
+        }
+        EXPECT_TRUE(parser.ParseStringAndGetIncludedFiles(haystack).empty());
+        haystack += R"(
+name__has_include("not-a-header.azsli")
+#include "first.azsli"
+#if __has_include("optional.azsli")
+#endif
+%:include "last.azsli"
+)";
+        const auto files = parser.ParseStringAndGetIncludedFiles(haystack);
+        ASSERT_EQ(files.size(), 3);
+        EXPECT_EQ(files[0], "first.azsli");
+        EXPECT_EQ(files[1], "optional.azsli");
+        EXPECT_EQ(files[2], "last.azsli");
+    }
+
+    TEST_F(ShaderBuilderUtilityTests, IncludedFilesParserHandlesCommentsContinuationsAndInactiveBranches)
+    {
+        AZ::ShaderBuilder::ShaderBuilderUtility::IncludedFilesParser parser;
+        const auto files = parser.ParseStringAndGetIncludedFiles(
+            "\xef\xbb\xbf#inc\\\r\nlude/**/\"spliced/hea\\\nder.azsli\"\r\n"
+            "#include /* gap */ <angled.azsli>\n"
+            "#if __has_\\\ninclude/**/(/* gap */\"query.azsli\")\n#endif\n"
+            "%\\\n:define MATERIAL_TYPE_AZSLI_FILE_PATH \\\n\"material.azsli\"\n"
+            "// #include \"comment.azsli\"\n"
+            "#if 0\n#include \"inactive.azsli\"\n#endif\n");
+        ASSERT_EQ(files.size(), 6);
+        ExpectHasIncludeFile(files, true, "spliced/header.azsli");
+        ExpectHasIncludeFile(files, true, "angled.azsli");
+        ExpectHasIncludeFile(files, true, "query.azsli");
+        ExpectHasIncludeFile(files, true, "material.azsli");
+        ExpectHasIncludeFile(files, true, "comment.azsli");
+        ExpectHasIncludeFile(files, true, "inactive.azsli");
+    }
+
+    TEST_F(ShaderBuilderUtilityTests, IncludedFilesParserRequiresCompleteNamesAndHeaderDelimiters)
+    {
+        AZ::ShaderBuilder::ShaderBuilderUtility::IncludedFilesParser parser;
+        EXPECT_TRUE(parser.ParseStringAndGetIncludedFiles(
+            "#include_next \"suffix.azsli\"\n"
+            "__has_include_next(\"suffix.azsli\")\n"
+            "#include <mismatched.azsli\"\n"
+            "#include \"mismatched.azsli>\n"
+            "#include \"\"\n").empty());
+        const AZStd::string source = "#include/* gap */\"complete.azsli\"";
+        for (size_t length = 0; length < source.size(); ++length)
+        {
+            EXPECT_TRUE(parser.ParseStringAndGetIncludedFiles(AZStd::string_view(source.data(), length)).empty());
+        }
+        const auto files = parser.ParseStringAndGetIncludedFiles(source);
+        ASSERT_EQ(files.size(), 1);
+        EXPECT_EQ(files[0], "complete.azsli");
+    }
+
     TEST_F(ShaderBuilderUtilityTests, IncludedFilesParser_HandleMaterialPipelineMacro)
     {
         // This is a temporary solution to support material pipeline where the include path is specified in a #define and
@@ -94,4 +182,3 @@ namespace UnitTest
 } //namespace UnitTest
 
 //AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
-

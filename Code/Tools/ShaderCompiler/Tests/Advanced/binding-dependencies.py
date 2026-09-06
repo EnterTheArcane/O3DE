@@ -123,7 +123,7 @@ def doTests(compiler, silent, az3rdParty):
     if result and verifyBindingDependencies_3(os.path.join(workDir, "../Semantic/Triangle.azsl"), compiler, silent) : result += 1
     else: resultFailed += 1
 
-    if result and verifyBindingDependencies_4(os.path.join(workDir, "BakeAcesOutputTransformLutCS.azslin"), compiler, silent) : result += 1
+    if result and verifyBindingDependencies_4(os.path.join(workDir, "BakeAcesOutputTransformLutCS.preprocessed"), compiler, silent) : result += 1
     else: resultFailed += 1
 
 if __name__ == "__main__":

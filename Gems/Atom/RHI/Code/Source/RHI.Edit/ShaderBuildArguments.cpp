@@ -140,11 +140,11 @@ namespace AZ::RHI
                 continue;
             }
 
-            // Spaces in between a definition string are not allowed.
-            if ( (AZ::StringFunc::Find(definition, ' ')  != AZStd::string::npos) ||
-                    (AZ::StringFunc::Find(definition, '\t') != AZStd::string::npos) )
+            // Whitespace is valid in replacement values, but not in macro names.
+            const AZStd::string_view name = AZStd::string_view(definition).substr(0, definition.find('='));
+            if ((name.find(' ') != AZStd::string::npos) || (name.find('\t') != AZStd::string::npos))
             {
-                AZ_Assert(false, "The definition <%s> contains spaces, which is not allowed.", definition.c_str());
+                AZ_Assert(false, "The macro name in <%s> contains spaces, which is not allowed.", definition.c_str());
                 return -1;
             }
 

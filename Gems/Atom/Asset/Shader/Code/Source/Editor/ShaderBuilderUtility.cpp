@@ -19,7 +19,6 @@
 #include <AzCore/IO/IOUtils.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Settings/SettingsRegistryMergeUtils.h>
-#include <AzCore/std/string/regex.h>
 
 #include <AzCore/Serialization/Json/JsonUtils.h>
 
@@ -142,7 +141,7 @@ namespace AZ
                 const AZStd::string& tempFolder,
                 bool& useSpecializationConstants)
             {
-                AzslCompiler azslc(azslData.m_preprocessedFullPath,  // set the input file for eventual error messages, but the compiler won't be called on it.
+                AzslCompiler azslc(azslData.m_sourceFullPath,  // set the input file for eventual error messages, but the compiler won't be called on it.
                                    tempFolder);
                 bool allReadSuccess = true;
                 // read: input assembly reflection
@@ -263,53 +262,6 @@ namespace AZ
                             cleaner(nameResourcePair.second.m_dependentFunctions);
                         });
                 }
-            }
-
-            static AZStd::string DumpCode(
-                [[maybe_unused]] const char* builderName,
-                const AZStd::string& codeInString,
-                const AZStd::string& dumpDirectory,
-                const AZStd::string& stemName,
-                const AZStd::string& apiTypeString,
-                const AZStd::string& extension)
-            {
-                AZStd::string finalFilePath;
-                AZStd::string formatted;
-                if (apiTypeString.empty())
-                {
-                    formatted = AZStd::string::format("%s.%s", stemName.c_str(), extension.c_str());
-                }
-                else
-                {
-                    formatted = AZStd::string::format("%s_%s.%s", stemName.c_str(), apiTypeString.c_str(), extension.c_str());
-                }
-                AzFramework::StringFunc::Path::Join(dumpDirectory.c_str(), formatted.c_str(), finalFilePath, true, true);
-                AZ::IO::FileIOStream outFileStream(finalFilePath.data(), AZ::IO::OpenMode::ModeWrite);
-                if (!outFileStream.IsOpen())
-                {
-                    AZ_Error(builderName, false, "Failed to open file to write (%s)\n", finalFilePath.data());
-                    return "";
-                }
-
-                outFileStream.Write(codeInString.size(), codeInString.data());
-
-                // Prevent warning: "warning: End of input with no newline"
-                static constexpr char newLine[] = "\n";
-                outFileStream.Write(sizeof(newLine) - 1, newLine);
-
-                outFileStream.Close();
-
-                return finalFilePath;
-            }
-
-            AZStd::string DumpPreprocessedCode(const char* builderName, const AZStd::string& preprocessedCode, const AZStd::string& tempDirPath, const AZStd::string& stemName, const AZStd::string& apiTypeString)
-            {
-                return DumpCode(builderName, preprocessedCode, tempDirPath, stemName, apiTypeString, "azslin");
-            }
-
-            AZStd::string DumpAzslPrependedCode(const char* builderName, const AZStd::string& nonPreprocessedYetAzslSource, const AZStd::string& tempDirPath, const AZStd::string& stemName, const AZStd::string& apiTypeString)
-            {
-                return DumpCode(builderName, nonPreprocessedYetAzslSource, tempDirPath, stemName, apiTypeString, "azslprepend");
             }
 
             AZStd::string ExtractStemName(const char* path)
@@ -671,7 +623,7 @@ namespace AZ
                     return AssetBuilderSDK::ProcessJobResult_Failed;
                 }
 
-                AzslCompiler azslc(azslData.m_preprocessedFullPath, tempFolder);
+                AzslCompiler azslc(azslData.m_sourceFullPath, tempFolder);
                 if (!azslc.ParseIaPopulateStructData(jsonOutcome.GetValue(), vertexShaderName, inputStruct))
                 {
                     AZ_Error(ShaderBuilderUtilityName, false, "Failed to parse input layout\n");
@@ -764,7 +716,7 @@ namespace AZ
                     return AssetBuilderSDK::ProcessJobResult_Failed;
                 }
 
-                AzslCompiler azslc(azslData.m_preprocessedFullPath, tempFolder);
+                AzslCompiler azslc(azslData.m_sourceFullPath, tempFolder);
                 if (!azslc.ParseOmPopulateStructData(jsonOutcome.GetValue(), fragmentShaderName, outputStruct))
                 {
                     AZ_Error(ShaderBuilderUtilityName, false, "Failed to parse output layout\n");
@@ -855,45 +807,204 @@ namespace AZ
                 return success;
             }
 
-            IncludedFilesParser::IncludedFilesParser()
+            namespace
             {
-                #define FILE_PATH_REGEX R"([<|"]([\w|/|\\|\.|\-|\:]+)[>|"])"
-                #define INCLUDE_REGEX R"(#\s*include\s+)"
+                // Conservative CreateJobs discovery. Keep candidates in comments and inactive branches;
+                // macro evaluation and definitive dependency events belong to the native preprocessor.
+                class IncludeDependencyScanner
+                {
+                public:
+                    explicit IncludeDependencyScanner(AZStd::string_view source)
+                        : m_source(source)
+                    {
+                    }
 
-                // TODO(MaterialPipeline): This is a very specialized hack to support material pipelines. The intermediate .azsli file looks like this:
-                //     #define MATERIAL_TYPE_AZSLI_FILE_PATH "D:\o3de\Gems\Atom\TestData\TestData\Materials\Types\MaterialPipelineTest_Animated.azsli" 
-                //     #include "D:\o3de\Gems\Atom\Feature\Common\Assets\Materials\Pipelines\LowEndPipeline\ForwardPass_BaseLighting.azsli"
-                // Then the ForwardPass_BaseLighting.azsli file has this line:
-                //     #include MATERIAL_TYPE_AZSLI_FILE_PATH
-                // So we treat "#define MATERIAL_TYPE_AZSLI_FILE_PATH" the same as an include directive.
-                // The "right" way to handle this would be to use an actual preprocessor which shouild not be done in CreateJobs. We could introduce
-                // an intermediate builder that just preprocesses the file and outputs that as an intermediate asset, then do the normal processing
-                // in a subsequent builder.
-                #define SPECIAL_DEFINE_REGEX R"(#\s*define\s+MATERIAL_TYPE_AZSLI_FILE_PATH\s+)"
+                    AZStd::vector<AZStd::string> Parse()
+                    {
+                        AZStd::vector<AZStd::string> paths;
+                        while (m_offset < m_source.size())
+                        {
+                            char c = Peek();
+                            if (c == '#' || (c == '%' && Peek(1) == ':'))
+                            {
+                                Take();
+                                if (c == '%')
+                                {
+                                    Take();
+                                }
+                                SkipWhitespace();
+                                AZStd::string directive = ReadIdentifier();
+                                if (directive == "define")
+                                {
+                                    // Material-generated sources use this macro as an include operand.
+                                    SkipWhitespace();
+                                    if (ReadIdentifier() != "MATERIAL_TYPE_AZSLI_FILE_PATH")
+                                    {
+                                        continue;
+                                    }
+                                }
+                                else if (directive != "include")
+                                {
+                                    continue;
+                                }
+                            }
+                            else if (IsIdentifier(c))
+                            {
+                                if (ReadIdentifier() != "__has_include")
+                                {
+                                    continue;
+                                }
+                                SkipWhitespace();
+                                if (Peek() != '(')
+                                {
+                                    continue;
+                                }
+                                Take();
+                            }
+                            else
+                            {
+                                Take();
+                                continue;
+                            }
+                            ReadHeader(paths);
+                        }
+                        return paths;
+                    }
 
-                m_includeRegex = AZStd::regex("(?:" INCLUDE_REGEX "|" SPECIAL_DEFINE_REGEX ")" FILE_PATH_REGEX, AZStd::regex::ECMAScript);
+                private:
+                    static bool IsIdentifier(char c)
+                    {
+                        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+                            c == '_' || static_cast<unsigned char>(c) >= 128;
+                    }
 
-                #undef FILE_PATH_REGEX
-                #undef INCLUDE_REGEX
-                #undef SPECIAL_DEFINE_REGEX
+                    void SkipContinuations(size_t& offset) const
+                    {
+                        while (offset + 1 < m_source.size() && m_source[offset] == '\\')
+                        {
+                            if (m_source[offset + 1] == '\n')
+                            {
+                                offset += 2;
+                            }
+                            else if (m_source[offset + 1] == '\r')
+                            {
+                                offset += 2;
+                                if (offset < m_source.size() && m_source[offset] == '\n')
+                                {
+                                    ++offset;
+                                }
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                    }
+
+                    char Peek(size_t ahead = 0) const
+                    {
+                        size_t offset = m_offset;
+                        for (;;)
+                        {
+                            SkipContinuations(offset);
+                            if (offset == m_source.size())
+                            {
+                                return '\0';
+                            }
+                            if (ahead == 0)
+                            {
+                                return m_source[offset];
+                            }
+                            --ahead;
+                            ++offset;
+                        }
+                    }
+
+                    char Take()
+                    {
+                        SkipContinuations(m_offset);
+                        return m_offset < m_source.size() ? m_source[m_offset++] : '\0';
+                    }
+
+                    void SkipWhitespace()
+                    {
+                        for (;;)
+                        {
+                            char c = Peek();
+                            if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f')
+                            {
+                                Take();
+                            }
+                            else if (c == '/' && (Peek(1) == '*' || Peek(1) == '/'))
+                            {
+                                Take();
+                                bool block = Take() == '*';
+                                while (m_offset < m_source.size())
+                                {
+                                    if (!block && (Peek() == '\n' || Peek() == '\r'))
+                                    {
+                                        break;
+                                    }
+                                    if (block && Peek() == '*' && Peek(1) == '/')
+                                    {
+                                        Take();
+                                        Take();
+                                        break;
+                                    }
+                                    Take();
+                                }
+                            }
+                            else
+                            {
+                                return;
+                            }
+                        }
+                    }
+
+                    AZStd::string ReadIdentifier()
+                    {
+                        AZStd::string name;
+                        while (IsIdentifier(Peek()))
+                        {
+                            name += Take();
+                        }
+                        return name;
+                    }
+
+                    void ReadHeader(AZStd::vector<AZStd::string>& paths)
+                    {
+                        SkipWhitespace();
+                        char delimiter = Peek();
+                        if (delimiter != '"' && delimiter != '<')
+                        {
+                            return;
+                        }
+                        Take();
+                        char closing = delimiter == '<' ? '>' : '"';
+                        AZStd::string path;
+                        while (m_offset < m_source.size() && Peek() != closing && Peek() != '\n' && Peek() != '\r')
+                        {
+                            path += Take();
+                        }
+                        if (Peek() == closing)
+                        {
+                            Take();
+                            if (!path.empty())
+                            {
+                                AzFramework::StringFunc::Path::Normalize(path);
+                                paths.push_back(AZStd::move(path));
+                            }
+                        }
+                    }
+
+                    AZStd::string_view m_source;
+                    size_t m_offset = 0;
+                };
             }
 
             AZStd::vector<AZStd::string> IncludedFilesParser::ParseStringAndGetIncludedFiles(AZStd::string_view haystack) const
             {
-                AZStd::vector<AZStd::string> listOfFilePaths;
-                AZStd::smatch match;
-                AZStd::string::const_iterator searchStart(haystack.cbegin());
-                while (AZStd::regex_search(searchStart, haystack.cend(), match, m_includeRegex))
-                {
-                    if (match.size() > 1)
-                    {
-                        AZStd::string relativeFilePath(match[1].str().c_str());
-                        AzFramework::StringFunc::Path::Normalize(relativeFilePath);
-                        listOfFilePaths.push_back(relativeFilePath);
-                    }
-                    searchStart = match.suffix().first;
-                }
-                return listOfFilePaths;
+                return IncludeDependencyScanner(haystack).Parse();
             }
 
             AZ::Outcome<AZStd::vector<AZStd::string>, AZStd::string> IncludedFilesParser::ParseFileAndGetIncludedFiles(AZStd::string_view sourceFilePath) const

@@ -257,18 +257,14 @@ namespace AZ
                 byProducts.m_intermediatePaths.insert(dxcInputFile);
             }
 
-            const auto params = RHI::ShaderBuildArguments::ListAsString(dxcArguments);
-            const auto dxcEntryPoint = (shaderStageType == RHI::ShaderHardwareStage::RayTracing) ? "" : AZStd::string::format("-E %s", entryPoint.c_str());
-            //                                                1.entry   3.config           5.dxil  6.hlsl-in
-            //                                                    |   2.SM  |   4.output       |      |
-            //                                                    |     |   |       |          |      |
-            const auto dxcCommandOptions = AZStd::string::format("%s -T %s %s -Fo \"%s\" -Fh \"%s\" \"%s\"",
-                                                                 dxcEntryPoint.c_str(),                  // 1
-                                                                 profileIt->second.c_str(),              // 2
-                                                                 params.c_str(),                         // 3
-                                                                 shaderOutputFile.c_str(),               // 4
-                                                                 objectCodeOutputFile.c_str(),           // 5
-                                                                 dxcInputFile.c_str());                  // 6
+            AZStd::vector<AZStd::string> dxcCommandOptions;
+            if (shaderStageType != RHI::ShaderHardwareStage::RayTracing)
+            {
+                dxcCommandOptions.insert(dxcCommandOptions.end(), { "-E", entryPoint });
+            }
+            dxcCommandOptions.insert(dxcCommandOptions.end(), { "-T", profileIt->second });
+            dxcCommandOptions.insert(dxcCommandOptions.end(), dxcArguments.begin(), dxcArguments.end());
+            dxcCommandOptions.insert(dxcCommandOptions.end(), { "-Fo", shaderOutputFile, "-Fh", objectCodeOutputFile, dxcInputFile });
             // note: unlike DX12, the -Fd switch fails with -spirv. waiting for an answer on https://github.com/microsoft/DirectXShaderCompiler/issues/3111
             //       therefore, the debug data is probably embedded in the spirv blob.
 

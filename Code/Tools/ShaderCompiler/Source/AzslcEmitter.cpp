@@ -11,6 +11,8 @@
 #include <tuple>
 #include <cmath>
 #include <filesystem>
+#include <functional>
+
 namespace StdFs = std::filesystem;
 
 // We should only include the base platform emitter
@@ -444,44 +446,58 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void CodeEmitter::EmitPreprocessorLineDirective(size_t azslLineNumber)
+    void CodeEmitter::EmitPreprocessorLineDirective(SourceLocation source)
     {
-        if (azslLineNumber == 0)
-            return;  // protect for this invalid case. seems to happen for "virtual" symbols (like OverloadSet)
-
-        size_t supposedVirtualLine = m_lineFinder->GetVirtualLineNumber(azslLineNumber);
-        size_t curHlslLine = m_out.GetLineCount() + 1;  // "lines" is a space that is 1-based indexed.
-        auto lastEmitted = Infimum(m_alreadyEmittedPreprocessorLineDirectives, curHlslLine);
-        if (lastEmitted != m_alreadyEmittedPreprocessorLineDirectives.cend())
+        if (!source)
         {
-            // verify if we can skip the line emission if current stream line feed is still in sync with expectations
-            //  image:
-            //            in sync                  out of sync
-            //  1 | #line 1                1 | #line 1
-            //  2 | code                   2 | code
-            //  3 | newSymbol              3 | code
-            //                             4 | #line 2
-            //                             5 | newSymbol
-
-            size_t curHlslPhysicalDistance = curHlslLine - lastEmitted->first;
-            size_t lastVirtualSet = lastEmitted->second;
-            size_t nonAdjustedCurrentLandingLine = lastVirtualSet + curHlslPhysicalDistance - 1;  // -1 because line directives specify the NEXT line
-            if (nonAdjustedCurrentLandingLine == supposedVirtualLine)
-                return; // no need to emit. we can skip
+            return;
         }
-        // get the original file as absolute path:
-        const string& originalFileName = StdFs::absolute( m_lineFinder->GetVirtualFileName(azslLineNumber) ).lexically_normal().generic_string();
-        // emit the line:
-        m_out << "#line " << supposedVirtualLine << " \"" << originalFileName << "\"\n";
-        // remember it:
-        m_alreadyEmittedPreprocessorLineDirectives[curHlslLine] = supposedVirtualLine;
+        const ResolvedSourceLocation location = source.Resolve();
+        const string originalFileName = location.file.empty() ? string{} : StdFs::absolute(location.file).lexically_normal().generic_string();
+        const size_t currentLine = m_out.GetLineCount() + 1;
+        map<size_t, size_t>::const_iterator last = Infimum(m_alreadyEmittedPreprocessorLineDirectives, currentLine);
+        if (last != m_alreadyEmittedPreprocessorLineDirectives.cend()
+            && m_lastEmittedSourceFile == originalFileName
+            && last->second + currentLine - last->first - 1 == location.line)
+        {
+            return;
+        }
+        // Escape paths for HLSL string literals, including Windows separators.
+        string escaped;
+        for (char c : originalFileName)
+        {
+            static constexpr string_view controls = "\a\b\f\n\r\t\v";
+            static constexpr string_view escapes = "abfnrtv";
+            size_t control = controls.find(c);
+            if (control != string_view::npos)
+            {
+                escaped += '\\';
+                escaped += escapes[control];
+                continue;
+            }
+            if (static_cast<unsigned char>(c) < 32)
+            {
+                escaped += "\\0";
+                escaped += static_cast<char>('0' + ((static_cast<unsigned char>(c) >> 3) & 7));
+                escaped += static_cast<char>('0' + (c & 7));
+                continue;
+            }
+            if (c == '\\' || c == '"')
+            {
+                escaped += '\\';
+            }
+            escaped += c;
+        }
+        m_out << "#line " << location.line << " \"" << escaped << "\"\n";
+        m_alreadyEmittedPreprocessorLineDirectives[currentLine] = location.line;
+        m_lastEmittedSourceFile = originalFileName;
     }
 
     void CodeEmitter::EmitPreprocessorLineDirective(QualifiedNameView symbolName)
     {
         IdAndKind* idAndkindInfo = m_ir->GetIdAndKindInfo(symbolName);
         KindInfo& info = idAndkindInfo->second;
-        const auto origSourceLine = info.VisitSub(GetOrigSourceLine_Visitor{});
+        const auto origSourceLine = info.VisitSub(GetOriginalSourceLocation_Visitor{});
         EmitPreprocessorLineDirective(origSourceLine);
     }
 
@@ -1317,7 +1333,11 @@ namespace AZ::ShaderCompiler
                         {
                             assert(tokenId >= 0);
                             auto* token = m_tokens->get(static_cast<size_t>(tokenId));
-                            return token->getChannel() == Token::DEFAULT_CHANNEL ? token->getText() : string{};
+                            if (token->getChannel() == Token::DEFAULT_CHANNEL)
+                            {
+                                return token->getText();
+                            }
+                            return {};
                         };
                         output << m_translations.TranslateIdExpression(idExpr, ii, getToken) << " ";
                         ii += idExpr.m_span.length() - 1;
@@ -1329,7 +1349,7 @@ namespace AZ::ShaderCompiler
                     IfIsSrgMemberValidateIsDefined(token, astNode);
                     
                     // do minimal reformatting to have a pseudo-readable emitted code
-                    auto str = token->getText();
+                    string str = token->getText();
                     bool lineFeed = str == ";" || str == "{";
                     output << str << (lineFeed ? '\n' : ' ');
                 }

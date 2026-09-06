@@ -15,6 +15,7 @@
 #include <Atom/RHI.Edit/Utils.h>
 
 #include "Common/ShaderBuilderTestFixture.h"
+#include <CommonFiles/Preprocessor.h>
 #include <ShaderBuildArgumentsManager.h>
 
 namespace UnitTest
@@ -224,6 +225,19 @@ namespace UnitTest
         EXPECT_EQ(arguments.m_preprocessorArguments, VSTR({ "-DMACRO1", "-DMACRO2=VALUE2", "-DMACRO3", "-DMACRO4", "-DMACRO5=VALUE5" }));
     }
 
+    TEST_F(ShaderBuildArgumentsTests, AppendDefinitionsPreservesReplacementWhitespaceAndQuotes)
+    {
+        AZ::RHI::ShaderBuildArguments arguments;
+        EXPECT_EQ(arguments.AppendDefinitions({ R"(TEXT="hello world")", "EXPRESSION=(1 + 2)" }), 2);
+        EXPECT_EQ(arguments.m_preprocessorArguments, VSTR({ R"(-DTEXT="hello world")", "-DEXPRESSION=(1 + 2)" }));
+    }
+
+    TEST_F(ShaderBuildArgumentsTests, NormalizePreprocessorArgumentsPreservesBoundariesAndOrder)
+    {
+        const AZStd::vector<AZStd::string> input =
+            VSTR({ "-D", R"(TEXT="a b")", "-U", "TEXT", "-I", "/absolute include", "-I/second include", "--include", "/forced header" });
+        EXPECT_EQ(AZ::ShaderBuilder::NormalizePreprocessorArguments(input), input);
+    }
 
     TEST_F(ShaderBuildArgumentsTests, InitializeShaderBuildArguments_AppendDefinitionsWithTypos_ExpectError)
     {
@@ -500,4 +514,3 @@ namespace UnitTest
 } //namespace UnitTest
 
 AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
-

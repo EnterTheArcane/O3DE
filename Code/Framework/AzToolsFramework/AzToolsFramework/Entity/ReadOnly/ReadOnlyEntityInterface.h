@@ -8,10 +8,11 @@
 
 #pragma once
 
-#include <AzCore/RTTI/TypeInfoSimple.h>
 #include <AzCore/RTTI/RTTIMacros.h>
+#include <AzCore/RTTI/TypeInfoSimple.h>
 
 #include <AzFramework/Entity/EntityContextBus.h>
+#include <AzToolsFramework/Entity/EntityTypes.h>
 
 namespace AzToolsFramework
 {

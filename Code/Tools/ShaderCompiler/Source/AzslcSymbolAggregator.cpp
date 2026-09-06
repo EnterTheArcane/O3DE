@@ -79,7 +79,7 @@ namespace AZ::ShaderCompiler
         return toReturn;
     }
 
-    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, optional<size_t> lineNumber /*=none*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
+    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, optional<SourceLocation> lineNumber /*=none*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
     {
         // check against reserved names
         static const std::unordered_set<string_view> ReservedNames =

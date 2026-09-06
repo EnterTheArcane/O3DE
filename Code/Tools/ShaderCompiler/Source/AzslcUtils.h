@@ -84,25 +84,20 @@ namespace AZ::ShaderCompiler
     }
 
     // this format is the Microsoft standard for error list parsing "file(line,column): message"
-    inline string DiagLine(size_t line)
+    inline string DiagLine(SourceLocation source)
     {
-        using namespace std::string_literals;
-        return AzslcException::s_lineFinder->GetVirtualFileName(line) + "("s + std::to_string(line) + "):";
+        const ResolvedSourceLocation location = source.Resolve();
+        return std::string(location.file) + "(" + std::to_string(location.line) + "):";
     }
 
-    inline string DiagLine(optional<int> line)
-    {
-        return line ? DiagLine(static_cast<size_t>(*line)) : string{};
-    }
-
-    inline string DiagLine(optional<size_t> line)
+    inline string DiagLine(optional<SourceLocation> line)
     {
         return line ? DiagLine(*line) : string{};
     }
 
     inline string DiagLine(antlr4::Token* token)
     {
-        return DiagLine(token->getLine());
+        return DiagLine(GetSourceLocation(token));
     }
 
     inline string DiagLine(tree::TerminalNode* astNode)
@@ -112,18 +107,33 @@ namespace AZ::ShaderCompiler
 
     //! low level version with everything parameterizable
     template<typename... Types>
-    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, optional<size_t> lineNumber, optional<size_t> column, Types&&... messageBits)
+    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, optional<SourceLocation> lineNumber, optional<size_t> column, Types&&... messageBits)
     {
+        ResolvedSourceLocation location;
+        if (lineNumber)
+        {
+            location = lineNumber->Resolve();
+        }
+        string lineText;
+        if (location.line)
+        {
+            lineText = ToString(location.line);
+        }
+        string columnText;
+        if (column)
+        {
+            columnText = ToString(*column);
+        }
         stream << PushLevel{} << level
-               << AzslcException::MakeErrorMessage(lineNumber ? AzslcException::s_lineFinder->GetVirtualFileName(*lineNumber) : "",
-                                                   lineNumber ? ToString(AzslcException::s_lineFinder->GetVirtualLineNumber(*lineNumber)) : "", column ? ToString(*column) : "",
+               << AzslcException::MakeErrorMessage(location.file,
+                                                   lineText, columnText,
                                                    "", false, "", ConcatString(messageBits..., "\n"))
                << PopLevel{};
     }
 
     //! version for clients with only, maybe, a line number
     template<typename... Types>
-    inline void PrintWarning(Warn::EnumType level, optional<size_t> line, Types&&... messageBits)
+    inline void PrintWarning(Warn::EnumType level, optional<SourceLocation> line, Types&&... messageBits)
     {
         PrintWarning(warningCout, level, line, none, messageBits...);
     }
@@ -132,7 +142,7 @@ namespace AZ::ShaderCompiler
     template<typename... Types>
     inline void PrintWarning(Warn::EnumType level, antlr4::Token* token, Types&&... messageBits)
     {
-        PrintWarning(warningCout, level, token->getLine(), token->getCharPositionInLine() + 1, messageBits...);
+        PrintWarning(warningCout, level, GetSourceLocation(token), token->getCharPositionInLine() + 1, messageBits...);
     }
 
     inline AstTypeofNode* ExtractTypeofAstNode(AstType* ctx)
@@ -792,7 +802,7 @@ namespace AZ::ShaderCompiler
     {
         misc::Interval m_expressionSpan;  // eg for `void F()` -> type id-expr brace brace -> m_expressionSpan concerns id-expr. for `nested::leaf` -> all 3 tokens are in the span
         ssize_t        m_focusedTokenId;  // eg for `void F()` -> `F` is the focused token. for id-expr, each nested identifier has a seenat. in `nested::leaf` -> 2 TokensLocation. one with 'nested' as focus, one with 'leaf' as focus; both with the same expression span.
-        size_t         m_line;
+        SourceLocation m_line;
         size_t         m_charPos;
     };
 
@@ -803,7 +813,7 @@ namespace AZ::ShaderCompiler
         TokensLocation tl;
         tl.m_expressionSpan = const_cast<std::remove_const_t<ContextT>*>(ctx)->getSourceInterval();
         tl.m_focusedTokenId = static_cast<ssize_t>(focusedToken->getTokenIndex());
-        tl.m_line           = focusedToken->getLine();
+        tl.m_line           = GetSourceLocation(focusedToken);
         tl.m_charPos        = focusedToken->getCharPositionInLine();
         return tl;
     };
@@ -814,7 +824,7 @@ namespace AZ::ShaderCompiler
         TokensLocation tl;
         tl.m_expressionSpan = misc::Interval{tok->getTokenIndex(), tok->getTokenIndex()};
         tl.m_focusedTokenId = static_cast<ssize_t>(tok->getTokenIndex());
-        tl.m_line           = tok->getLine();
+        tl.m_line           = GetSourceLocation(tok);
         tl.m_charPos        = tok->getCharPositionInLine();
         return tl;
     };
@@ -839,7 +849,7 @@ namespace AZ::ShaderCompiler
         for (SeenatRangeIter it = begin; it != end; ++it)
         {
             s += indent;
-            s += "- {line: " + std::to_string(it->m_where.m_line);
+            s += "- {line: " + std::to_string(it->m_where.m_line.Resolve().line);
             s += ", col: " + std::to_string(it->m_where.m_charPos + 1);  // +1 because charPos starts at 0. most editors start at 1
             s += "}\n";
         }
@@ -908,11 +918,16 @@ namespace AZ::ShaderCompiler
             {
                 action(IdExpressionPart{globalSROToken, IdExpressionPart::GlobalScopeOperator});
             }
-            for (auto* identifier : ctx->qualifiedId()->nestedNameSpecifier()->Identifier())
+            azslParser::NestedNameSpecifierContext* nested = ctx->qualifiedId()->nestedNameSpecifier();
+            size_t scopeIndex = 0;
+            if (globalSROToken)
+            {
+                scopeIndex = 1;
+            }
+            for (tree::TerminalNode* identifier : nested->Identifier())
             {
                 action(IdExpressionPart{identifier->getSymbol(), IdExpressionPart::NestedNameSpecifier});
-                std::unique_ptr<Token> nextToken = identifier->getSymbol()->getTokenSource()->nextToken();
-                action(IdExpressionPart{nextToken.get(), IdExpressionPart::ScopeResolutionOperator});
+                action(IdExpressionPart{nested->ColonColon(scopeIndex++)->getSymbol(), IdExpressionPart::ScopeResolutionOperator});
             }
             Token* last = ctx->qualifiedId()->unqualifiedId()->Identifier()->getSymbol();
             action(IdExpressionPart{last, IdExpressionPart::QualifiedLeaf});

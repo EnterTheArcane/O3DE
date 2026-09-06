@@ -50,8 +50,7 @@
 //#define CM_TO_METERS  0.01
 //#define METERS_TO_CM  100.0
 
-// The following macro is not being used yet due to limitation of the C preprocessor 
-// mcpp that creates a shader compilation fault not being able to extend the macro.
+// Byte offsets are converted to indices in the structured shader buffer.
 #define BYTE_OFFSET(index,baseOffset)       ((baseOffset >> 2) + (index << 2))
 
 //!------------------------------ SRG Structure --------------------------------

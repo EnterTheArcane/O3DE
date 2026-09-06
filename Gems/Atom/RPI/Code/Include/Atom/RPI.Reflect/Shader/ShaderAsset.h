@@ -41,7 +41,7 @@ namespace AZ
         {
             ShaderAsset = 0, //!< for .azshader file, One per .shader.
             RootShaderVariantAsset, //!< for .azshadervariant, one per supervariant and referenced inside the .azshader.
-            FlatAzsl, //!< .azslin, this file contains the result of preprocessing an azsl file with MCPP, along with prepending the per-RHI azsli header.
+            FlatAzsl [[deprecated("Preprocessed AZSL products are no longer generated")]], //!< Keep this sub-ID reserved.
             IaJson, //!< .ia.json, Input Assembly reflection data.
             OmJson, //!< .om.json, Output Merger reflection data. 
             SrgJson, //!< .srg.json, Shader Resource Group reflection data.

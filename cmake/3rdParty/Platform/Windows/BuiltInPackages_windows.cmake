@@ -23,7 +23,6 @@ ly_associate_package(PACKAGE_NAME tiff-4.2.0.15-rev3-windows                    
 ly_associate_package(PACKAGE_NAME freetype-2.11.1-rev1-windows                          TARGETS Freetype                    PACKAGE_HASH 861d059a5542cb8f58a5157f411eee2e78f69ac72e45117227ebe400efe49f61)
 ly_associate_package(PACKAGE_NAME AWSNativeSDK-1.11.288-rev1-windows                    TARGETS AWSNativeSDK                PACKAGE_HASH 5112bfc8982f240757f22f32f5f761d7d7020d1c77b029ae480c082fa3ae19d4)
 ly_associate_package(PACKAGE_NAME Lua-5.4.4-rev1-windows                                TARGETS Lua                         PACKAGE_HASH 8ac853288712267ec9763be152a9274ce87b54728b8add97e2ba73c0fd5a0345)
-ly_associate_package(PACKAGE_NAME mcpp-2.7.2_az.2-rev1-windows                          TARGETS mcpp                        PACKAGE_HASH 794789aba639bfe2f4e8fcb4424d679933dd6290e523084aa0a4e287ac44acb2)
 ly_associate_package(PACKAGE_NAME mikkelsen-1.0.0.4-windows                             TARGETS mikkelsen                   PACKAGE_HASH 872c4d245a1c86139aa929f2b465b63ea4ea55b04ced50309135dd4597457a4e)
 ly_associate_package(PACKAGE_NAME d3dx12-headers-rev1-windows                           TARGETS d3dx12                      PACKAGE_HASH 088c637159fba4a3e4c0cf08fb4921906fd4cca498939bd239db7c54b5b2f804)
 ly_associate_package(PACKAGE_NAME pyside6-6.10.2-py3.10-rev5-windows                    TARGETS pyside6                     PACKAGE_HASH 322cc789f521cee9444401ce444c14b3a3d7b08ac30384c9baa9f55068be2397)

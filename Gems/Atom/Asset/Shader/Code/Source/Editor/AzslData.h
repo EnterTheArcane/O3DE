@@ -86,10 +86,14 @@ namespace AZ
         //! of an AZSL file as objects.
         struct AzslData
         {
-            AzslData(const AZStd::shared_ptr<ShaderFiles>& a_sources) : m_sources(a_sources) { }
+            AzslData(const AZStd::shared_ptr<ShaderFiles>& a_sources)
+                : m_sources(a_sources)
+                , m_sourceFullPath(a_sources->m_azslSourceFullPath)
+            {
+            }
 
             AZStd::shared_ptr<ShaderFiles> m_sources;
-            AZStd::string    m_preprocessedFullPath; // Full path to a preprocessed version of the original AZSL file
+            AZStd::string m_sourceFullPath; // Full path to the original AZSL source.
             AZStd::string m_shaderCodePrefix; // AssetProcessor generated shader code which is added to the
                                               // AZSLc emitted code prior to invoking the native shader compiler
 
@@ -105,11 +109,12 @@ namespace AZ
         {
             AzslData2(const AZStd::shared_ptr<ShaderFiles>& a_sources)
                 : m_sources(a_sources)
+                , m_sourceFullPath(a_sources->m_azslSourceFullPath)
             {
             }
 
             AZStd::shared_ptr<ShaderFiles> m_sources;
-            AZStd::string m_preprocessedFullPath; // Full path to a preprocessed version of the original AZSL file
+            AZStd::string m_sourceFullPath; // Full path to the original AZSL source.
 
             SrgDataContainer m_srgData;
             AzslFunctions m_functions;

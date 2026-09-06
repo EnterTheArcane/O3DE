@@ -9,6 +9,7 @@
 #pragma once
 
 #include <AzCore/Math/Sha1.h>
+#include <AzCore/std/containers/span.h>
 #include <AzCore/std/string/string.h>
 #include <Atom/RHI.Reflect/ShaderStages.h>
 #include <Atom/RHI.Edit/ShaderPlatformInterface.h>
@@ -81,10 +82,11 @@ namespace AZ::RHI
     AZStd::string GetDirectXShaderCompilerPath(const char* defaultPathToDxc);
 
     //! Runs a shader compiler executable with specific parameters.
+    //! Each parameter is one argument; do not add command-line quoting around paths or values.
     //! Returns true it compiled the shader without errors.
     //! Returns false otherwise and with compilation errors messages.
     bool ExecuteShaderCompiler(const AZStd::string& executablePath,
-                               const AZStd::string& parameters,
+                               AZStd::span<const AZStd::string> parameters,
                                const AZStd::string& shaderSourcePathForDebug,
                                const AZStd::string& tempFolder,
                                const char* toolNameForLog);

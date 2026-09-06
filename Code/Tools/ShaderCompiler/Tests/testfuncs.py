@@ -57,6 +57,10 @@ def executePredicateChecks(message):
 def launchCompiler(compilerPath, options, silent):
     '''returns a tuple (standard-output-text, process-return-code)'''
     arglist = [compilerPath]
+    # Explicit legacy fixture compatibility. All normal source tests preprocess natively.
+    legacy_fixtures = {"standardpbr_forwardpass.azsl", "main.preprocessed", "BakeAcesOutputTransformLutCS.preprocessed"}
+    if options and options[0].replace("\\", "/").rsplit("/", 1)[-1] in legacy_fixtures:
+        arglist.append("--preprocessed")
     arglist.extend(options)
     print ("    Running: ", ' '.join(arglist))
     process = subprocess.Popen(arglist, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

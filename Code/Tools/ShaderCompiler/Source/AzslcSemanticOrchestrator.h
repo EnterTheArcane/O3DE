@@ -8,7 +8,7 @@
 #pragma once
 
 #include "AzslcScopeTracker.h"
-#include "PreprocessorLineDirectiveFinder.h"
+#include "SourceManager.h"
 #include "AzslcUnboundedArraysValidator.h"
 #include "AzslcKindInfo.h"
 
@@ -24,7 +24,7 @@ namespace AZ::ShaderCompiler
     //! Deals with jobs that requires access to both Scope and SymbolTable
     struct SemanticOrchestrator
     {
-        SemanticOrchestrator(SymbolAggregator* sema, ScopeTracker* scope, azslLexer* lexer);
+        SemanticOrchestrator(SymbolAggregator* sema, ScopeTracker* scope, const antlr4::dfa::Vocabulary& vocabulary);
 
         //! Helper shortcut: uses the current scope as a starting location to lookup a symbol.
         //! Returns whatever SymbolAggretator's eponymous returns.
@@ -41,7 +41,7 @@ namespace AZ::ShaderCompiler
         //! Does this symbol resolves to an existing ID from the current scope ?
         //! Helper shortcut: will concatenate your symbol name to current scope before passing to SymbolAggregator
         //! Returns whatever SymbolAggretator's eponymous returns.
-        decltype(auto) AddIdentifier(UnqualifiedNameView usym, Kind kind, optional<size_t> lineNumber = none)
+        IdAndKind& AddIdentifier(UnqualifiedNameView usym, Kind kind, optional<SourceLocation> lineNumber = none)
         {
             return m_symbols->AddIdentifier(MakeFullyQualified(usym), kind, lineNumber);
         }
@@ -88,10 +88,10 @@ namespace AZ::ShaderCompiler
         auto RegisterFunctionDeclarationAndAddSeenat(UnqualifiedNameView name, AstFuncSig* signature) -> IdAndKind&;
 
         template< typename ContextType >
-        auto RegisterStructuredType(ContextType* ctx, Kind kind) -> IdAndKind&
+        IdAndKind& RegisterStructuredType(ContextType* ctx, Kind kind)
         {
             auto const& idText     = ctx->Name->getText();
-            size_t line            = ctx->Name->getLine();
+            SourceLocation line    = GetSourceLocation(ctx->Name);
             verboseCout << line << ": " << Kind::ToStr(kind) << " decl: " << idText << "\n";
             auto uqNameView        = UnqualifiedNameView{idText};
             if (auto* param = ExtractSpecificParent<azslParser::FunctionParamContext>(ctx))
@@ -197,7 +197,7 @@ namespace AZ::ShaderCompiler
 
         //! look up the type, verify that it exists and is a kind that may hold sub-members.
         //! takes supplementary parameters for better verbose or warning diagnostics.
-        auto VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, optional<string> lhsExpressionText = none, optional<size_t> line = none) const -> pair<bool, QualifiedName>;
+        pair<bool, QualifiedName> VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, optional<string> lhsExpressionText = none, optional<SourceLocation> line = none) const;
 
         //! assemble a type (left) and an idexpr (right) to see if it forms a symbol that exists, and extracts its type.
         auto ComposeMemberNameWithScopeAndGetType(QualifiedName scopingType, AstIdExpr* rhsMember) const -> QualifiedName;
@@ -274,7 +274,7 @@ namespace AZ::ShaderCompiler
         enum class OnNotFoundOrWrongKind { Diagnose, Empty, CopeByCopy };
         //! Shorthand for symbol lookup, but with supplementary checks, specifics to types.
         //! throws if: the found symbol is not a type, or no found symbol and policy is Diagnose.
-        auto LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy, optional<size_t> sourceline = none) const noexcept(false) -> IdentifierUID;
+        IdentifierUID LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy, optional<SourceLocation> sourceline = none) const noexcept(false);
 
         //! Find and return a registered type from an AST node. Will also resolve typeof expressions.
         //! could work from any sort of context that has an ExtractTypeNameFromAstContext override
@@ -386,7 +386,7 @@ namespace AZ::ShaderCompiler
     public:
         SymbolAggregator* m_symbols;
         ScopeTracker*     m_scope;
-        azslLexer*        m_lexer;
+        const antlr4::dfa::Vocabulary& m_vocabulary;
         UnboundedArraysValidator m_unboundedArraysValidator;
 
     private:

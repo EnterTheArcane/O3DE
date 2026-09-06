@@ -1,0 +1,3 @@
+# Keep upstream test bytes, including whitespace, identical on every host.
+*.c -text -whitespace
+*.cpp -text -whitespace

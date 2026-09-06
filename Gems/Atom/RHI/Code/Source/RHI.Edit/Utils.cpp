@@ -229,7 +229,7 @@ namespace AZ::RHI
     }
 
     bool ExecuteShaderCompiler(const AZStd::string& executablePath,
-                               const AZStd::string& parameters,
+                               AZStd::span<const AZStd::string> parameters,
                                const AZStd::string& shaderSourcePathForDebug,
                                const AZStd::string& tempFolder,
                                const char* toolNameForLog)
@@ -262,7 +262,9 @@ namespace AZ::RHI
         }
 
         AzFramework::ProcessLauncher::ProcessLaunchInfo processLaunchInfo;
-        processLaunchInfo.m_commandlineParameters = AZStd::string::format("\"%s\" %s", executableAbsolutePath.c_str(), parameters.c_str());
+        AZStd::vector<AZStd::string> arguments{ executableAbsolutePath };
+        arguments.insert(arguments.end(), parameters.begin(), parameters.end());
+        processLaunchInfo.m_commandlineParameters = AZStd::move(arguments);
         processLaunchInfo.m_showWindow = true;
         processLaunchInfo.m_processPriority = AzFramework::ProcessPriority::PROCESSPRIORITY_NORMAL;
 
@@ -368,17 +370,12 @@ namespace AZ::RHI
 
         ShaderCompilerProfiling::Entry profilingEntry;
         profilingEntry.m_executablePath = executablePath;
-        profilingEntry.m_parameters = parameters;
+        profilingEntry.m_parameters = processLaunchInfo.GetCommandLineParametersAsString();
         profilingEntry.m_elapsedTimeSeconds = elapsedTimeSeconds;
-        AZStd::string shaderSourceArg = shaderSourcePathForDebug;
-        AZStd::string shaderSourceFolder;
-        StringFunc::Path::GetFileName(shaderSourceArg.c_str(), shaderSourceFolder);
-        if (StringFunc::Contains(shaderSourceFolder, "Cache"))
-        {
-            AZStd::string shaderFileNameWithMutatedFolder = BuildFileNameWithExtension(shaderSourcePathForDebug, tempFolder, "");
-            shaderSourceArg = shaderFileNameWithMutatedFolder;
-        }
-        WriteProfilingEntryToLog(shaderSourceArg, profilingEntry);
+        // Native AZSL compilation reads the original source.
+        // Profiling belongs to the job's temporary output directory, including for source inputs.
+        const AZStd::string profilingPath = BuildFileNameWithExtension(shaderSourcePathForDebug, tempFolder, "");
+        WriteProfilingEntryToLog(profilingPath, profilingEntry);
 
         return true;
     }

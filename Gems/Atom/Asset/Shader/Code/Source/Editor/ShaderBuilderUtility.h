@@ -43,12 +43,11 @@ namespace AZ
 
             namespace AzslSubProducts
             {
-                AZ_ENUM(SuffixList, azslin, ia, om, srg, options, bindingdep, hlsl);
+                AZ_ENUM(SuffixList, ia, om, srg, options, bindingdep, hlsl);
 
                 using SubId = RPI::ShaderAssetSubId;
                 // product sub id enumerators:
-                static constexpr SubId SubList[] = {SubId::FlatAzsl,
-                                                    SubId::IaJson,
+                static constexpr SubId SubList[] = {SubId::IaJson,
                                                     SubId::OmJson,
                                                     SubId::SrgJson,
                                                     SubId::OptionsJson,
@@ -99,33 +98,6 @@ namespace AZ
                 RPI::ShaderOutputContract& shaderOutputContract, size_t& colorAttachmentCount,
                 const AZStd::string& tempFolder);
 
-
-            //! Create a file from a string's content.
-            //! That file will be named filename.api.azslin
-            //! This is meant to be used at this stage:
-            //!
-            //!     .azsl source -> common header prepend -> preprocess -> azslc -> dxc -> cross
-            //!                                                       ^here^
-            AZStd::string DumpPreprocessedCode(
-                const char* BuilderName,
-                const AZStd::string& preprocessedCode,
-                const AZStd::string& tempDirPath,
-                const AZStd::string& preprocessedFileName,
-                const AZStd::string& apiTypeString = "");
-
-            //! Create a file from a string's content.
-            //! That file will be named filename.api.azsl.prepend
-            //! This is meant to be used at this stage:
-            //!
-            //!     .azsl source -> common header prepend -> preprocess -> azslc -> dxc -> cross
-            //!                                         ^here^
-            AZStd::string DumpAzslPrependedCode(
-                const char* BuilderName,
-                const AZStd::string& nonPreprocessedYetAzslSource,
-                const AZStd::string& tempDirPath,
-                const AZStd::string& stemName,
-                const AZStd::string& apiTypeString = "");
-
             //! "d:/p/f.e" -> "f"
             AZStd::string ExtractStemName(const char* path);
 
@@ -152,23 +124,18 @@ namespace AZ
             class IncludedFilesParser
             {
             public:
-                IncludedFilesParser();
+                IncludedFilesParser() = default;
                 ~IncludedFilesParser() = default;
 
-                //! This static function was made public for testability purposes only.
-                //! Parses the string @haystack, looking for "#include file" lines with a regular expression.
+                //! Scans @haystack for includes, header queries and material-pipeline path definitions.
                 //! Returns the list of relative paths as included by the file.
                 //! REMARK: The algorithm may over prescribe what files to include because it doesn't discern between comments, etc.
                 //!         Also, a #include line may be protected by #ifdef macros but this algorithm doesn't care.
                 //! Over prescribing is not a real problem, albeit potential waste in processing. Under prescribing would be a real problem.
                 AZStd::vector<AZStd::string> ParseStringAndGetIncludedFiles(AZStd::string_view haystack) const;
 
-                //! This static function was made public for testability purposes only.
                 //! Opens the file @sourceFilePath, loads the content into a string and returns ParseStringAndGetIncludedFiles(content)
                 AZ::Outcome<AZStd::vector<AZStd::string>, AZStd::string> ParseFileAndGetIncludedFiles(AZStd::string_view sourceFilePath) const;
-
-            private:
-                AZStd::regex m_includeRegex;
             };
 
         }  // ShaderBuilderUtility namespace

@@ -50,7 +50,7 @@ namespace AZ
         {
         }
 
-        bool AzslCompiler::Compile(const AZStd::string& compilerParams,
+        bool AzslCompiler::Compile(AZStd::span<const AZStd::string> compilerParams,
                                    const AZStd::string& outputFilePath) const
         {
             // Relative executable paths are resolved from the engine binary directory, where runtime dependencies are staged.
@@ -66,43 +66,24 @@ namespace AZ
                 }
             }
 
-            // Compilation parameters
-            AZStd::string azslcCommandOptions = AZStd::string::format("\"%s\"", m_inputFilePath.c_str());
-            // NOTE: On macOS AZSLc executable fails if there is an extra space in the command line when there are no compiler parameters,
-            // checking if there is no compiler parameters to avoid adding the extra space.
-            if (!compilerParams.empty())
-            {
-                AZStd::vector<AZStd::string> tokenizedArguments;
-                AzFramework::StringFunc::Tokenize(compilerParams, tokenizedArguments, " ");
-                AZStd::string cleanParams;
-                AzFramework::StringFunc::Join(cleanParams, tokenizedArguments.begin(), tokenizedArguments.end(), " ");
-                azslcCommandOptions += AZStd::string::format(" %s", cleanParams.c_str());
-            }
-
+            AZStd::vector<AZStd::string> arguments{ m_inputFilePath };
+            arguments.insert(arguments.end(), compilerParams.begin(), compilerParams.end());
             if (!outputFilePath.empty())
             {
-                azslcCommandOptions += AZStd::string::format(" -o \"%s\"", outputFilePath.c_str());
+                arguments.push_back("-o");
+                arguments.push_back(outputFilePath);
             }
-
-            // Run Shader Compiler
-            if (!RHI::ExecuteShaderCompiler(azslcPath, azslcCommandOptions, m_inputFilePath, m_tempFolder, "AZSLc"))
-            {
-                return false;
-            }
-
-            return true;
+            return RHI::ExecuteShaderCompiler(azslcPath, arguments, m_inputFilePath, m_tempFolder, "AZSLc");
         }
 
         bool AzslCompiler::EmitShader(AZ::IO::GenericStream& outputStream,
-                                      const AZStd::string& compilerParams) const
+                                      AZStd::span<const AZStd::string> compilerParams) const
         {
-            // .azslin for input and .azslout for output (in the same folder)
+            // Original AZSL input and a temporary HLSL output in the same folder.
             AZStd::string hlslOutputFile = m_inputFilePath;
             AzFramework::StringFunc::Path::ReplaceExtension(hlslOutputFile, "azslout");
 
-            // Add the flag for the warning level
-            const AZStd::string parameters = compilerParams;
-            if (!Compile(parameters, hlslOutputFile))
+            if (!Compile(compilerParams, hlslOutputFile))
             {
                 return false;
             }
@@ -135,11 +116,10 @@ namespace AZ
 
         namespace SubProducts = ShaderBuilderUtility::AzslSubProducts;
 
-        Outcome<SubProducts::Paths> AzslCompiler::EmitFullData(const AZStd::vector<AZStd::string>& azslcArguments,
+        Outcome<SubProducts::Paths> AzslCompiler::EmitFullData(AZStd::span<const AZStd::string> azslcArguments,
                                                                const AZStd::string& outputFile) const
         {
-            const auto azslArgsStr = RHI::ShaderBuildArguments::ListAsString(azslcArguments);
-            bool success = Compile(azslArgsStr, outputFile);
+            bool success = Compile(azslcArguments, outputFile);
             if (!success)
             {
                 return Failure();
@@ -155,13 +135,13 @@ namespace AZ
                 subProductFilePath += AZStd::any_of(AZ_BEGIN_END(listOfJsons), [&](auto v) { return v == subProduct.m_value; }) ? ".json" : "";
                 productPaths[subProduct.m_value] = subProductFilePath;
             }
-            productPaths[SubProducts::azslin] = GetInputFilePath();  // post-fixup this one after the loop, because it's not an output of azslc, it's an output of the builder though.
             return { productPaths };
         }
 
         bool AzslCompiler::EmitInputAssembler(rapidjson::Document& output) const
         {
-            return CompileToFileAndPrepareJsonDocument(output, "--ia", "ia.json") == BuildResult::Success;
+            const AZStd::string arguments[] = { "--ia" };
+            return CompileToFileAndPrepareJsonDocument(output, arguments, "ia.json") == BuildResult::Success;
         }
 
         bool AzslCompiler::ParseIaPopulateStructData(const rapidjson::Document& input, const AZStd::string& vertexEntryName, StructData& outStructData) const
@@ -268,7 +248,7 @@ namespace AZ
 
         bool AzslCompiler::EmitOutputMerger(rapidjson::Document& output) const
         {
-            return CompileToFileAndPrepareJsonDocument(output, "--om", "om.json") == BuildResult::Success;
+            return CompileToFileAndPrepareJsonDocument(output, { "--om" }, "om.json") == BuildResult::Success;
         }
 
         bool AzslCompiler::ParseOmPopulateStructData(const rapidjson::Document& input, const AZStd::string& fragmentShaderName, StructData& outStructData) const
@@ -529,10 +509,11 @@ namespace AZ
             return m_inputFilePath;
         }
 
-        bool AzslCompiler::EmitSrgData(rapidjson::Document& output, const AZStd::string& extraCompilerParams) const
+        bool AzslCompiler::EmitSrgData(rapidjson::Document& output, AZStd::span<const AZStd::string> extraCompilerParams) const
         {
-            AZStd::string parameters = AZStd::string::format("--srg %s", extraCompilerParams.c_str());
-            return CompileToFileAndPrepareJsonDocument(output, parameters.c_str(), "srg.json") == BuildResult::Success;
+            AZStd::vector<AZStd::string> parameters{ "--srg" };
+            parameters.insert(parameters.end(), extraCompilerParams.begin(), extraCompilerParams.end());
+            return CompileToFileAndPrepareJsonDocument(output, parameters, "srg.json") == BuildResult::Success;
         }
 
         bool AzslCompiler::ParseSrgPopulateSrgData(const rapidjson::Document& input, SrgDataContainer& outSrgData) const
@@ -896,7 +877,7 @@ namespace AZ
 
         bool AzslCompiler::EmitOptionsList(rapidjson::Document& output) const
         {
-            return CompileToFileAndPrepareJsonDocument(output, "--options", "options.json") == BuildResult::Success;
+            return CompileToFileAndPrepareJsonDocument(output, { "--options" }, "options.json") == BuildResult::Success;
         }
 
         bool AzslCompiler::ParseOptionsPopulateOptionGroupLayout(
@@ -1192,7 +1173,7 @@ namespace AZ
         
         AzslCompiler::BuildResult AzslCompiler::CompileToFileAndPrepareJsonDocument(
             rapidjson::Document& outputJson,
-            const char* compilerCommandSwitch,
+            AZStd::span<const AZStd::string> compilerParams,
             const char* outputExtension,
             AfterRead deleteOutputFileAfterReading /*= AfterRead::Keep*/) const
         {
@@ -1202,7 +1183,7 @@ namespace AZ
 
             AZ_Error("AzslCompiler", AZ::IO::SystemFile::Exists(outputFile.c_str()), "Destination file %s, exists. will be overwritten", outputFile.c_str());
 
-            if (!Compile(compilerCommandSwitch, outputFile))
+            if (!Compile(compilerParams, outputFile))
             {
                 return BuildResult::CompilationFailed;
             }

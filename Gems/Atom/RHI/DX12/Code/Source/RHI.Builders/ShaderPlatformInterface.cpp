@@ -289,10 +289,18 @@ namespace AZ
             args.m_digest = &sha1;
 
             const auto dxcInputFile = RHI::PrependFile(args);  // Prepend PAL header & obtain hash
+            AZStd::vector<AZStd::string> dxcCommandOptions;
+            if (shaderStageType != RHI::ShaderHardwareStage::RayTracing)
+            {
+                dxcCommandOptions.insert(dxcCommandOptions.end(), { "-E", entryPoint });
+            }
+            dxcCommandOptions.insert(dxcCommandOptions.end(), { "-T", profileIt->second });
+            dxcCommandOptions.insert(dxcCommandOptions.end(), dxcArguments.begin(), dxcArguments.end());
+            dxcCommandOptions.insert(dxcCommandOptions.end(), { "-Fo", shaderOutputFile, "-Fh", objectCodeOutputFile });
+
             // -Fd "Write debug information to the given file, or automatically named file in directory when ending in '\\'"
             // If we use the auto-name (hash), there is no way we can retrieve that name apart from listing the directory.
             // Instead, let's just generate that hash ourselves.
-            AZStd::string symbolDatabaseFileCliArgument{" "};  // when not debug: still insert a space between 5.dxil and 7.hlsl-in
             if (graphicsDevMode || shaderBuildArguments.m_generateDebugInfo)
             {
                 // prepare .pdb filename:
@@ -308,24 +316,11 @@ namespace AZ
                 }
                 else
                 {
-                    symbolDatabaseFileCliArgument = " -Fd \"" + symbolDatabaseFilePath + "\" ";  // 6.pdb  hereunder
+                    dxcCommandOptions.insert(dxcCommandOptions.end(), { "-Fd", symbolDatabaseFilePath });
                     byProducts.m_intermediatePaths.emplace(AZStd::move(symbolDatabaseFilePath));
                 }
             }
-            const auto params = RHI::ShaderBuildArguments::ListAsString(dxcArguments);
-            const auto dxcEntryPoint = (shaderStageType == RHI::ShaderHardwareStage::RayTracing) ? "" : AZStd::string::format("-E %s", entryPoint.c_str());
-            //                                                1.entry   3.config            5.dxil  7.hlsl-in
-            //                                                    |   2.SM  |   4.output       | 6.pdb  |
-            //                                                    |     |   |       |          |   |    |
-            const auto dxcCommandOptions = AZStd::string::format("%s -T %s %s -Fo \"%s\" -Fh \"%s\"%s\"%s\"",
-                                                                 dxcEntryPoint.c_str(),                  // 1
-                                                                 profileIt->second.c_str(),              // 2
-                                                                 params.c_str(),                         // 3
-                                                                 shaderOutputFile.c_str(),               // 4
-                                                                 objectCodeOutputFile.c_str(),           // 5
-                                                                 symbolDatabaseFileCliArgument.c_str(),  // 6
-                                                                 dxcInputFile.c_str()                    // 7
-                                                                 );
+            dxcCommandOptions.push_back(dxcInputFile);
 
             // Run Shader Compiler
             if (!RHI::ExecuteShaderCompiler(dxcRelativePath, dxcCommandOptions, shaderSourceFile, tempFolder, "DXC"))
@@ -347,16 +342,12 @@ namespace AZ
                 AZStd::string offsetsOutput = shaderOutputCommon;
                 AzFramework::StringFunc::Path::ReplaceExtension(offsetsOutput, "offsets.json");
 
-                const auto dxscCommandOptions = AZStd::string::format(
-                    //   1.sentinel    3.offsets_output   
-                    //     |    2.output    |   4.dxil-in
-                    //     |       |        |      |
-                    "-sv=%lu -o=\"%s\" -f=\"%s\" \"%s\"",
-                    static_cast<unsigned long>(SCSentinelValue), // 1
-                    patchedShaderOutput.c_str(), // 2
-                    offsetsOutput.c_str(), // 3
-                    shaderOutputFile.c_str() // 4
-                );
+                const AZStd::string dxscCommandOptions[] = {
+                    AZStd::string::format("-sv=%lu", static_cast<unsigned long>(SCSentinelValue)),
+                    "-o=" + patchedShaderOutput,
+                    "-f=" + offsetsOutput,
+                    shaderOutputFile
+                };
 
                 if (!RHI::ExecuteShaderCompiler(dxscRelativePath, dxscCommandOptions, shaderSourceFile, tempFolder, "DXSC"))
                 {

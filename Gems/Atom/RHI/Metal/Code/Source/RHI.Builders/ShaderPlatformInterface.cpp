@@ -291,16 +291,9 @@ namespace AZ
                 // dump intermediate "true final HLSL" file (shadername.metal.shadersource.prepend)
                 byProducts.m_intermediatePaths.insert(dxcInputFile);
             }
-            const auto params = RHI::ShaderBuildArguments::ListAsString(shaderBuildArguments.m_dxcArguments);
-            //                                                      1.entry   3.config       5.hlsl-in
-            //                                                          |   2.SM  |   4.output   |
-            //                                                          |     |   |       |      |
-            AZStd::string dxcCommandOptions = AZStd::string::format("-E %s -T %s %s -Fo \"%s\" \"%s\"",
-                                                                    entryPoint.c_str(),            // 1
-                                                                    profileIt->second.c_str(),     // 2
-                                                                    params.c_str(),                // 3
-                                                                    shaderSpirvOutputFile.c_str(), // 4
-                                                                    dxcInputFile.c_str());         // 5
+            AZStd::vector<AZStd::string> dxcCommandOptions{ "-E", entryPoint, "-T", profileIt->second };
+            dxcCommandOptions.insert(dxcCommandOptions.end(), shaderBuildArguments.m_dxcArguments.begin(), shaderBuildArguments.m_dxcArguments.end());
+            dxcCommandOptions.insert(dxcCommandOptions.end(), { "-Fo", shaderSpirvOutputFile, dxcInputFile });
 
             // Run dxc Compiler
             if (!RHI::ExecuteShaderCompiler(dxcRelativePath, dxcCommandOptions, shaderSourceFile, tempFolder, "DXC"))
@@ -330,8 +323,8 @@ namespace AZ
             // spirv cross compiler executable
             static const char* spirvCrossRelativePath = "Builders/SPIRVCross/spirv-cross";
 
-            const auto userDefinedSpirvCrossAgs = RHI::ShaderBuildArguments::ListAsString(shaderBuildArguments.m_spirvCrossArguments);
-            AZStd::string spirvCrossCommandOptions = AZStd::string::format("%s --output \"%s\" \"%s\"", userDefinedSpirvCrossAgs.c_str(), shaderMSLOutputFile.c_str(), shaderSpirvOutputFile.c_str());
+            auto spirvCrossCommandOptions = shaderBuildArguments.m_spirvCrossArguments;
+            spirvCrossCommandOptions.insert(spirvCrossCommandOptions.end(), { "--output", shaderMSLOutputFile, shaderSpirvOutputFile });
 
             // Run spirv cross
             if (!RHI::ExecuteShaderCompiler(spirvCrossRelativePath, spirvCrossCommandOptions, shaderSpirvOutputFile, tempFolder, "SpirvCross"))
@@ -419,18 +412,17 @@ namespace AZ
                 RHI::ShaderBuildArguments::AppendArguments(metalAirArguments, { "-gline-tables-only", "-MO" });
             }
             
-            const auto metalAirArgumentsStr = RHI::ShaderBuildArguments::ListAsString(metalAirArguments);
-            const auto mslToAirCommandOptions = AZStd::string::format("%s \"%s\" -o \"%s\"", metalAirArgumentsStr.c_str(), inputMetalFile.c_str(), outputAirFile.c_str());
-            if (!RHI::ExecuteShaderCompiler("/usr/bin/xcrun", mslToAirCommandOptions, inputMetalFile, tempFolder, "MslToAir"))
+            metalAirArguments.insert(metalAirArguments.end(), { inputMetalFile, "-o", outputAirFile });
+            if (!RHI::ExecuteShaderCompiler("/usr/bin/xcrun", metalAirArguments, inputMetalFile, tempFolder, "MslToAir"))
             {
                 AZ_Error(MetalShaderPlatformName, false, "Failed to convert to AIR file %s", inputMetalFile.c_str());
                 return false;
             }
 
             //convert to metallib
-            const auto metalLibArgumentsStr = RHI::ShaderBuildArguments::ListAsString(shaderBuildArguments.m_metalLibArguments);
-            const auto airToMetalLibCommandOptions = AZStd::string::format("%s \"%s\" -o \"%s\"", metalLibArgumentsStr.c_str(), outputAirFile.c_str(), outMetalLibFile.c_str());
-            if (!RHI::ExecuteShaderCompiler("/usr/bin/xcrun", airToMetalLibCommandOptions, outputAirFile, tempFolder, "AirToMetallib"))
+            auto metalLibArguments = shaderBuildArguments.m_metalLibArguments;
+            metalLibArguments.insert(metalLibArguments.end(), { outputAirFile, "-o", outMetalLibFile });
+            if (!RHI::ExecuteShaderCompiler("/usr/bin/xcrun", metalLibArguments, outputAirFile, tempFolder, "AirToMetallib"))
             {
                 AZ_Error(MetalShaderPlatformName, false, "Failed to convert to metallib file");
                 return false;

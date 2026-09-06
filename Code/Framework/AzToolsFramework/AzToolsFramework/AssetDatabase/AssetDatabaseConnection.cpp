@@ -3233,7 +3233,7 @@ namespace AzToolsFramework
                 ProductDatabaseEntry product;
                 AZStd::string savedJobKey;
                 AZ::Uuid savedBuilderGuid;
-                int savedJobStatus;
+                int savedJobStatus = static_cast<int>(AssetSystem::JobStatus::Any);
 
                 auto productColumns = product.GetColumns();
                 auto jobKeyColumn = MakeColumn("JobKey", savedJobKey);

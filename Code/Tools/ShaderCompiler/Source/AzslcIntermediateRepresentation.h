@@ -35,14 +35,14 @@ namespace AZ::ShaderCompiler
     // Note that this is not IL. e.g. not a serialized form of IR with op-codes (like DXIL).
     struct IntermediateRepresentation
     {
-        IntermediateRepresentation(azslLexer* lexer)
+        IntermediateRepresentation(const antlr4::dfa::Vocabulary& vocabulary)
             : m_scope{[&](QualifiedNameView sym)  // Initialize the scope object with a decoupled identifier getter. (SOLID's D.I.P)
                       {
                           return m_symbols.GetIdAndKindInfo(sym);
                       }
                      }
-            , m_lexer{ lexer }
-            , m_sema{&m_symbols, &m_scope, lexer}
+            , m_vocabulary{ vocabulary }
+            , m_sema{&m_symbols, &m_scope, vocabulary}
             , m_padToAttributeMutator(*this)
         {
             // Default output format for all targets
@@ -155,7 +155,7 @@ namespace AZ::ShaderCompiler
 
         void RegisterAttributeSpecifier(AttributeScope scope,
                                         AttributeCategory category,
-                                        size_t declarationLine,
+                                        SourceLocation declarationLine,
                                         string_view space,
                                         string_view name,
                                         azslParser::AttributeArgumentListContext* argList);
@@ -193,8 +193,7 @@ namespace AZ::ShaderCompiler
             const AZ::ShaderCompiler::Packing::Layout layoutPacking) const;
 
         //! execute any logic that relates to intermediate treatment that would need to be done between front end and back end
-        void MiddleEnd(const MiddleEndConfiguration& middleEndconfig,
-                       PreprocessorLineDirectiveFinder* lineFinder);
+        void MiddleEnd(const MiddleEndConfiguration& middleEndconfig);
 
         bool Validate();
 
@@ -305,8 +304,7 @@ namespace AZ::ShaderCompiler
         //!     float2 m_value;
         //! }
         //!  
-        void ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration,
-                                                                      PreprocessorLineDirectiveFinder* lineFinder);
+        void ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration);
 
         // Returns info for the last variable inside the struct or class named @structUid.
         // If @structUid is not struct or class, then it returns nullptr.
@@ -321,7 +319,7 @@ namespace AZ::ShaderCompiler
         SemanticOrchestrator  m_sema;
         // object that allows reverse mapping of token pointers to AST rules
         TokenToAst            m_tokenMap;
-        azslLexer*            m_lexer;
+        const antlr4::dfa::Vocabulary& m_vocabulary;
         // the structure that holds root constants (it's a generated thing, and there is only one)
         IdentifierUID         m_rootConstantStructUID;
 

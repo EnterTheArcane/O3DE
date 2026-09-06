@@ -1,4 +1,7 @@
 {
+    "RemoveBuildArguments": {
+        "spirv-cross": ["--msl-version", "20100"]
+    },
     "AddBuildArguments": {
         "debug": false,
         "preprocessor": [],
@@ -12,7 +15,7 @@
         "dxc": ["-spirv"
               , "-enable-16bit-types"
         ],
-        "spirv-cross": ["--msl-framebuffer-fetch", "--msl-version 20300"],
+        "spirv-cross": ["--msl-framebuffer-fetch", "--msl-version", "20300"],
         "metalair": ["-sdk", "macosx", "metal" // For xcrun
                    , "-fpreserve-invariance"
                    , "-c"
