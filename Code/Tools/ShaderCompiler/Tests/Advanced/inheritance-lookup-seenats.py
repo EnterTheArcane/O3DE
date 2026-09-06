@@ -20,7 +20,7 @@ def execTest(thefile, compilerPath, silent):
         try:
             ok = symbols["Symbol '/A/A'"]['kind'] == 'Class'
             
-            ok2 = symbols["Symbol '/A/A'"]["references"] == None   # no references for A::A
+            ok2 = symbols["Symbol '/A/A'"]["references"] == []   # no references for A::A
             
             ok3 = len(symbols["Symbol '/A'"]["references"]) == 1
 

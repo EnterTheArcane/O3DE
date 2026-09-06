@@ -19,14 +19,17 @@
 
 #include <Atom/RHI/RHISystemInterface.h>
 #include <Atom/RPI.Public/Shader/Shader.h>
+#include <Atom/RPI.Public/Shader/ShaderReloadNotificationBus.h>
 
 #include <Common/RPITestFixture.h>
 #include <Common/ErrorMessageFinder.h>
 #include <Common/SerializeTester.h>
 
+#include <AzCore/Component/TickBus.h>
+#include <AzCore/Instance/InstanceDatabase.h>
+#include <AzCore/Math/Random.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Utils/TypeHash.h>
-#include <AzCore/Math/Random.h>
 #include <AzCore/std/string/conversions.h>
 
 namespace AZ
@@ -1452,6 +1455,66 @@ namespace UnitTest
         Data::Instance<RPI::Shader> shader = RPI::Shader::FindOrCreate(CreateShaderAsset());
 
         ValidateShader(shader);
+    }
+
+    TEST_F(ShaderTests, ShaderReload_NotifiesShaderAssetAfterBothArrivalOrders)
+    {
+        struct ReloadListener final
+            : RPI::ShaderReloadNotificationBus::Handler
+        {
+            explicit ReloadListener(const Data::AssetId& assetId)
+            {
+                BusConnect(assetId);
+            }
+
+            ~ReloadListener()
+            {
+                BusDisconnect();
+            }
+
+            void OnShaderReinitialized(const RPI::Shader& shader) override
+            {
+                ++m_notifications;
+                m_shader = &shader;
+            }
+
+            int m_notifications = 0;
+            const RPI::Shader* m_shader = nullptr;
+        };
+
+        Data::Asset<RPI::ShaderAsset> asset = CreateShaderAsset();
+        Data::Asset<RPI::ShaderVariantAsset> root = asset->GetRootVariantAsset();
+        Data::Instance<RPI::Shader> shader = RPI::Shader::FindOrCreate(asset);
+        ASSERT_TRUE(shader);
+        ReloadListener shaderListener(asset.GetId());
+        ReloadListener rootListener(root.GetId());
+
+        Data::AssetBus::Event(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
+        EXPECT_EQ(shaderListener.m_notifications, 0);
+        EXPECT_EQ(rootListener.m_notifications, 0);
+        Data::AssetBus::Event(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+        EXPECT_EQ(shaderListener.m_notifications, 0);
+        TickBus::ExecuteQueuedEvents();
+        EXPECT_EQ(shaderListener.m_notifications, 1);
+        EXPECT_EQ(rootListener.m_notifications, 0);
+        EXPECT_EQ(shaderListener.m_shader, shader.get());
+
+        Data::AssetBus::Event(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+        EXPECT_EQ(shaderListener.m_notifications, 1);
+        Data::AssetBus::Event(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
+        EXPECT_EQ(shaderListener.m_notifications, 1);
+        TickBus::ExecuteQueuedEvents();
+        EXPECT_EQ(shaderListener.m_notifications, 2);
+        EXPECT_EQ(rootListener.m_notifications, 0);
+        EXPECT_EQ(shaderListener.m_shader, shader.get());
+
+        Data::AssetBus::Event(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+        Data::AssetBus::Event(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
+        const Data::InstanceId instanceId = shader->GetId();
+        shader = nullptr;
+        EXPECT_FALSE(Data::InstanceDatabase<RPI::Shader>::Instance().Find(instanceId));
+        TickBus::ExecuteQueuedEvents();
+        EXPECT_EQ(shaderListener.m_notifications, 2);
     }
 
     TEST_F(ShaderTests, ValidateShaderVariantIdMath)

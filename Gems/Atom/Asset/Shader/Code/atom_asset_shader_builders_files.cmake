@@ -9,8 +9,6 @@
 set(FILES
     Source/Editor/CommonFiles/CommonTypes.h
     Source/Editor/CommonFiles/CommonTypes.cpp
-    Source/Editor/CommonFiles/Preprocessor.h
-    Source/Editor/CommonFiles/Preprocessor.cpp
     Source/Editor/AzslData.h
     Source/Editor/AzslShaderBuilderSystemComponent.cpp
     Source/Editor/AzslShaderBuilderSystemComponent.h

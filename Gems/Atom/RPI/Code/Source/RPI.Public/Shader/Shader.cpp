@@ -299,7 +299,18 @@ namespace AZ
             m_reloadedAssets.clear();
 
             Init(*m_asset.Get());
-            ShaderReloadNotificationBus::Event(asset.GetId(), &ShaderReloadNotificationBus::Events::OnShaderReinitialized, *this);
+            // Material type assets must update their shader references before materials reinitialize.
+            AZ::TickBus::QueueFunction([shaderInstanceId = GetId()]
+            {
+                if (!Data::InstanceDatabase<Shader>::IsReady())
+                {
+                    return;
+                }
+                if (Data::Instance<Shader> shader = Data::InstanceDatabase<Shader>::Instance().Find(shaderInstanceId))
+                {
+                    ShaderReloadNotificationBus::Event(shader->GetAsset().GetId(), &ShaderReloadNotificationBus::Events::OnShaderReinitialized, *shader);
+                }
+            });
         }
         ///////////////////////////////////////////////////////////////////////
 

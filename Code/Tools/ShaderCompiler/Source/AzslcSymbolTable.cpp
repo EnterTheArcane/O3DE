@@ -51,7 +51,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    IdAndKind& SymbolTable::AddIdentifier(QualifiedNameView symbol, Kind kind, optional<size_t> lineNumber /*= none*/)
+    IdAndKind& SymbolTable::AddIdentifier(QualifiedNameView symbol, Kind kind, optional<SourceLocation> sourceLocation /*= none*/)
     {
         IdentifierUID idUID{symbol};
         auto fetchedIdIt = m_symbols.find(idUID);
@@ -59,11 +59,11 @@ namespace AZ::ShaderCompiler
         {   // found
             if (kind != fetchedIdIt->second.GetKind())
             {
-                ThrowRedeclarationAsDifferentKind(symbol, kind, fetchedIdIt->second, lineNumber);
+                ThrowRedeclarationAsDifferentKind(symbol, kind, fetchedIdIt->second, sourceLocation);
             }
             else
             {
-                throw AzslcException(ORCHESTRATOR_ODR_VIOLATION, "Semantic", lineNumber, none,
+                throw AzslcException(ORCHESTRATOR_ODR_VIOLATION, "Semantic", sourceLocation, none,
                                      ConcatString("ODR (One Definition Rule) violation. Redeclaration of ",
                                                   Kind::ToStr(kind), " ", ExtractLeaf(symbol), " in ", LevelUp(symbol), "  ",
                                                   GetFirstSeenLineMessage(fetchedIdIt->second), "\n"));

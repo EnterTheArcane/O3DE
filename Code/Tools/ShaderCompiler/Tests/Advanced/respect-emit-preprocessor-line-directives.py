@@ -27,7 +27,7 @@ def validateFilesAppearInLineDirectives(hlslContent, fileList, silent):
               It is treated as a stack and we expect the line matching
               to occur in the order as they appear in this list              
     """
-    regexp = re.compile('#\s*line\s+\d+\s*"(.*)"$')
+    regexp = re.compile(r'#\s*line\s+\d+\s*"(.*)"$')
     hlslLines = hlslContent.splitlines()
     found0 = False
     for hlslLine in hlslLines:
@@ -50,7 +50,7 @@ def testSampleFileCompilationEmitsPreprocessorLineDirectives(theFile, compilerPa
                "testSampleFileCompilationEmitsPreprocessorLineDirectives: "+
                "Verifying sample file compiles and #line directives are emitted..."+
                style.RESET_ALL)
-    stdout, ok = testfuncs.buildAndGet(theFile, compilerPath, silent, [])
+    stdout, ok = testfuncs.buildAndGet(theFile, compilerPath, silent, ["--preprocessed"])
     stdout = stdout.decode('utf-8')
     ok = validateFilesAppearInLineDirectives(stdout,
                                              ["srg_semantics.azsli", "level0.azsli", "level1.azsli", "level2.azsli", "main.azsl"],
@@ -101,7 +101,7 @@ def testErrorReportUsesPreprocessorLineDirectives(theFile, compilerPath, silent,
         print (fg.CYAN+ style.BRIGHT+
                "testSyntaxErrorReportUsesPreprocessorLineDirectives: "+
                "Compiling and expecting errors..."+ style.RESET_ALL)
-    stderr, failed = testfuncs.buildAndGetError(filePathOfTmpFile, compilerPath, silent, [])
+    stderr, failed = testfuncs.buildAndGetError(filePathOfTmpFile, compilerPath, silent, ["--preprocessed"])
     stderr = stderr.decode('utf-8')
     if not failed:
         print(fg.RED + "fail: expected non-buildable didn't report a build error." + fg.RESET)
@@ -133,14 +133,14 @@ def doTests(compiler, silent, azdxcpath):
     #  because at that time it will still be set to the working directory of the calling script
     workDir = os.getcwd()
     
-    if testSampleFileCompilationEmitsPreprocessorLineDirectives(os.path.join(workDir, "RespectEmitLine/main.azsl.mcpp"),
+    if testSampleFileCompilationEmitsPreprocessorLineDirectives(os.path.join(workDir, "RespectEmitLine/main.preprocessed"),
                                                                 compiler, silent): result += 1
     else:
         print(fg.RED + "fail: testSampleFileCompilationEmitsPreprocessorLineDirectives" + fg.RESET)
         resultFailed += 1
     
     if not silent: print("\n")
-    if testErrorReportUsesPreprocessorLineDirectives(os.path.join(workDir, "RespectEmitLine/main.azsl.mcpp"),
+    if testErrorReportUsesPreprocessorLineDirectives(os.path.join(workDir, "RespectEmitLine/main.preprocessed"),
                                                            compiler, silent,
                                                            "ShaderResourceGroup SRG2 : Slot2", "ShaderResour ceGroup SRG2 : Slot2",
                                                            "level2.azsli",
@@ -150,14 +150,14 @@ def doTests(compiler, silent, azdxcpath):
         resultFailed += 1
     
     if not silent: print("\n")
-    if testErrorReportUsesPreprocessorLineDirectives(os.path.join(workDir, "RespectEmitLine/main.azsl.mcpp"),
+    if testErrorReportUsesPreprocessorLineDirectives(os.path.join(workDir, "RespectEmitLine/main.preprocessed"),
                                                            compiler, silent,
                                                            "ShaderResourceGroup SRG1 : Slot1", "ShaderResourceGroup SRG1 : SlotX",
                                                            "level1.azsli",
                                                            "Semantic error"): result += 1
     else: resultFailed += 1
     
-    #if testSemanticErrorReportUsesPreprocessorLineDirectives(os.path.join(workDir, "RespectEmitLine/main.azsl.mcpp"),
+    #if testSemanticErrorReportUsesPreprocessorLineDirectives(os.path.join(workDir, "RespectEmitLine/main.preprocessed"),
     #                                                       compiler, silent): result += 1
     #else: resultFailed += 1
 

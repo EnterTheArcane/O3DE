@@ -6,5 +6,6 @@
 #
 
 set(FILES
+    Source/Azslc.manifest
     Source/Main.cpp
 )

@@ -41,21 +41,21 @@ namespace AZ::ShaderCompiler
             return qualifiers;
         }
 
-        void CheckFunctionReturnTypeModifierNotOptionNorRootconstant(const TypeQualifiers& qualifier, size_t line)
+        void CheckFunctionReturnTypeModifierNotOptionNorRootconstant(const TypeQualifiers& qualifier, SourceLocation sourceLocation)
         {
             auto ngFlags = Modifiers{StorageFlag::Option} | StorageFlag::Rootconstant;
             if (qualifier.m_flag & ngFlags)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_DISALLOWED_FUNCTION_MODIFIER, line,
+                throw AzslcOrchestratorException{ORCHESTRATOR_DISALLOWED_FUNCTION_MODIFIER, sourceLocation,
                     none, " Functions can't have option or rootconstant qualified return types."};
             }
         }
     }
 
-    SemanticOrchestrator::SemanticOrchestrator(SymbolAggregator* sema, ScopeTracker* scope, azslLexer* lexer)
+    SemanticOrchestrator::SemanticOrchestrator(SymbolAggregator* sema, ScopeTracker* scope, const antlr4::dfa::Vocabulary& vocabulary)
         : m_symbols{ sema },
           m_scope{ scope },
-          m_lexer{ lexer },
+          m_vocabulary{ vocabulary },
           m_anonymousCounter{ 0 }
     {
         assert(sema != nullptr && scope != nullptr);
@@ -187,8 +187,8 @@ namespace AZ::ShaderCompiler
         assert((statementGenre == AsFunc::Declaration && Is<azslParser::HlslFunctionDeclarationContext*>(ctx->parent))
             || (statementGenre == AsFunc::Definition  && Is<azslParser::HlslFunctionDefinitionContext*>(ctx->parent)));
 
-        auto line = ctx->Name->getLine();
-        verboseCout << line << ": register func: " << fqUndecoratedName;
+        auto sourceLocation = GetSourceLocation(ctx->Name);
+        verboseCout << sourceLocation << ": register func: " << fqUndecoratedName;
 
         // `/f` is undecorated. `/f(?int)` is decorated
         QualifiedName decoratedName = CreateDecoratedIdentityOfFunction(fqUndecoratedName, ctx->functionParams());
@@ -217,7 +217,7 @@ namespace AZ::ShaderCompiler
         bool alreadyDefined = funcInfo ? !!funcInfo->m_defNode : false;
         if (!alreadyDeclared)  // brand new function
         {
-            symbol = &m_symbols->AddIdentifier(decoratedName, Kind::Function, line);
+            symbol = &m_symbols->AddIdentifier(decoratedName, Kind::Function, sourceLocation);
             // prepare a virgin subinfo
             funcInfo = &symbol->second.GetSubAfterInitAs<Kind::Function>();
         }
@@ -234,7 +234,7 @@ namespace AZ::ShaderCompiler
             auto originalKind = symbol->second.GetKind();
             if (originalKind != Kind::Function)  // verify that we're not transforming a lychee into a melon
             {
-                ThrowRedeclarationAsDifferentKind(decoratedName, Kind::Function, symbol->second, line);
+                ThrowRedeclarationAsDifferentKind(decoratedName, Kind::Function, symbol->second, sourceLocation);
             }
 
             if (alreadyDefined)  // verify that it's not a second definition
@@ -298,7 +298,7 @@ namespace AZ::ShaderCompiler
                                                           GetFirstSeenLineMessage(symbol->second), ", had a different return type: ",
                                                           funcInfo->m_returnType.GetDisplayName(), ", versus now seen: ", returnType.GetDisplayName())};
         }
-        CheckFunctionReturnTypeModifierNotOptionNorRootconstant(returnType.m_qualifiers, line); // throws a diagnostic if needed
+        CheckFunctionReturnTypeModifierNotOptionNorRootconstant(returnType.m_qualifiers, sourceLocation); // throws a diagnostic if needed
         returnType.m_qualifiers.OrMerge(funcInfo->m_returnType.m_qualifiers);
         funcInfo->m_returnType = returnType;
         assert(!funcInfo->m_returnType.IsEmpty());
@@ -314,7 +314,7 @@ namespace AZ::ShaderCompiler
         if (!overloadSet)  // don't exist yet. it must be the first occurrence of this function's core name.
         {
             // create and prepare a brand new overload-set
-            overloadSetIdKind = &m_symbols->AddIdentifier(fqUndecoratedName, Kind::OverloadSet, line);
+            overloadSetIdKind = &m_symbols->AddIdentifier(fqUndecoratedName, Kind::OverloadSet, sourceLocation);
             overloadSet = overloadSetIdKind->second.GetSubAs<OverloadSetInfo>();
             overloadSet->SetSetName(overloadSetIdKind->first); // set own id on it for logical independence (decoupling) in the methods of this object
         }
@@ -377,9 +377,9 @@ namespace AZ::ShaderCompiler
         auto& [enumId, parentKindInfo] = *m_symbols->GetIdAndKindInfo(enumQn);
         auto& enumInfo = parentKindInfo.GetSubRefAs<ClassInfo>();
 
-        size_t line            = ctx->Name->getLine();
+        SourceLocation sourceLocation = GetSourceLocation(ctx->Name);
         auto enumeratorName    = UnqualifiedName{ctx->Name->getText()};
-        auto& [uid, var]       = AddIdentifier(enumeratorName, Kind::Variable, line);
+        auto& [uid, var]       = AddIdentifier(enumeratorName, Kind::Variable, sourceLocation);
         auto& varInfo          = var.GetSubAfterInitAs<Kind::Variable>();
         if (ctx->Value)
         {
@@ -403,10 +403,10 @@ namespace AZ::ShaderCompiler
         {
             if (auto* intLit = ctx->FrequencyValue->IntegerLiteral())
             {
-                size_t line           = ctx->Frequency->getLine();
+                SourceLocation sourceLocation = GetSourceLocation(ctx->Frequency);
                 auto frequencyId      = ctx->Frequency->getText();
                 auto uqNameView       = UnqualifiedNameView{ frequencyId };
-                auto& [uid, var]      = AddIdentifier(uqNameView, Kind::Variable, line);
+                auto& [uid, var]      = AddIdentifier(uqNameView, Kind::Variable, sourceLocation);
                 auto& varInfo         = var.GetSubAfterInitAs<Kind::Variable>();
                 varInfo.m_constVal    = FoldEvalStaticConstExprNumericValue(intLit);
                 varInfo.m_declNode    = nullptr;
@@ -419,10 +419,10 @@ namespace AZ::ShaderCompiler
         {
             if (auto* intLit = ctx->VariantFallbackValue->IntegerLiteral())
             {
-                size_t line           = ctx->VariantFallback->getLine();
+                SourceLocation sourceLocation = GetSourceLocation(ctx->VariantFallback);
                 auto variantFallback  = ctx->VariantFallback->getText();
                 auto uqNameView       = UnqualifiedNameView{ variantFallback };
-                auto& [uid, var]      = AddIdentifier(uqNameView, Kind::Variable, line);
+                auto& [uid, var]      = AddIdentifier(uqNameView, Kind::Variable, sourceLocation);
                 auto& varInfo         = var.GetSubAfterInitAs<Kind::Variable>();
                 varInfo.m_constVal    = FoldEvalStaticConstExprNumericValue(intLit);
                 varInfo.m_declNode    = nullptr;
@@ -436,7 +436,7 @@ namespace AZ::ShaderCompiler
     IdAndKind& SemanticOrchestrator::RegisterTypeAlias(string_view newIdentifier, AstType* existingTypeCtx, azslParser::TypeAliasingDefinitionStatementContext* ctx)
     {
         UnqualifiedNameView newId { newIdentifier };
-        auto& idKind = AddIdentifier(newId, Kind::TypeAlias, ctx->start->getLine());
+        auto& idKind = AddIdentifier(newId, Kind::TypeAlias, GetSourceLocation(ctx->start));
         auto& [uid, kinfo]  = idKind;
         TypeAliasInfo& aliasInfo  = kinfo.GetSubAfterInitAs<Kind::TypeAlias>();
         aliasInfo.m_declNode      = ctx;
@@ -489,11 +489,11 @@ namespace AZ::ShaderCompiler
         azslParser::FunctionParamContext* paramCtx = nullptr;
         auto typeCtx                    = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
         auto&& idText                   = nameIdentifier->getText();
-        size_t line                     = nameIdentifier->getLine();
-        verboseCout << ConcatString(line, ": var decl: ", idText, "\n");
+        SourceLocation sourceLocation = GetSourceLocation(nameIdentifier);
+        verboseCout << ConcatString(sourceLocation, ": var decl: ", idText, "\n");
         auto uqNameView                 = UnqualifiedNameView{idText};
         // Register the variable in the symbol table early:
-        IdAndKind& symbolRef            = AddIdentifier(uqNameView, Kind::Variable, line);
+        IdAndKind& symbolRef            = AddIdentifier(uqNameView, Kind::Variable, sourceLocation);
         auto& [uid, kindInfo]           = symbolRef;
         VarInfo& varInfo                = kindInfo.GetSubRefAs<VarInfo>();
         // Discover array dimensions:
@@ -520,7 +520,7 @@ namespace AZ::ShaderCompiler
             PrintWarning(Warn::W2, typeCtx->start, "variable type ", typeCtx->getText(), " not understood.",
                          " (for variable ", idText, ")");
         }
-        if (varInfo.GetTypeRefInfo().IsInputAttachment(m_lexer))
+        if (varInfo.GetTypeRefInfo().IsInputAttachment(m_vocabulary))
         {
             if (!varInfo.GetGenericParameterTypeId().IsEmpty()
                 && varInfo.GetGenericParameterTypeId().GetNameLeaf() != "float4")
@@ -882,8 +882,8 @@ namespace AZ::ShaderCompiler
     IdAndKind& SemanticOrchestrator::RegisterSRG(AstSRGDeclNode* ctx)
     {
         auto const& idText = ctx->Name->getText();
-        size_t line        = ctx->Name->getLine();
-        verboseCout << line << ": srg decl: " << idText << "\n";
+        auto sourceLocation = GetSourceLocation(ctx->Name);
+        verboseCout << sourceLocation << ": srg decl: " << idText << "\n";
         auto uqNameView    = UnqualifiedNameView{ idText };
         IdAndKind* srgSym  = LookupSymbol(uqNameView);
         if (srgSym) // already exists
@@ -909,7 +909,7 @@ namespace AZ::ShaderCompiler
             throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_SEMANTIC_DECLARATION,
                 ctx->Name, "A semantic is mandatory on the declaration of a non-partial ShaderResourceGroup."};
         }
-        auto& symbol       = AddIdentifier(uqNameView, Kind::ShaderResourceGroup, line);
+        auto& symbol       = AddIdentifier(uqNameView, Kind::ShaderResourceGroup, sourceLocation);
         // now fillup what we can about the kindinfo:
         auto& [uid, info]  = symbol;
         SRGInfo& srgInfo   = info.GetSubAfterInitAs<Kind::ShaderResourceGroup>();
@@ -949,7 +949,7 @@ namespace AZ::ShaderCompiler
         seenat.m_where              = location;
         info.GetSeenats().emplace_back(seenat);
 
-        const string verboseMessage = ConcatString(seenat.m_where.m_line, ": seenat registered for ", uid.m_name, " at col ", seenat.m_where.m_charPos + 1, "\n");
+        const string verboseMessage = ConcatString(seenat.m_where.m_sourceLocation, ": seenat registered for ", uid.m_name, " at col ", seenat.m_where.m_charPos + 1, "\n");
         verboseCout << verboseMessage;
     }
 
@@ -1087,11 +1087,11 @@ namespace AZ::ShaderCompiler
     //! returns the looked up scope
     pair<bool, QualifiedName> SemanticOrchestrator::VerifyTypeIsScopeComposable(azslParser::ExpressionContext* typeScopeAnyExpression) const
     {
-         return VerifyTypeIsScopeComposable(TypeofExpr(typeScopeAnyExpression), typeScopeAnyExpression->getText(), typeScopeAnyExpression->start->getLine());
+        return VerifyTypeIsScopeComposable(TypeofExpr(typeScopeAnyExpression), typeScopeAnyExpression->getText(), GetSourceLocation(typeScopeAnyExpression->start));
     }
 
     //! same function as above for already resolved typeof
-    pair<bool, QualifiedName> SemanticOrchestrator::VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, optional<string> lhsExpressionText/*= none*/, optional<size_t> line/*= none*/) const
+    pair<bool, QualifiedName> SemanticOrchestrator::VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, optional<string> lhsExpressionText/*= none*/, optional<SourceLocation> sourceLocation/*= none*/) const
     {
         // (generalized) member-access-expressions can only work on types with members:
         // any UDT: struct, enum, class, interface. Any scope; srg, function. Any type-like: typeof, typedef (because they get collapsed)
@@ -1099,7 +1099,7 @@ namespace AZ::ShaderCompiler
         bool valid = true;
         if (!lhsSymbol)
         {
-            PrintWarning(Warn::W2, line, "unresolved member access ",
+            PrintWarning(Warn::W2, sourceLocation, "unresolved member access ",
                          "on undeclared type ", lhsTypeName,
                          (lhsExpressionText ? " (of expression " + *lhsExpressionText + ")" : ""), ")");
             valid = false;
@@ -1111,7 +1111,7 @@ namespace AZ::ShaderCompiler
             {
                 auto outputStream = lhsKindInfo.GetKind() == Kind::Type ? verboseCout : warningCout;
                 // registered predefined types can have members, but we don't know them -> not important. But anything else is very likely an ill-formed source.
-                PrintWarning(outputStream, Warn::W1, line, none, "ill-formed semantics: access of member ",
+                PrintWarning(outputStream, Warn::W1, sourceLocation, none, "ill-formed semantics: access of member ",
                              " on an unsupported kind ", Kind::ToStr(lhsKindInfo.GetKind()),
                              " (of believed type ", lhsSymbol->first.GetName(),
                              (lhsExpressionText ? " from expression " + *lhsExpressionText : ""), ")");
@@ -1322,7 +1322,7 @@ namespace AZ::ShaderCompiler
             auto [valid, lhsType] = VerifyTypeIsScopeComposable(leftType,
                                                                 ctx->Expr ? ctx->Expr->getText()
                                                                           : ctx->type()->getText(),
-                                                                ctx->start->getLine());
+                                                                GetSourceLocation(ctx->start));
             return valid ? ComposeMemberNameWithScopeAndGetType(lhsType, ctx->SubQualification)
                          : QualifiedName{"<fail>"};
         }
@@ -1523,10 +1523,10 @@ namespace AZ::ShaderCompiler
                 // We only care the specified semantic is the same as the currently defined semantic for the srg.
                 if (srgInfo.m_semantic->GetNameLeaf() != semanticName)
                 {
-                    const LineDirectiveInfo* originalSrglineInfo = AzslcException::s_lineFinder->GetNearestPreprocessorLineDirective(srgInfo.m_declNode->Semantic->getLine());
-                    string errorMsg = FormatString("'partial' extension of ShaderResourceGroup [%s] with semantic [%s] shall not bind a different semantic than [%s] found in line %u of %s",
+                    const ResolvedSourceLocation original = GetSourceLocation(srgInfo.m_declNode->Semantic).Resolve();
+                    string errorMsg = FormatString("'partial' extension of ShaderResourceGroup [%s] with semantic [%s] shall not bind a different semantic than [%s] found in line %zu of %s",
                         ctx->Name->getText().c_str(), semanticName.c_str(), srgInfo.m_semantic->GetNameLeaf().c_str(),
-                        originalSrglineInfo->m_forcedLineNumber, originalSrglineInfo->m_containingFilename.c_str());
+                        original.m_line, std::string(original.m_file).c_str());
                     throw AzslcOrchestratorException{ORCHESTRATOR_SRG_EXTENSION_HAS_DIFFERENT_SEMANTIC, ctx->Semantic, errorMsg};
                 }
                 // All is good.
@@ -1590,8 +1590,8 @@ namespace AZ::ShaderCompiler
                     existingSymbol = LookupSymbol(UnqualifiedNameView{ svkName });
                 }
 
-                size_t line = 0;
-                auto& [uid, var] = AddIdentifier(UnqualifiedNameView{ svkName }, Kind::Variable, line);
+                SourceLocation sourceLocation{};
+                auto& [uid, var] = AddIdentifier(UnqualifiedNameView{ svkName }, Kind::Variable, sourceLocation);
                 auto& varInfo = var.GetSubAfterInitAs<Kind::Variable>();
                 varInfo.m_srgMember = true;
 
@@ -1658,7 +1658,7 @@ namespace AZ::ShaderCompiler
     optional<int64_t> SemanticOrchestrator::TryFoldSRGSemantic(azslParser::SrgSemanticContext* ctx, size_t semanticTokenType, bool required)
     {
         // const ref used, to extend the returned object's temporary life
-        string_view intrinsicVarNameFromLexer = m_lexer->getVocabulary().getLiteralName(semanticTokenType);
+        string_view intrinsicVarNameFromLexer = m_vocabulary.getLiteralName(semanticTokenType);
         string_view intrinsicVarName = Trim(intrinsicVarNameFromLexer, "\'");
 
         auto semanticSymbol = LookupSymbol(UnqualifiedNameView{ intrinsicVarName });
@@ -1872,7 +1872,7 @@ namespace AZ::ShaderCompiler
         return toReturn;
     }
 
-    IdentifierUID SemanticOrchestrator::LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy, optional<size_t> sourceline /*=none*/) const
+    IdentifierUID SemanticOrchestrator::LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy, optional<SourceLocation> sourceLocation /*=none*/) const
     {
         auto getErrorIUID = [policy, typeName](){return policy == OnNotFoundOrWrongKind::Empty ? IdentifierUID{} : IdentifierUID{QualifiedName{typeName}};};
         IdAndKind* type = LookupSymbol(UnqualifiedNameView{typeName});
@@ -1881,7 +1881,7 @@ namespace AZ::ShaderCompiler
             if (policy == OnNotFoundOrWrongKind::Diagnose)
             {
                 throw AzslcOrchestratorException{ORCHESTRATOR_TYPE_LOOKUP_FAULT,
-                                                 sourceline, none, ConcatString(" type ", string{ typeName }, " requested but not found.")};
+                                                 sourceLocation, none, ConcatString(" type ", string{ typeName }, " requested but not found.")};
             }
             else
             {
@@ -1897,7 +1897,7 @@ namespace AZ::ShaderCompiler
             if (policy == OnNotFoundOrWrongKind::Diagnose)
             {
                 throw AzslcOrchestratorException{ORCHESTRATOR_TYPE_LOOKUP_FAULT,
-                    sourceline, none, ConcatString(" type ", typeName.data(),
+                    sourceLocation, none, ConcatString(" type ", typeName.data(),
                                                    " requested but found as ", Kind::ToStr(kind.GetKind()).data())};
             }
             else
@@ -2013,7 +2013,7 @@ namespace AZ::ShaderCompiler
     void SemanticOrchestrator::MakeAndEnterAnonymousScope(string_view decorationPrefix, Token* scopeFirstToken)
     {
         UnqualifiedName unnamedBlockCode{ConcatString("$", decorationPrefix, m_anonymousCounter)};
-        AddIdentifier(unnamedBlockCode, Kind::Namespace, scopeFirstToken->getLine());
+        AddIdentifier(unnamedBlockCode, Kind::Namespace, GetSourceLocation(scopeFirstToken));
         m_scope->EnterScope(unnamedBlockCode, scopeFirstToken->getTokenIndex());
         ++m_anonymousCounter;
     }

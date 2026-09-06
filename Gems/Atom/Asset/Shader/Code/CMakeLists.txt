@@ -68,7 +68,6 @@ ly_add_target(
             _SCL_SECURE_NO_WARNINGS
     BUILD_DEPENDENCIES
         PUBLIC
-            3rdParty::mcpp
             AZ::AssetBuilderSDK
             AZ::AzCore
             AZ::AzFramework
@@ -101,7 +100,6 @@ ly_add_target(
             Source/Editor
     BUILD_DEPENDENCIES
         PRIVATE
-            3rdParty::mcpp
             Gem::${gem_name}.Static
             Gem::Atom_RPI.Edit
     RUNTIME_DEPENDENCIES
@@ -139,6 +137,7 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
                 Tests
         BUILD_DEPENDENCIES
             PRIVATE
+                AZ::AzCoreTestCommon
                 AZ::AzTest
                 AZ::AzFramework
                 AZ::AzToolsFramework
@@ -147,6 +146,8 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
                 Gem::Atom_RHI.Public
                 Gem::Atom_RPI.Edit
                 Gem::${gem_name}.Static
+        RUNTIME_DEPENDENCIES
+            AZ::Azslc
     )
     ly_add_googletest(
         NAME Gem::${gem_name}.Tests

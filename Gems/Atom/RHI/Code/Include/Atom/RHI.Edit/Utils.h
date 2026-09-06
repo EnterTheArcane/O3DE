@@ -80,14 +80,39 @@ namespace AZ::RHI
     //! @param defaultPathToDxc Default path for the current platform. Can not be nullptr.
     AZStd::string GetDirectXShaderCompilerPath(const char* defaultPathToDxc);
 
+    struct ShaderCompilerProcessOutput
+    {
+        AZStd::string m_stdout;
+        AZStd::string m_stderr;
+        AZ::u32 m_exitCode = 0;
+        bool m_launched = false;
+        bool m_timedOut = false;
+    };
+
+    //! Runs the compiler without product/profiling writes or interpreting its diagnostics.
+    ShaderCompilerProcessOutput RunShaderCompiler(
+        const AZStd::string& executablePath,
+        const AZStd::vector<AZStd::string>& parameters,
+        const AZStd::string& shaderSourcePathForDebug,
+        const char* toolNameForLog);
+
     //! Runs a shader compiler executable with specific parameters.
     //! Returns true it compiled the shader without errors.
     //! Returns false otherwise and with compilation errors messages.
-    bool ExecuteShaderCompiler(const AZStd::string& executablePath,
-                               const AZStd::string& parameters,
-                               const AZStd::string& shaderSourcePathForDebug,
-                               const AZStd::string& tempFolder,
-                               const char* toolNameForLog);
+    bool ExecuteShaderCompiler(
+        const AZStd::string& executablePath,
+        const AZStd::string& parameters,
+        const AZStd::string& shaderSourcePathForDebug,
+        const AZStd::string& tempFolder,
+        const char* toolNameForLog);
+
+    //! Launch with exact argument boundaries, including literal quotes and spaces.
+    bool ExecuteShaderCompiler(
+        const AZStd::string& executablePath,
+        const AZStd::vector<AZStd::string>& parameters,
+        const AZStd::string& shaderSourcePathForDebug,
+        const AZStd::string& tempFolder,
+        const char* toolNameForLog);
 
     //! Reports messages with AZ_Error or AZ_Warning (See @reportAsErrors).
     //! @param window  Debug window name used for AZ Trace functions.

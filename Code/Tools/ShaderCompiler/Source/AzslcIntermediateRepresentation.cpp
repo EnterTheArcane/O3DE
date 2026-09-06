@@ -8,6 +8,8 @@
 
 #include "AzslcIntermediateRepresentation.h"
 
+#include <json/json.h>
+
 namespace AZ::ShaderCompiler
 {
     using std::cout;
@@ -15,7 +17,7 @@ namespace AZ::ShaderCompiler
 
     void IntermediateRepresentation::RegisterAttributeSpecifier(AttributeScope scope,
                                                                 AttributeCategory category,
-                                                                size_t declarationLine,
+                                                                SourceLocation sourceLocation,
                                                                 string_view space,
                                                                 string_view name,
                                                                 azslParser::AttributeArgumentListContext* argList)
@@ -23,7 +25,7 @@ namespace AZ::ShaderCompiler
         AttributeInfo attrInfo;
         attrInfo.m_scope      = scope;
         attrInfo.m_category   = category;
-        attrInfo.m_lineNumber = declarationLine;
+        attrInfo.m_sourceLocation = sourceLocation;
         attrInfo.m_namespace  = space;
         attrInfo.m_attribute  = name;
 
@@ -110,8 +112,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! execute any logic that relates to intermediate treatment that would need to be done between front end and back end
-    void IntermediateRepresentation::MiddleEnd(const MiddleEndConfiguration& middleEndconfigration,
-                                               PreprocessorLineDirectiveFinder* lineFinder)
+    void IntermediateRepresentation::MiddleEnd(const MiddleEndConfiguration& middleEndconfigration)
     {
         // At this point we have an order apparition vector that stores symbols in the immediate naive
         // order in which they are first seen in the source code.
@@ -131,7 +132,7 @@ namespace AZ::ShaderCompiler
 
         if (!middleEndconfigration.m_skipAlignmentValidation)
         {
-            ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(middleEndconfigration, lineFinder);
+            ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(middleEndconfigration);
         }
     }
 
@@ -271,68 +272,79 @@ namespace AZ::ShaderCompiler
 
     }
 
-    string ToYaml(const TypeRefInfo& tref, const IntermediateRepresentation& ir, [[maybe_unused]] string_view indent)
+    static Json::Value TypeToJson(const TypeRefInfo& type, const IntermediateRepresentation& ir)
     {
-        if (tref.IsEmpty())
+        if (type.IsEmpty())
         {
             return "<NA>";
         }
-        string r;
-        r += "{name: \"" + tref.m_typeId.m_name + "\", ";
-        r += "validity: ";
-        r += ir.m_symbols.HasIdentifier(tref.m_typeId.m_name) ? "found, " : "undeclared, ";
-        r += "tclass: ";
-        r += TypeClass::ToStr(tref.m_typeClass);
-        r += ", ";
-        r += "underlying_scalar: " + tref.m_arithmeticInfo.UnderlyingScalarToStr() + "}";
-        return r;
+        Json::Value result(Json::objectValue);
+        result["name"] = type.m_typeId.m_name;
+        if (ir.m_symbols.HasIdentifier(type.m_typeId.m_name))
+        {
+            result["validity"] = "found";
+        }
+        else
+        {
+            result["validity"] = "undeclared";
+        }
+        result["tclass"] = string{TypeClass::ToStr(type.m_typeClass)};
+        result["underlying_scalar"] = type.m_arithmeticInfo.UnderlyingScalarToStr();
+        return result;
     }
 
-    string ToYaml(const ExtendedTypeInfo& ext, const IntermediateRepresentation& ir, string_view indent)
+    static Json::Value TypeToJson(const ExtendedTypeInfo& type, const IntermediateRepresentation& ir)
     {
-        auto coreName = ext.m_coreType;
-        auto gnicName = ext.m_genericParameter;
-        string r{indent};
-        r += "core: ";
-        r += ToYaml(coreName, ir, string{indent} + "  ");
-        r += "\n";
-        r += indent.data();
-        r += "generic: ";
-        r += ToYaml(gnicName, ir, string{indent} + "  ");
-        return r;
+        Json::Value result(Json::objectValue);
+        result["core"] = TypeToJson(type.m_coreType, ir);
+        result["generic"] = TypeToJson(type.m_genericParameter, ir);
+        return result;
     }
 
     void DumpSymbols(IntermediateRepresentation& ir)
     {
-        std::unordered_set<IdentifierUID> seen; // avoid functions delc/def repetitions
-        // in YAML form
+        Json::Value symbols(Json::objectValue);
+        std::unordered_set<IdentifierUID> seen;
         for (auto& uid : ir.m_symbols.GetOrderedSymbols())
         {
-            if (seen.find(uid) != seen.end())
+            // A function can appear at both its declaration and definition.
+            if (!seen.insert(uid).second)
             {
                 continue;
             }
-            seen.insert(uid);
-            auto& [_, sym] = *ir.m_symbols.GetIdAndKindInfo(uid.m_name);
-            assert(uid == _);
-            cout << "Symbol " << Decorate("'", uid.m_name) << ":\n";
-            cout << "  kind: " << Kind::ToStr(sym.GetKind()) << "\n";
-            cout << "  references:\n" << ToYaml(sym.GetSeenats().begin(), sym.GetSeenats().end(), "    ");
+            auto& [id, sym] = *ir.m_symbols.GetIdAndKindInfo(uid.m_name);
+            assert(uid == id);
+            auto& symbol = symbols["Symbol " + Decorate("'", uid.m_name)];
+            symbol["kind"] = string{Kind::ToStr(sym.GetKind())};
+            auto& references = symbol["references"] = Json::Value(Json::arrayValue);
+            for (const auto& seenAt : sym.GetSeenats())
+            {
+                Json::Value reference(Json::objectValue);
+                reference["line"] = Json::UInt64(seenAt.m_where.m_sourceLocation.Resolve().m_line);
+                reference["col"] = Json::UInt64(seenAt.m_where.m_charPos + 1);
+                references.append(std::move(reference));
+            }
             switch (sym.GetKind())
             {
             case Kind::Variable:
             {
                 auto& sub = sym.GetSubRefAs<VarInfo>();
-                // We treat some attributes as static const-s for consistency with the grammar and rest of the code, 
-                //  but they don't have actual type or declaration line, so we skip them here.
-                cout << "  line: " << (sub.m_declNode ? std::to_string(sub.m_declNode->start->getLine()) : "NA") << "\n";
-                cout << "  type:\n" << ToYaml(sub.m_typeInfoExt, ir, "    ") << "\n";
-                cout << "  storage: " << sub.m_typeInfoExt.m_qualifiers.GetDisplayName() << "\n";
-                cout << "  array dim: \"" << sub.m_typeInfoExt.m_arrayDims.ToString() << "\"\n";
-                cout << "  has sampler state: " << (sub.m_samplerState ? "yes\n" : "no\n");
+                // Synthetic attribute variables have no declaration.
+                if (sub.m_declNode)
+                {
+                    symbol["line"] = Json::UInt64(sub.m_declNode->start->getLine());
+                }
+                else
+                {
+                    symbol["line"] = "NA";
+                }
+                symbol["type"] = TypeToJson(sub.m_typeInfoExt, ir);
+                symbol["storage"] = sub.m_typeInfoExt.m_qualifiers.GetDisplayName();
+                symbol["array dim"] = sub.m_typeInfoExt.m_arrayDims.ToString();
+                symbol["has sampler state"] = static_cast<bool>(sub.m_samplerState);
                 if (!holds_alternative<monostate>(sub.m_constVal))
                 {
-                    cout << "  val: " << ExtractValueAsInt64(sub.m_constVal) << "\n";
+                    symbol["val"] = Json::Int64(ExtractValueAsInt64(sub.m_constVal));
                 }
             }
             break;
@@ -342,86 +354,112 @@ namespace AZ::ShaderCompiler
             case Kind::Enum:
             {
                 auto& sub = sym.GetSubRefAs<ClassInfo>();
-                cout << "  line: " << sub.GetOriginalLineNumber() << "\n";
-                cout << "  members:\n";
+                symbol["line"] = Json::UInt64(sub.GetOriginalSourceLocation().Resolve().m_line);
+                auto& members = symbol["members"] = Json::Value(Json::arrayValue);
                 for (auto&& member : sub.GetOrderedMembers())
                 {
                     auto* subFieldSym = ir.m_symbols.GetIdAndKindInfo(member.m_name);
-                    cout << "    - {kind: " << Kind::ToStr(subFieldSym->second.GetKind())
-                        << ", name: " << Decorate("'", member.m_name) << "}\n";
+                    Json::Value field(Json::objectValue);
+                    field["kind"] = string{Kind::ToStr(subFieldSym->second.GetKind())};
+                    field["name"] = member.m_name;
+                    members.append(std::move(field));
                 }
             }
             break;
             case Kind::Function:
             {
                 auto& sub = sym.GetSubRefAs<FunctionInfo>();
-                cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
-                cout << "  def line: " << (sub.IsUndefinedFunction() ? "undef" : std::to_string(sub.m_defNode->start->getLine())) << "\n";
-                cout << "  must override: " << sub.m_mustOverride << "\n";
-                cout << "  is method: " << sub.m_isMethod << "\n";
-                cout << "  is virtual: " << sub.m_isVirtual << "\n";
-                cout << "  return type:\n" << ToYaml(sub.m_returnType, ir, "    ") << "\n";
-                cout << "  storage: " << sub.m_returnType.m_qualifiers.GetDisplayName() << "\n";
-                cout << "  has overriding children:\n" << ToYaml(sub.m_overrides.begin(), sub.m_overrides.end(), "    ");
-                cout << "  is hiding base symbol: '" << (sub.m_base ? sub.m_base->m_name.c_str() : "") << "'\n";
-                cout << "  parameters:\n";
+                symbol["line"] = Json::UInt64(sym.VisitSub(GetOriginalSourceLocation_Visitor{}).Resolve().m_line);
+                if (sub.IsUndefinedFunction())
+                {
+                    symbol["def line"] = "undef";
+                }
+                else
+                {
+                    symbol["def line"] = Json::UInt64(sub.m_defNode->start->getLine());
+                }
+                symbol["must override"] = sub.m_mustOverride;
+                symbol["is method"] = sub.m_isMethod;
+                symbol["is virtual"] = sub.m_isVirtual;
+                symbol["return type"] = TypeToJson(sub.m_returnType, ir);
+                symbol["storage"] = sub.m_returnType.m_qualifiers.GetDisplayName();
+                auto& overrides = symbol["has overriding children"] = Json::Value(Json::arrayValue);
+                for (const auto& child : sub.m_overrides)
+                {
+                    Json::Value override(Json::objectValue);
+                    override["name"] = child.m_name;
+                    overrides.append(std::move(override));
+                }
+                symbol["is hiding base symbol"] = "";
+                if (sub.m_base)
+                {
+                    symbol["is hiding base symbol"] = sub.m_base->m_name;
+                }
+                auto& parameters = symbol["parameters"] = Json::Value(Json::arrayValue);
                 for (auto& param : sub.GetParameters(1))
                 {
+                    Json::Value parameter(Json::objectValue);
                     auto* varInfo = ir.GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
                     if (varInfo)
                     {
-                        cout << "    - name: '" << (varInfo->m_identifier.empty() ? "<unnamed>" : static_cast<string&>(varInfo->m_identifier)) << "'\n"
-                             << "      type:\n" << ToYaml(varInfo->m_typeInfoExt, ir, "        ") << "\n";
+                        parameter["name"] = "<unnamed>";
+                        if (!varInfo->m_identifier.empty())
+                        {
+                            parameter["name"] = static_cast<string&>(varInfo->m_identifier);
+                        }
+                        parameter["type"] = TypeToJson(varInfo->m_typeInfoExt, ir);
                     }
                     else
                     {
-                        cout << "    - non-var identifier (type?): '" << ToYaml(param.m_typeInfo, ir, "        ") << "'\n";
+                        parameter["non-var identifier (type?)"] = TypeToJson(param.m_typeInfo, ir);
                     }
+                    parameters.append(std::move(parameter));
                 }
             }
             break;
             case Kind::OverloadSet:
             {
                 auto& sub = sym.GetSubRefAs<OverloadSetInfo>();
-                cout << "  functions:\n";
-                sub.ForEach([](auto& uid2) {cout << "    - '" << uid2.GetName() << "'\n";});
+                auto& functions = symbol["functions"] = Json::Value(Json::arrayValue);
+                sub.ForEach([&functions](auto& function) { functions.append(string{function.GetName()}); });
             }
             break;
             case Kind::ShaderResourceGroup:
             {
                 auto& sub = sym.GetSubRefAs<SRGInfo>();
-                cout << "  line: " << sub.m_declNode->start->getLine() << "\n";
-                cout << "  structs: ";
-                std::for_each(sub.m_structs.begin(), sub.m_structs.end(), [](auto& uid2) {cout << uid2.GetNameLeaf() << ", ";});
-                cout << "\n";
-                cout << "  srViews: ";
-                std::for_each(sub.m_srViews.begin(), sub.m_srViews.end(), [](auto& uid2) {cout << uid2.GetNameLeaf() << ", ";});
-                cout << "\n";
-                cout << "  samplers: ";
-                std::for_each(sub.m_samplers.begin(), sub.m_samplers.end(), [](auto& uid2) {cout << uid2.GetNameLeaf() << ", ";});
-                cout << "\n";
-                cout << "  CBs: ";
-                std::for_each(sub.m_CBs.begin(), sub.m_CBs.end(), [](auto& uid2) {cout << uid2.GetNameLeaf() << ", ";});
-                cout << "\n";
+                symbol["line"] = Json::UInt64(sub.m_declNode->start->getLine());
+                auto names = [](const auto& identifiers)
+                {
+                    Json::Value result(Json::arrayValue);
+                    for (const auto& identifier : identifiers)
+                    {
+                        result.append(string{identifier.GetNameLeaf()});
+                    }
+                    return result;
+                };
+                symbol["structs"] = names(sub.m_structs);
+                symbol["srViews"] = names(sub.m_srViews);
+                symbol["samplers"] = names(sub.m_samplers);
+                symbol["CBs"] = names(sub.m_CBs);
             }
             break;
             case Kind::Type:
             {
-                auto& sub = sym.GetSubRefAs<TypeRefInfo>();
-                cout << ToYaml(sub, ir, "  ") << "\n";
+                symbol["type"] = TypeToJson(sym.GetSubRefAs<TypeRefInfo>(), ir);
             }
             break;
             case Kind::TypeAlias:
             {
                 auto& sub = sym.GetSubRefAs<TypeAliasInfo>();
-                cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
-                cout << "  canonical type:\n" << ToYaml(sub.m_canonicalType, ir, "    ") << "\n";
+                symbol["line"] = Json::UInt64(sym.VisitSub(GetOriginalSourceLocation_Visitor{}).Resolve().m_line);
+                symbol["canonical type"] = TypeToJson(sub.m_canonicalType, ir);
             }
             break;
             default:
                 break;
             }
         }
+        cout << symbols << '\n';
     }
 
     int IntermediateRepresentation::ValidateRootConstantStruct(const MiddleEndConfiguration& middleEndconfigration)
@@ -436,7 +474,7 @@ namespace AZ::ShaderCompiler
                 auto exportedType = varInfo->m_typeInfoExt.m_coreType;
                 if (!exportedType.IsPackable())
                 {
-                    throw std::logic_error{ "Internal Error: The type '"
+                    throw SourceError{ "Internal Error: The type '"
                         + exportedType.m_typeId.m_name
                         + "' in layout member '"
                         + uid.m_name
@@ -451,7 +489,7 @@ namespace AZ::ShaderCompiler
         // We have a limited space for rootconstant (specified by --root-const=N) check that we're not going over
         if (rootConstantsSize > middleEndconfigration.m_rootConstantsMaxSize)
         {
-            throw std::runtime_error{ "The rootconstants size of "
+            throw SourceError{ "The rootconstants size of "
                 + ToString(rootConstantsSize)
                 + " bytes exceeds the limit of "
                 + ToString(middleEndconfigration.m_rootConstantsMaxSize)
@@ -490,7 +528,7 @@ namespace AZ::ShaderCompiler
 
             if (!exportedType.IsPackable())
             {
-                throw std::logic_error{ "error: unpackable type ("
+                throw SourceError{ "error: unpackable type ("
                     + exportedType.m_typeId.m_name
                     + ") in layout member "
                     + memberId.m_name };
@@ -636,8 +674,7 @@ namespace AZ::ShaderCompiler
         m_rootConstantStructUID = rootConstantStructUid;
     }
 
-    void IntermediateRepresentation::ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration,
-                                                                                              PreprocessorLineDirectiveFinder* lineFinder)
+    void IntermediateRepresentation::ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration)
     {
         //! Helper lambda to check if a symbol is a matrix, it also returns
         //! the number of columns in @numColumns
@@ -862,7 +899,7 @@ namespace AZ::ShaderCompiler
             }
             else
             {
-                throw std::logic_error{ "error: Was expecting " + string(parentName) +
+                throw SourceError{ "error: Was expecting " + string(parentName) +
                     + " to be struct, class or ShaderResourceGroup" };
             }
 
@@ -883,19 +920,15 @@ namespace AZ::ShaderCompiler
             // Let's get the line number where @insertBeforeThisUid was found in the flat AZSL file.
             const auto* constThis = this; // To disambiguate which cv-version of GetSymbolSubAs<> to call.
             const auto* varInfo = constThis->GetSymbolSubAs<VarInfo>(insertBeforeThisUid.GetName());
-            size_t lineOfDeclaration = varInfo->GetOriginalLineNumber();
-            const LineDirectiveInfo* lineInfo = lineFinder->GetNearestPreprocessorLineDirective(lineOfDeclaration);
-            if (!lineInfo || lineOfDeclaration == 0)
+            const SourceLocation source = varInfo->GetOriginalSourceLocation();
+            if (!source)
             {
-                // When the LineDirectiveInfo* is null (or at 0), it means We have detected a variable that was added
-                // by AZSLc itself. e.g. Root Constant padding, etc.
-                // In such case, this is not an issue We want to interfere with.
                 return {};
             }
-            const auto virtualLine = lineFinder->GetVirtualLineNumber(*lineInfo, lineOfDeclaration);
+            const ResolvedSourceLocation location = source.Resolve();
             string solution = FormatString("- A 'float%d' variable should be added before the variable '%s' in '%s %s' at Line number %zu of '%s'\n",
                                            prepadType == PrepadType::Float2 ? 2 : 3, insertBeforeThisUid.GetNameLeaf().c_str(), typeName.c_str(), parentName.data(),
-                                           virtualLine, lineInfo->m_containingFilename.c_str());
+                                           location.m_line, std::string(location.m_file).c_str());
             return solution;
         };
 

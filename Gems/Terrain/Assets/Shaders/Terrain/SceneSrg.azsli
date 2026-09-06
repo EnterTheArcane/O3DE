@@ -6,19 +6,5 @@
  *
  */
 
-#ifndef AZ_COLLECTING_PARTIAL_SRGS
-#error Do not include this file directly. Include the main .srgi file instead.
-#endif
-
-partial ShaderResourceGroup SceneSrg
-{
-    struct TerrainWorldData
-    {
-        float m_zMin;
-        float m_zMax;
-        float m_zExtents;
-        float m_padding;
-    };
-
-    TerrainWorldData m_terrainWorldData;
-}
+// Preserve the include path used by project-specific partial-SRG collectors.
+#include <Atom/Feature/Common/Assets/ShaderResourceGroups/TerrainSceneSrg.azsli>

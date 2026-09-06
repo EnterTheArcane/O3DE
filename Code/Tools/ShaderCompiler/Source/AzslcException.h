@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include "StdUtils.h"
 #include "GenericUtils.h"
-#include "PreprocessorLineDirectiveFinder.h"
+#include "PreprocessingTokenSource.h"
+#include "StdUtils.h"
 
-#include "antlr4-runtime.h"
+#include <antlr4-runtime.h>
 
 #include <exception>
 
@@ -113,11 +113,11 @@ namespace AZ::ShaderCompiler
     class AzslcException : public antlr4::RuntimeException
     {
     public:
-        AzslcException(uint32_t errorCode, const char* const errorType, optional<size_t> line, optional<size_t> column, const string& message)
+        AzslcException(uint32_t errorCode, const char* const errorType, optional<SourceLocation> sourceLocation, optional<size_t> column, const string& message)
             : antlr4::RuntimeException(message),
               m_errorCode(static_cast<uint16_t>(errorCode)),
               m_errorType(errorType),
-              m_line(line),
+              m_sourceLocation(sourceLocation),
               m_column(column),
               m_errorMessage("")
         {
@@ -133,12 +133,12 @@ namespace AZ::ShaderCompiler
         {
             if (m_token)
             {
-                m_line = m_token->getLine();
-                m_column = m_token->getCharPositionInLine();
+                m_sourceLocation = GetSourceLocation(m_token);
+                m_column = m_token->getCharPositionInLine() + 1;
             }
             else
             {
-                m_line = none;
+                m_sourceLocation = none;
                 m_column = none;
             }
 
@@ -150,7 +150,7 @@ namespace AZ::ShaderCompiler
               m_token(nullptr),
               m_errorCode(static_cast<uint16_t>(errorCode)),
               m_errorType(errorType),
-              m_line(none),
+              m_sourceLocation(none),
               m_column(none),
               m_errorMessage("")
         {
@@ -183,24 +183,31 @@ namespace AZ::ShaderCompiler
     protected:
         void BakeErrorMessage()
         {
-            m_errorMessage = MakeErrorMessage(s_lineFinder->GetVirtualFileName(m_line ? *m_line : 0),
-                                              m_line ? ToString(s_lineFinder->GetVirtualLineNumber(*m_line)) : "",
-                                              m_column ? ToString(*m_column) : "",
+            const auto location = m_sourceLocation ? m_sourceLocation->Resolve() : ResolvedSourceLocation{};
+            string columnText = m_column ? ToString(*m_column) : "";
+            if (!m_column && location.m_column)
+            {
+                columnText = ToString(location.m_column);
+            }
+            m_errorMessage = MakeErrorMessage(location.m_file,
+                                              location.m_line ? ToString(location.m_line) : "",
+                                              columnText,
                                               m_errorType ? m_errorType : "",
                                               m_errorCode != WX_WARNINGS_AS_ERRORS,
                                               ToString(m_errorCode),
                                               RuntimeException::what());
+            if (m_sourceLocation)
+            {
+                m_errorMessage += m_sourceLocation->Notes();
+            }
         }
-
-    public:
-        static inline PreprocessorLineDirectiveFinder* s_lineFinder;
 
     protected:
         const uint16_t m_errorCode;
         const char* const m_errorType;
-        const Token* m_token;
+        const Token* m_token = nullptr;
         string m_errorMessage;
-        optional<size_t> m_line;
+        optional<SourceLocation> m_sourceLocation;
         optional<size_t> m_column;
     };
 
@@ -210,10 +217,10 @@ namespace AZ::ShaderCompiler
         inline static const char* const ErrorType = "Semantic";
 
     public:
-        AzslcOrchestratorException(uint32_t errorCode, optional<size_t> line, optional<size_t> column, const string& message)
+        AzslcOrchestratorException(uint32_t errorCode, optional<SourceLocation> sourceLocation, optional<size_t> column, const string& message)
             : AzslcException(errorCode,
                              ErrorType,
-                             line,
+                             sourceLocation,
                              column,
                              message)
         {}
@@ -238,10 +245,10 @@ namespace AZ::ShaderCompiler
         inline static const char* const ErrorType = "IR";
 
     public:
-        AzslcIrException(uint32_t errorCode, const string& message, optional<size_t> line = none)
+        AzslcIrException(uint32_t errorCode, const string& message, optional<SourceLocation> sourceLocation = none)
             : AzslcException(errorCode,
                              ErrorType,
-                             line,
+                             sourceLocation,
                              none,
                              message)
         {}
@@ -253,10 +260,10 @@ namespace AZ::ShaderCompiler
         inline static const char* const ErrorType = "Emitter";
 
     public:
-        AzslcEmitterException(uint32_t errorCode, optional<size_t> line, optional<size_t> column, const string& message)
+        AzslcEmitterException(uint32_t errorCode, optional<SourceLocation> sourceLocation, optional<size_t> column, const string& message)
             : AzslcException(errorCode,
                              ErrorType,
-                             line,
+                             sourceLocation,
                              column,
                              message)
         {}
@@ -279,27 +286,31 @@ namespace AZ::ShaderCompiler
     {
     public:
         void syntaxError(antlr4::Recognizer* recognizer, antlr4::Token* offendingSymbol, size_t line,
-            size_t charPositionInLine, const string& msg, std::exception_ptr e) override
+            size_t charPositionInLine, const string& msg, [[maybe_unused]] std::exception_ptr e) override
         {
-            bool isKeyword = m_isKeywordPredicate(recognizer, offendingSymbol);
+            bool isKeyword = offendingSymbol && m_isKeywordPredicate(recognizer, offendingSymbol);
+            const SourceLocation source = GetSourceLocation(offendingSymbol);
+            const ResolvedSourceLocation location = source.Resolve();
+            size_t errorLine = line;
+            if (location.m_line)
+            {
+                errorLine = location.m_line;
+            }
+            string offendingText = "<EOF>";
+            if (offendingSymbol)
+            {
+                offendingText = offendingSymbol->getText();
+            }
             using Ex = AzslcException;
-            string errorMessage = Ex::MakeErrorMessage(Ex::s_lineFinder->GetVirtualFileName(line),
-                                                       ToString(Ex::s_lineFinder->GetVirtualLineNumber(line)),
+            string errorMessage = Ex::MakeErrorMessage(location.m_file,
+                                                       ToString(errorLine),
                                                        ToString(charPositionInLine + 1),
                                                        "syntax",
                                                        true,
                                                        ToString(PARSER_SYNTAX_ERROR),
-                                                       ConcatString(msg, " (", offendingSymbol->getText(), isKeyword ? " is a keyword)" : " was unexpected)"));
+                                                        ConcatString(msg, " (", offendingText, isKeyword ? " is a keyword)" : " was unexpected)"));
 
-            antlr4::ParseCancellationException parseException(errorMessage);
-            if (e)
-            {
-                std::throw_with_nested(parseException);
-            }
-            else
-            {
-                throw parseException;
-            }
+            throw antlr4::ParseCancellationException(errorMessage + source.Notes());
         }
 
         std::function<bool(antlr4::Recognizer*, antlr4::Token* )> m_isKeywordPredicate;

@@ -79,7 +79,7 @@ namespace AZ::ShaderCompiler
         return toReturn;
     }
 
-    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, optional<size_t> lineNumber /*=none*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
+    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, optional<SourceLocation> sourceLocation /*=none*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
     {
         // check against reserved names
         static const std::unordered_set<string_view> ReservedNames =
@@ -91,10 +91,10 @@ namespace AZ::ShaderCompiler
         if (checkPolicy == AddIdentifierChecks::ReservedNames && (
                 IsIn(symbol, ReservedNames) || IsIn(ExtractLeaf(symbol), ReservedNames) ))
         {
-            throw AzslcException(ADVANCED_RESERVED_NAME_USED, "Symbol", lineNumber, none,
+            throw AzslcException(ADVANCED_RESERVED_NAME_USED, "Symbol", sourceLocation, none,
                                  ConcatString(symbol, " is a reserved name"));
         }
-        auto& symAndKind = m_elastic.AddIdentifier(symbol, kind, lineNumber);
+        auto& symAndKind = m_elastic.AddIdentifier(symbol, kind, sourceLocation);
         AttachAccumulatedAttributes(symAndKind.first);
         return symAndKind;
     }

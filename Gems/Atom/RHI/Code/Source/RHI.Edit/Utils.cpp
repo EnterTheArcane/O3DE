@@ -10,6 +10,8 @@
 
 #include <AzCore/Serialization/Json/JsonUtils.h>
 
+#include <AzCore/std/chrono/chrono.h>
+#include <AzCore/std/parallel/thread.h>
 #include <AzFramework/Process/ProcessCommunicator.h>
 #include <AzFramework/Process/ProcessWatcher.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
@@ -228,11 +230,9 @@ namespace AZ::RHI
         return combinedFile;
     }
 
-    bool ExecuteShaderCompiler(const AZStd::string& executablePath,
-                               const AZStd::string& parameters,
-                               const AZStd::string& shaderSourcePathForDebug,
-                               const AZStd::string& tempFolder,
-                               const char* toolNameForLog)
+    static bool PrepareShaderCompilerLaunchInfo(
+        const AZStd::string& executablePath,
+        AzFramework::ProcessLauncher::ProcessLaunchInfo& processLaunchInfo)
     {
         AZStd::string executableAbsolutePath;
         if (AzFramework::StringFunc::Path::IsRelative(executablePath.c_str()))
@@ -261,11 +261,45 @@ namespace AZ::RHI
             return false;
         }
 
-        AzFramework::ProcessLauncher::ProcessLaunchInfo processLaunchInfo;
-        processLaunchInfo.m_commandlineParameters = AZStd::string::format("\"%s\" %s", executableAbsolutePath.c_str(), parameters.c_str());
-        processLaunchInfo.m_showWindow = true;
-        processLaunchInfo.m_processPriority = AzFramework::ProcessPriority::PROCESSPRIORITY_NORMAL;
+        processLaunchInfo.m_processExecutableString = AZStd::move(executableAbsolutePath);
+        return true;
+    }
 
+    static bool PrepareShaderCompilerLaunchInfo(
+        const AZStd::string& executablePath,
+        const AZStd::string& parameters,
+        AzFramework::ProcessLauncher::ProcessLaunchInfo& processLaunchInfo)
+    {
+        if (!PrepareShaderCompilerLaunchInfo(executablePath, processLaunchInfo))
+        {
+            return false;
+        }
+        processLaunchInfo.m_commandlineParameters = AZStd::string::format("\"%s\" %s", processLaunchInfo.m_processExecutableString.c_str(), parameters.c_str());
+        return true;
+    }
+
+    static bool PrepareShaderCompilerLaunchInfo(
+        const AZStd::string& executablePath,
+        const AZStd::vector<AZStd::string>& parameters,
+        AzFramework::ProcessLauncher::ProcessLaunchInfo& processLaunchInfo)
+    {
+        if (!PrepareShaderCompilerLaunchInfo(executablePath, processLaunchInfo))
+        {
+            return false;
+        }
+        AZStd::vector<AZStd::string> arguments{ processLaunchInfo.m_processExecutableString };
+        arguments.insert(arguments.end(), parameters.begin(), parameters.end());
+        processLaunchInfo.m_commandlineParameters = AZStd::move(arguments);
+        return true;
+    }
+
+    static ShaderCompilerProcessOutput RunShaderCompilerImpl(
+        const AzFramework::ProcessLauncher::ProcessLaunchInfo& processLaunchInfo,
+        const AZStd::string& shaderSourcePathForDebug,
+        const char* toolNameForLog,
+        bool captureStdout)
+    {
+        ShaderCompilerProcessOutput result;
         {
             AZStd::string contextKey = toolNameForLog + AZStd::string(" Input File");
             AZ_TraceContext(contextKey, shaderSourcePathForDebug);
@@ -280,13 +314,19 @@ namespace AZ::RHI
         if (!watcher)
         {
             AZ_Error(ShaderPlatformInterfaceName, false, "Shader compiler could not be launched");
-            return false;
+            return result;
         }
 
         AZStd::unique_ptr<AzFramework::ProcessWatcher> watcherPtr = AZStd::unique_ptr<AzFramework::ProcessWatcher>(watcher);
+        if (!watcherPtr->GetCommunicator() || !watcherPtr->GetCommunicator()->IsValid())
+        {
+            watcherPtr->TerminateProcess(1);
+            AZ_Error(ShaderPlatformInterfaceName, false, "Shader compiler communication pipes could not be created");
+            return result;
+        }
 
-        AZStd::string errorMessages;
-        auto pumpOuputStreams = [&watcherPtr, &errorMessages]()
+        result.m_launched = true;
+        auto pumpOuputStreams = [&watcherPtr, &result, captureStdout]()
         {
             auto communicator = watcherPtr->GetCommunicator();
 
@@ -296,32 +336,34 @@ namespace AZ::RHI
             {
                 AZStd::string chunk;
                 chunk.resize(byteCount);
-                communicator->ReadError(chunk.data(), byteCount);
-                errorMessages += chunk;
+                chunk.resize(communicator->ReadError(chunk.data(), byteCount));
+                result.m_stderr += chunk;
             }
 
-            // Even though we don't use the stdout stream, we have to read it or the process will hang
+            // Both pipes must be drained, including for callers that discard stdout.
             if (auto byteCount = communicator->PeekOutput())
             {
                 AZStd::string chunk;
                 chunk.resize(byteCount);
-                communicator->ReadOutput(chunk.data(), byteCount);
+                chunk.resize(communicator->ReadOutput(chunk.data(), byteCount));
+                if (captureStdout)
+                {
+                    result.m_stdout += chunk;
+                }
             }
         };
 
-        uint32_t exitCode = 0;
-        bool timedOut = false;
+        AZ::u32& exitCode = result.m_exitCode;
 
         const AZStd::sys_time_t maxWaitTimeSeconds = 300;
         const AZStd::sys_time_t startTimeSeconds = AZStd::GetTimeNowSecond();
-        const AZStd::sys_time_t startTime = AZStd::GetTimeNowTicks();
 
         while (watcherPtr->IsProcessRunning(&exitCode))
         {
             const AZStd::sys_time_t currentTimeSeconds = AZStd::GetTimeNowSecond();
             if (currentTimeSeconds - startTimeSeconds > maxWaitTimeSeconds)
             {
-                timedOut = true;
+                result.m_timedOut = true;
                 static const uint32_t TimeOutExitCode = 121;
                 exitCode = TimeOutExitCode;
                 watcherPtr->TerminateProcess(TimeOutExitCode);
@@ -330,6 +372,7 @@ namespace AZ::RHI
             else
             {
                 pumpOuputStreams();
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
             }
         }
 
@@ -338,11 +381,45 @@ namespace AZ::RHI
         // Pump one last time to make sure the streams have been flushed
         pumpOuputStreams();
 
+        return result;
+    }
+
+    ShaderCompilerProcessOutput RunShaderCompiler(
+        const AZStd::string& executablePath,
+        const AZStd::vector<AZStd::string>& parameters,
+        const AZStd::string& source,
+        const char* toolName)
+    {
+        AzFramework::ProcessLauncher::ProcessLaunchInfo processLaunchInfo;
+        if (!PrepareShaderCompilerLaunchInfo(executablePath, parameters, processLaunchInfo))
+        {
+            return {};
+        }
+        processLaunchInfo.m_showWindow = false;
+        return RunShaderCompilerImpl(processLaunchInfo, source, toolName, true);
+    }
+
+    static bool ExecuteShaderCompilerImpl(
+        const AzFramework::ProcessLauncher::ProcessLaunchInfo& processLaunchInfo,
+        const AZStd::string& shaderSourcePathForDebug,
+        const AZStd::string& tempFolder,
+        const char* toolNameForLog,
+        ShaderCompilerProfiling::Entry profilingEntry)
+    {
+        const AZStd::sys_time_t startTime = AZStd::GetTimeNowTicks();
+        const auto result = RunShaderCompilerImpl(processLaunchInfo, shaderSourcePathForDebug, toolNameForLog, false);
+        if (!result.m_launched)
+        {
+            return false;
+        }
+        const AZ::u32 exitCode = result.m_exitCode;
+        const bool timedOut = result.m_timedOut;
+        const AZStd::string& errorMessages = result.m_stderr;
         const bool reportedErrors = ReportMessages(toolNameForLog, errorMessages, exitCode != 0);
 
         if (timedOut)
         {
-            AZ_Error(ShaderPlatformInterfaceName, false, "%s execution timed out after %d seconds", toolNameForLog, maxWaitTimeSeconds);
+            AZ_Error(ShaderPlatformInterfaceName, false, "%s execution timed out after %d seconds", toolNameForLog, 300);
             return false;
         }
 
@@ -366,21 +443,53 @@ namespace AZ::RHI
 
         AZ_TracePrintf(ShaderPlatformInterfaceName, "%s elapsedTimeMillis: %d", __FUNCTION__, aznumeric_cast<int>(elapsedTimeSeconds * 1000.0f));
 
+        profilingEntry.m_elapsedTimeSeconds = elapsedTimeSeconds;
+        // Native AZSL compilation reads the original source.
+        // Profiling belongs to the job's temporary output directory, including for source inputs.
+        const AZStd::string profilingPath = BuildFileNameWithExtension(shaderSourcePathForDebug, tempFolder, "");
+        WriteProfilingEntryToLog(profilingPath, profilingEntry);
+
+        return true;
+    }
+
+    bool ExecuteShaderCompiler(
+        const AZStd::string& executablePath,
+        const AZStd::string& parameters,
+        const AZStd::string& source,
+        const AZStd::string& tempFolder,
+        const char* toolName)
+    {
+        AzFramework::ProcessLauncher::ProcessLaunchInfo processLaunchInfo;
+        if (!PrepareShaderCompilerLaunchInfo(executablePath, parameters, processLaunchInfo))
+        {
+            return false;
+        }
         ShaderCompilerProfiling::Entry profilingEntry;
         profilingEntry.m_executablePath = executablePath;
         profilingEntry.m_parameters = parameters;
-        profilingEntry.m_elapsedTimeSeconds = elapsedTimeSeconds;
-        AZStd::string shaderSourceArg = shaderSourcePathForDebug;
-        AZStd::string shaderSourceFolder;
-        StringFunc::Path::GetFileName(shaderSourceArg.c_str(), shaderSourceFolder);
-        if (StringFunc::Contains(shaderSourceFolder, "Cache"))
-        {
-            AZStd::string shaderFileNameWithMutatedFolder = BuildFileNameWithExtension(shaderSourcePathForDebug, tempFolder, "");
-            shaderSourceArg = shaderFileNameWithMutatedFolder;
-        }
-        WriteProfilingEntryToLog(shaderSourceArg, profilingEntry);
+        return ExecuteShaderCompilerImpl(processLaunchInfo, source, tempFolder, toolName, AZStd::move(profilingEntry));
+    }
 
-        return true;
+    bool ExecuteShaderCompiler(
+        const AZStd::string& executablePath,
+        const AZStd::vector<AZStd::string>& parameters,
+        const AZStd::string& source,
+        const AZStd::string& tempFolder,
+        const char* toolName)
+    {
+        AzFramework::ProcessLauncher::ProcessLaunchInfo processLaunchInfo;
+        if (!PrepareShaderCompilerLaunchInfo(executablePath, parameters, processLaunchInfo))
+        {
+            return false;
+        }
+        ShaderCompilerProfiling::Entry profilingEntry;
+        profilingEntry.m_executablePath = executablePath;
+        AzFramework::ProcessLauncher::ProcessLaunchInfo profilingLaunchInfo;
+        AZStd::vector<AZStd::string> arguments{ executablePath };
+        arguments.insert(arguments.end(), parameters.begin(), parameters.end());
+        profilingLaunchInfo.m_commandlineParameters = AZStd::move(arguments);
+        profilingEntry.m_parameters = profilingLaunchInfo.GetCommandLineParametersAsString();
+        return ExecuteShaderCompilerImpl(processLaunchInfo, source, tempFolder, toolName, AZStd::move(profilingEntry));
     }
 
     bool ReportMessages([[maybe_unused]] AZStd::string_view window, AZStd::string_view errorMessages, bool reportAsErrors)

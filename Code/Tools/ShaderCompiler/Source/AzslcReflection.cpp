@@ -6,8 +6,8 @@
  *
  */
 
-#include "AzslcReflection.h"
 #include "AzslcPlatformEmitter.h"
+#include "AzslcReflection.h"
 
 #include <tuple>
 #include <cmath>
@@ -482,7 +482,7 @@ namespace AZ::ShaderCompiler
 
             if (!exportedType.IsPackable())
             {
-                throw std::logic_error{"reflection error: unpackable type ("
+                throw SourceError{"reflection error: unpackable type ("
                     + exportedType.m_typeId.m_name
                     + ") in layout member "
                     + memberId.m_name};
@@ -643,7 +643,7 @@ namespace AZ::ShaderCompiler
         output["space-merged"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Merged].m_logicalSpace;
     }
 
-    void CodeReflection::DumpSRGLayout(const Options& options, PreprocessorLineDirectiveFinder* lineFinder) const
+    void CodeReflection::DumpSRGLayout(const Options& options) const
     {
         uint32_t numOf32bitConst = GetNumberOf32BitConstants(options, m_ir->m_rootConstantStructUID);
         RootSigDesc rootSig = BuildSignatureDescription(options, numOf32bitConst);
@@ -661,9 +661,9 @@ namespace AZ::ShaderCompiler
             srgLayout["id"] = srgInfo->m_declNode->Name->getText();
 
             // Try to locate the original filename where this SRG is declared
-            size_t physical = srgInfo->m_declNode->getStart()->getLine();
-            srgLayout["originalFileName"]   = StdFs::absolute(lineFinder->GetVirtualFileName(physical)).lexically_normal().generic_string();
-            srgLayout["originalLineNumber"] = static_cast<Json::Value::UInt64>(lineFinder->GetVirtualLineNumber(physical));
+            ResolvedSourceLocation location = GetSourceLocation(srgInfo->m_declNode->getStart()).Resolve();
+            srgLayout["originalFileName"]   = StdFs::absolute(std::string(location.m_file)).lexically_normal().generic_string();
+            srgLayout["originalLineNumber"] = static_cast<Json::Value::UInt64>(location.m_line);
 
             auto semantic = m_ir->GetSymbolSubAs<ClassInfo>(srgInfo->m_semantic->GetName())->Get<SRGSemanticInfo>();
 
@@ -874,7 +874,7 @@ namespace AZ::ShaderCompiler
                     if (funcStack_.find(encloser) != funcStack_.end())
                     {
                         throw AzslcEmitterException(EMITTER_RECURSION_NOT_PERMITTED,
-                                                    seenat.m_where.m_line, seenat.m_where.m_charPos,
+                                                    seenat.m_where.m_sourceLocation, seenat.m_where.m_charPos,
                                                     ConcatString("Recursion not permitted in AZSL. ", uid.m_name, " in ", encloser.m_name));
                     }
                     if (IsPotentialEntryPoint(encloser))  // reduce a bit the amount of unused data by filtering by potential entry points
@@ -1056,7 +1056,7 @@ namespace AZ::ShaderCompiler
                 // loop over appearances over the program
                 for (Seenat& ref : kindInfo->GetSeenats())
                 {
-                    verboseCout << "Seen-at line " << ref.m_where.m_line << "\n";
+                    verboseCout << "Seen-at line " << ref.m_where.m_sourceLocation << "\n";
                     // determine an impact score
                     impactScore += AnalyzeImpact(ref.m_where)  // dependent code that may be skipped depending on the value of that ref
                         + 1;  // by virtue of being mentioned (seenat), we count the reference as an access of cost 1.

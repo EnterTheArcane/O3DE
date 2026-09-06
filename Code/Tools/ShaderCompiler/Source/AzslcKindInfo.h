@@ -68,7 +68,7 @@ namespace AZ::ShaderCompiler
     {
         AttributeScope    m_scope;
         AttributeCategory m_category;
-        size_t            m_lineNumber;
+        SourceLocation    m_sourceLocation;
         string            m_namespace;
         string            m_attribute;
 
@@ -204,13 +204,13 @@ namespace AZ::ShaderCompiler
                                    }, m_declNodeVt);
         }
 
-        size_t GetOriginalLineNumber() const
+        SourceLocation GetOriginalSourceLocation() const
         {
             if (GetDeclNode())
             {
-                return GetDeclNode()->start->getLine();
+                return GetSourceLocation(GetDeclNode()->start);
             }
-            return 0;
+            return {};
         }
 
         //! Gets the concrete variant kind from SubInfo
@@ -402,7 +402,7 @@ namespace AZ::ShaderCompiler
         // returns an ArrayDimensions struct const ref.
         inline const auto&         GetArrayDimensions() const;
         // Returns the line number, in the AZSL file, where this symbol is declared. 
-        inline size_t              GetOriginalLineNumber () const;
+        inline SourceLocation      GetOriginalSourceLocation() const;
 
         AstUnnamedVarDecl*         m_declNode = nullptr;
         AstEnumeratorDecl*         m_declNodeEnum = nullptr;
@@ -490,13 +490,13 @@ namespace AZ::ShaderCompiler
         return m_typeInfoExt.GetDimensions();
     }
 
-    size_t VarInfo::GetOriginalLineNumber() const
+    SourceLocation VarInfo::GetOriginalSourceLocation() const
     {
         if (m_declNode)
         {
-            return m_declNode->start->getLine();
+            return GetSourceLocation(m_declNode->start);
         }
-        return 0;
+        return {};
     }
 
     struct OverloadSetInfo
@@ -576,8 +576,7 @@ namespace AZ::ShaderCompiler
             string_view core = RemoveLastParenthesisGroup(functionBelongingToTheOverloadSet.GetName());
             if (core != m_setFullName.m_name)
             {
-                throw std::logic_error{ConcatString("Impossible to add function ", functionBelongingToTheOverloadSet.m_name,
-                                                    " to an overload-set that doesn't have the same core name or scope")};
+                throw SourceError{ConcatString("Impossible to add function ", functionBelongingToTheOverloadSet.m_name, " to an overload-set that doesn't have the same core name or scope")};
             }
             if (m_returnTypeSet.m_state != ReturnTypeSet::HeterogeneousUserDefinedType)
             {
@@ -764,7 +763,7 @@ namespace AZ::ShaderCompiler
             {
                 if (m_parameters[0].size() != m_parameters[1].size())
                 {   // not a mainstreamed EC diagnostic, because this is probably an internal error. because functions identity incorporate arguments.
-                    throw std::runtime_error{ConcatString(DiagLine(m_declNode->start), " function redeclaration not matching earlier appearance, during validation of parameters. Look for earlier warnings?")};
+                    throw SourceError{ConcatString(DiagLine(m_declNode->start), " function redeclaration not matching earlier appearance, during validation of parameters. Look for earlier warnings?")};
                 }
                 // merge all default values to first declaration
                 for (size_t i = 0; i < m_parameters[0].size(); ++i)
@@ -787,17 +786,17 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        size_t GetOriginalLineNumber(bool useDefNode = true) const
+        SourceLocation GetOriginalSourceLocation(bool useDefNode = true) const
         {
             if (useDefNode && m_defNode)
             {
-                return m_defNode->start->getLine();
+                return GetSourceLocation(m_defNode->start);
             }
             else if (m_declNode)
             {
-                return m_declNode->start->getLine();
+                return GetSourceLocation(m_declNode->start);
             }
-            return 0;
+            return {};
         }
 
         ExtendedTypeInfo          m_returnType;
@@ -847,9 +846,9 @@ namespace AZ::ShaderCompiler
 
         bool IsPartial() const { return m_declNode ? !!m_declNode->Partial() : false; }
 
-        size_t GetOriginalLineNumber() const
+        SourceLocation GetOriginalSourceLocation() const
         {
-            return m_declNode ? m_declNode->start->getLine() : 0;
+            return m_declNode ? GetSourceLocation(m_declNode->start) : SourceLocation{};
         }
 
         AstSRGDeclNode*           m_declNode = nullptr;
@@ -1110,58 +1109,58 @@ namespace AZ::ShaderCompiler
         return kind.VisitSub(GetSubKindInfoTypeName_Visitor{uid, getStrategy == ForFunctionGetType::Returned});
     }
 
-    static const size_t NoLine = 0_sz;
-    struct GetOrigSourceLine_Visitor
+    static constexpr SourceLocation NoSourceLocation{};
+    struct GetOriginalSourceLocation_Visitor
     {
-        size_t operator()(const VarInfo& var) const
+        SourceLocation operator()(const VarInfo& var) const
         {
-            return var.m_declNode ? var.m_declNode->start->getLine() : NoLine;
+            return var.m_declNode ? GetSourceLocation(var.m_declNode->start) : NoSourceLocation;
         }
 
-        size_t operator()(const FunctionInfo& func) const
+        SourceLocation operator()(const FunctionInfo& func) const
         {
-            return func.GetOriginalLineNumber(false /*useDefNode*/);
+            return func.GetOriginalSourceLocation(false /*useDefNode*/);
         }
 
-        size_t operator()(const ClassInfo& clInfo) const
+        SourceLocation operator()(const ClassInfo& clInfo) const
         {
-            return clInfo.GetOriginalLineNumber();
+            return clInfo.GetOriginalSourceLocation();
         }
 
-        size_t operator()(const SRGInfo& srgInfo) const
+        SourceLocation operator()(const SRGInfo& srgInfo) const
         {
-            return srgInfo.GetOriginalLineNumber();
+            return srgInfo.GetOriginalSourceLocation();
         }
 
-        size_t operator()(const TypeAliasInfo& tai) const
+        SourceLocation operator()(const TypeAliasInfo& tai) const
         {
-            return tai.m_declNode ? tai.m_declNode->start->getLine() : NoLine;
+            return tai.m_declNode ? GetSourceLocation(tai.m_declNode->start) : NoSourceLocation;
         }
 
         template<typename AnyNonCovered>
-        size_t operator()(AnyNonCovered) const
+        SourceLocation operator()(AnyNonCovered) const
         {
-            return NoLine;
+            return NoSourceLocation;
         }
     };
 
     inline string GetFirstSeenLineMessage(const KindInfo& kindInfo)
     {
-        size_t firstSeen = kindInfo.VisitSub(GetOrigSourceLine_Visitor{});
-        if (firstSeen != NoLine)
+        SourceLocation firstSeen = kindInfo.VisitSub(GetOriginalSourceLocation_Visitor{});
+        if (firstSeen != NoSourceLocation)
         {
-            return "first seen line " + std::to_string(firstSeen);
+            return "first seen line " + std::to_string(firstSeen.Resolve().m_line);
         }
         return {};
     }
 
     //! helper for fatal semantic error of ODR violation
-    inline void ThrowRedeclarationAsDifferentKind(string_view symbolName, Kind newKind, const KindInfo& kindInfo, optional<size_t> lineNumber = none)
+    inline void ThrowRedeclarationAsDifferentKind(string_view symbolName, Kind newKind, const KindInfo& kindInfo, optional<SourceLocation> sourceLocation = none)
     {
         const string errorMessage = ConcatString(
             "redeclaration of ", symbolName, " with a different kind: ", Kind::ToStr(newKind),
             " but was ", Kind::ToStr(kindInfo.GetKind()), ", ", GetFirstSeenLineMessage(kindInfo));
-        throw AzslcOrchestratorException(ORCHESTRATOR_ODR_VIOLATION, lineNumber, none, errorMessage);
+        throw AzslcOrchestratorException(ORCHESTRATOR_ODR_VIOLATION, sourceLocation, none, errorMessage);
     }
 
     struct GetDefinitionNodeTokensLocation_Visitor
@@ -1169,8 +1168,7 @@ namespace AZ::ShaderCompiler
         TokensLocation operator()(const VarInfo& var) const
         {
             ParserRuleContext* node = GetParentIfIsNamedVarDecl_OtherwiseIdentity(var.m_declNode);
-            return node ? MakeTokensLocation(node, ExtractVariableNameIdentifier(var.m_declNode))
-                        : TokensLocation{{}, -1, 0, 0};
+            return node ? MakeTokensLocation(node, ExtractVariableNameIdentifier(var.m_declNode)) : TokensLocation{{}, -1, {}, 0};
         }
 
         TokensLocation operator()(const FunctionInfo& func) const
@@ -1198,7 +1196,7 @@ namespace AZ::ShaderCompiler
         template<typename AnyNonCovered>
         TokensLocation operator()(AnyNonCovered) const
         {
-            return {{}, -1, 0, 0};
+            return {{}, -1, {}, 0};
         }
     };
 

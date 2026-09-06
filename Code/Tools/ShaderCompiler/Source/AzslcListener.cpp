@@ -361,7 +361,7 @@ namespace AZ::ShaderCompiler
 
         ir->RegisterAttributeSpecifier(scope,
                                        GetAttributeCategory(ctx),
-                                       ctx->getStart()->getLine(),
+                                       GetSourceLocation(ctx->getStart()),
                                        Namespace,
                                        ctx->Name->getText(),
                                        ctx->attributeArgumentList());

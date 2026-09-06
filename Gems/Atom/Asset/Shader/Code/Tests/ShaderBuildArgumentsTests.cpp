@@ -14,8 +14,12 @@
 #include <Atom/RPI.Edit/Shader/ShaderSourceData.h>
 #include <Atom/RHI.Edit/Utils.h>
 
+#include <AzCore/IO/Path/Path.h>
+#include <AzCore/Settings/SettingsRegistryImpl.h>
+#include <AzCore/Settings/SettingsRegistryMergeUtils.h>
 #include "Common/ShaderBuilderTestFixture.h"
 #include <ShaderBuildArgumentsManager.h>
+#include <ShaderBuilderUtility.h>
 
 namespace UnitTest
 {
@@ -224,6 +228,56 @@ namespace UnitTest
         EXPECT_EQ(arguments.m_preprocessorArguments, VSTR({ "-DMACRO1", "-DMACRO2=VALUE2", "-DMACRO3", "-DMACRO4", "-DMACRO5=VALUE5" }));
     }
 
+    TEST_F(ShaderBuildArgumentsTests, AppendDefinitionsPreservesReplacementWhitespaceAndQuotes)
+    {
+        AZ::RHI::ShaderBuildArguments arguments;
+        EXPECT_EQ(arguments.AppendDefinitions({ R"(TEXT="hello world")", "EXPRESSION=(1 + 2)" }), 2);
+        EXPECT_EQ(arguments.m_preprocessorArguments, VSTR({ R"(-DTEXT="hello world")", "-DEXPRESSION=(1 + 2)" }));
+    }
+
+    TEST_F(ShaderBuildArgumentsTests, NormalizeAzslArgumentsPreservesBoundariesAndOrder)
+    {
+#ifdef _WIN32
+        const AZStd::string root = "C:/absolute folder/";
+#else
+        const AZStd::string root = "/absolute folder/";
+#endif
+        const AZStd::vector<AZStd::string> input = VSTR({
+            "-D", R"(TEXT="a b")", "-U", "TEXT", "-I", root + "include", "-I" + root + "second",
+            "--include", root + "forced header", "--include=" + root + "another header",
+        });
+        EXPECT_EQ(AZ::ShaderBuilder::ShaderBuilderUtility::NormalizeAzslArguments(input), input);
+    }
+
+    TEST_F(ShaderBuildArgumentsTests, RelativePathsAndEffectiveArgumentsUseOneOrderedEnvironment)
+    {
+        AZ::SettingsRegistryImpl registry;
+        AZ::SettingsRegistry::Register(&registry);
+#ifdef _WIN32
+        const AZ::IO::Path project = AZ::IO::Path("C:/project folder").LexicallyNormal();
+#else
+        const AZ::IO::Path project = AZ::IO::Path("/project folder").LexicallyNormal();
+#endif
+        registry.Set(AZ::SettingsRegistryMergeUtils::FilePathKey_ProjectPath, project.Native());
+        AZ::RHI::ShaderBuildArguments options;
+        options.m_preprocessorArguments = { "-DX=1", "-U", "X", "-I", "include folder", "--include=forced header" };
+        options.m_azslcArguments = { "-DX=2", "--include", "later header", "--Zpr" };
+        const auto actual = AZ::ShaderBuilder::ShaderBuilderUtility::BuildAzslArguments(options, { "automatic" }, "platform header");
+        const AZStd::vector<AZStd::string> expected = {
+            "-DX=1", "-U", "X", "-I", (project / "include folder").Native(), "--include=" + (project / "forced header").Native(),
+            "-I" + (project / "automatic").Native(), "--include", "platform header", "-DX=2", "--include",
+            (project / "later header").Native(), "--Zpr",
+        };
+        EXPECT_EQ(actual, expected);
+        const auto aliases = AZ::ShaderBuilder::ShaderBuilderUtility::NormalizeAzslArguments({
+            "-I", "alias/../headers", "-Ialias/../other", "--include", "alias/../forced", "--include=alias/../last",
+        });
+        EXPECT_EQ(aliases, VSTR({
+            "-I", (project / "alias/../headers").Native(), "-I" + (project / "alias/../other").Native(),
+            "--include", (project / "alias/../forced").Native(), "--include=" + (project / "alias/../last").Native(),
+        }));
+        AZ::SettingsRegistry::Unregister(&registry);
+    }
 
     TEST_F(ShaderBuildArgumentsTests, InitializeShaderBuildArguments_AppendDefinitionsWithTypos_ExpectError)
     {
@@ -500,4 +554,3 @@ namespace UnitTest
 } //namespace UnitTest
 
 AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
-

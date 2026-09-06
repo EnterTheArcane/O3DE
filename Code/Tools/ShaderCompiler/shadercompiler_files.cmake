@@ -68,9 +68,14 @@ set(FILES
     Source/NewLineCounterStream.h
     Source/PadToAttributeMutator.cpp
     Source/PadToAttributeMutator.h
-    Source/PreprocessorLineDirectiveFinder.h
+    Source/PreprocessingTokenSource.cpp
+    Source/PreprocessingTokenSource.h
+    Source/Preprocessor.cpp
+    Source/Preprocessor.h
     Source/ReflectableEnums.h
     Source/ReflectableEnumsUtils.h
+    Source/SourceManager.cpp
+    Source/SourceManager.h
     Source/StdUtils.h
     Source/StreamableInterface.h
     Source/SubpassInputToTexture2DCodeMutator.cpp

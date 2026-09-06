@@ -13,12 +13,18 @@
 
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/AssetCatalog/PlatformAddressedAssetCatalog.h>
+#include <AzToolsFramework/Debug/TraceContext.h>
 
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 
-#include <AzCore/IO/IOUtils.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/IO/IOUtils.h>
+#include <AzCore/IO/Path/Path.h>
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/Settings/SettingsRegistryMergeUtils.h>
+#include <AzCore/Utils/Utils.h>
+#include <AzCore/std/algorithm.h>
 #include <AzCore/std/string/regex.h>
 
 #include <AzCore/Serialization/Json/JsonUtils.h>
@@ -29,14 +35,14 @@
 #include <Atom/RPI.Reflect/Shader/ShaderAsset.h>
 #include <Atom/RPI.Reflect/Shader/ShaderOptionGroup.h>
 
-#include <Atom/RHI.Edit/Utils.h>
+#include <Atom/RHI.Edit/ShaderBuildArguments.h>
 #include <Atom/RHI.Edit/ShaderPlatformInterface.h>
+#include <Atom/RHI.Edit/Utils.h>
 
-#include <CommonFiles/Preprocessor.h>
-#include <AzslCompiler.h>
+#include "AzslCompiler.h"
 
+#include <ShaderBuilder_Traits_Platform.h>
 #include "ShaderPlatformInterfaceRequest.h"
-#include "ShaderBuilder_Traits_Platform.h"
 
 #include "SrgLayoutUtility.h"
 
@@ -47,6 +53,150 @@ namespace AZ
         namespace ShaderBuilderUtility
         {
             [[maybe_unused]] static constexpr char ShaderBuilderUtilityName[] = "ShaderBuilderUtility";
+
+            AZStd::string ResolveAzslHeaderPath(const char* header)
+            {
+                if (!header || !*header)
+                {
+                    return {};
+                }
+                AZ::IO::Path path(header);
+                if (path.IsRelative())
+                {
+                    const char* executableFolder = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(
+                    executableFolder, &AZ::ComponentApplicationBus::Events::GetExecutableFolder);
+                    if (!executableFolder)
+                    {
+                        return {};
+                    }
+                    path = AZ::IO::Path(executableFolder) / path;
+                }
+                return path.LexicallyNormal().Native();
+            }
+
+            AZStd::vector<AZStd::string> NormalizeAzslArguments(const AZStd::vector<AZStd::string>& arguments)
+            {
+                AZStd::vector<AZStd::string> result = arguments;
+                const AZ::IO::FixedMaxPath projectPath = AZ::Utils::GetProjectPath();
+                // Preserve '..' because an earlier path component can be a filesystem alias.
+                for (size_t i = 0; i < result.size(); ++i)
+                {
+                    AZStd::string& argument = result[i];
+                    if (argument == "-I" || argument == "--include")
+                    {
+                        if (i + 1 < result.size())
+                        {
+                            AZStd::string& value = result[++i];
+                            AZ::IO::Path path(value);
+                            if (path.IsRelative())
+                            {
+                                value = (projectPath / path).Native();
+                            }
+                        }
+                    }
+                    else if (argument.starts_with("--include="))
+                    {
+                        AZ::IO::Path path(argument.substr(10));
+                        if (path.IsRelative() && !path.empty())
+                        {
+                            argument = "--include=" + (projectPath / path).Native();
+                        }
+                    }
+                    else if (argument.starts_with("-I") && argument.size() > 2)
+                    {
+                        AZ::IO::Path path(argument.substr(2));
+                        if (path.IsRelative())
+                        {
+                            argument = "-I" + (projectPath / path).Native();
+                        }
+                    }
+                }
+                return result;
+            }
+
+            AZStd::vector<AZStd::string> BuildAzslArguments(
+                const RHI::ShaderBuildArguments& arguments,
+                const AZStd::vector<AZStd::string>& includePaths,
+                const AZStd::string& platformHeader)
+            {
+                auto result = arguments.m_preprocessorArguments;
+                for (const AZStd::string& folder : includePaths)
+                {
+                    result.push_back(AZStd::string::format("-I%s", folder.c_str()));
+                }
+                result = NormalizeAzslArguments(result);
+                result.push_back("--include");
+                result.push_back(platformHeader);
+                const auto compilerArguments = NormalizeAzslArguments(arguments.m_azslcArguments);
+                result.insert(result.end(), compilerArguments.begin(), compilerArguments.end());
+                return result;
+            }
+
+            AZStd::vector<AZStd::string> BuildListOfIncludeDirectories(
+                [[maybe_unused]] const char* builderName,
+                const char* optionalIncludeFolder)
+            {
+                AZ_TraceContext("AZSL include search paths", "shader compiler");
+
+                AZStd::vector<AZStd::string> includePaths;
+
+                if (optionalIncludeFolder)
+                {
+                    if (AZ::IO::SystemFile::Exists(optionalIncludeFolder))
+                    {
+                        includePaths.emplace_back(AZStd::move(AZ::IO::Path(optionalIncludeFolder).LexicallyNormal().Native()));
+                    }
+                }
+
+                auto PathCompare = [](AZ::IO::PathView searchPath)
+                {
+                    return [searchPath](AZStd::string_view includePathView)
+                    {
+                        return searchPath == AZ::IO::PathView(includePathView);
+                    };
+                };
+
+                // Add the project path to list of include paths
+                AZ::IO::FixedMaxPath projectPath = AZ::Utils::GetProjectPath();
+                if (auto it = AZStd::find_if(includePaths.begin(), includePaths.end(), PathCompare(projectPath)); it == includePaths.end())
+                {
+                    includePaths.emplace_back(projectPath.c_str(), projectPath.Native().size());
+                }
+
+                // get the scan folders of the projects:
+                bool success = true;
+                AZStd::vector<AZStd::string> scanFoldersVector;
+                AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetScanFolders, scanFoldersVector);
+                AZ_Warning(builderName, success, "Could not acquire shader include directories from Asset Processor.");
+
+                // Preserve scan-folder order and include only directories containing ShaderLib.
+                for (AZ::IO::Path shaderScanFolder : scanFoldersVector)
+                {
+                    shaderScanFolder /= "ShaderLib";
+                    if (auto it = AZStd::find_if(includePaths.begin(), includePaths.end(), PathCompare(shaderScanFolder)); it == includePaths.end())
+                    {
+                        // the folders constructed this fashion constitute the base of automatic include search paths
+                        if (AZ::IO::SystemFile::Exists(shaderScanFolder.c_str()))
+                        {
+                            includePaths.emplace_back(AZStd::move(shaderScanFolder.LexicallyNormal().Native()));
+                        }
+                    }
+                }
+
+                // finally the <engineroot>/Gems fallback
+                AZ::IO::Path engineGemsFolder(AZStd::string_view{ AZ::Utils::GetEnginePath() });
+                engineGemsFolder /= "Gems";
+                if (auto it = AZStd::find_if(includePaths.begin(), includePaths.end(), PathCompare(engineGemsFolder)); it == includePaths.end())
+                {
+                    if (AZ::IO::SystemFile::Exists(engineGemsFolder.c_str()))
+                    {
+                        includePaths.emplace_back(AZStd::move(engineGemsFolder.Native()));
+                    }
+                }
+
+                return includePaths;
+            }
 
             Outcome<RPI::ShaderSourceData, AZStd::string> LoadShaderDataJson(const AZStd::string& fullPathToJsonFile, bool warningsAsErrors)
             {
@@ -109,26 +259,20 @@ namespace AZ
                 }
             }
 
-            AZStd::shared_ptr<ShaderFiles> PrepareSourceInput(
-                [[maybe_unused]] const char* builderName,
+            Outcome<AZStd::string, AZStd::string> PrepareSourceInput(
                 const AZStd::string& shaderSourceFileFullPath,
                 RPI::ShaderSourceData& sourceAsset)
             {
                 auto shaderAssetSourceFileParseOutput = ShaderBuilderUtility::LoadShaderDataJson(shaderSourceFileFullPath);
                 if (!shaderAssetSourceFileParseOutput.IsSuccess())
                 {
-                    AZ_Error(builderName, false, "Failed to load/parse Shader Descriptor JSON: %s", shaderAssetSourceFileParseOutput.GetError().c_str());
-                    return nullptr;
+                    return AZ::Failure(shaderAssetSourceFileParseOutput.TakeError());
                 }
                 sourceAsset = AZStd::move(shaderAssetSourceFileParseOutput.GetValue());
 
-                AZStd::shared_ptr<ShaderFiles> files(new ShaderFiles);
-                const AZStd::string& specifiedAzslName = sourceAsset.m_source;
-                ShaderBuilderUtility::GetAbsolutePathToAzslFile(shaderSourceFileFullPath, specifiedAzslName, files->m_azslSourceFullPath);
-
-                // specifiedAzslName may have a relative path on it so need to strip it
-                AzFramework::StringFunc::Path::GetFileName(specifiedAzslName.c_str(), files->m_azslFileName);
-                return files;
+                AZStd::string sourceFullPath;
+                ShaderBuilderUtility::GetAbsolutePathToAzslFile(shaderSourceFileFullPath, sourceAsset.m_source, sourceFullPath);
+                return AZ::Success(AZStd::move(sourceFullPath));
             }
 
             AssetBuilderSDK::ProcessJobResultCode PopulateAzslDataFromJsonFiles(
@@ -142,7 +286,7 @@ namespace AZ
                 const AZStd::string& tempFolder,
                 bool& useSpecializationConstants)
             {
-                AzslCompiler azslc(azslData.m_preprocessedFullPath,  // set the input file for eventual error messages, but the compiler won't be called on it.
+                AzslCompiler azslc(azslData.m_sourceFullPath,  // set the input file for eventual error messages, but the compiler won't be called on it.
                                    tempFolder);
                 bool allReadSuccess = true;
                 // read: input assembly reflection
@@ -263,53 +407,6 @@ namespace AZ
                             cleaner(nameResourcePair.second.m_dependentFunctions);
                         });
                 }
-            }
-
-            static AZStd::string DumpCode(
-                [[maybe_unused]] const char* builderName,
-                const AZStd::string& codeInString,
-                const AZStd::string& dumpDirectory,
-                const AZStd::string& stemName,
-                const AZStd::string& apiTypeString,
-                const AZStd::string& extension)
-            {
-                AZStd::string finalFilePath;
-                AZStd::string formatted;
-                if (apiTypeString.empty())
-                {
-                    formatted = AZStd::string::format("%s.%s", stemName.c_str(), extension.c_str());
-                }
-                else
-                {
-                    formatted = AZStd::string::format("%s_%s.%s", stemName.c_str(), apiTypeString.c_str(), extension.c_str());
-                }
-                AzFramework::StringFunc::Path::Join(dumpDirectory.c_str(), formatted.c_str(), finalFilePath, true, true);
-                AZ::IO::FileIOStream outFileStream(finalFilePath.data(), AZ::IO::OpenMode::ModeWrite);
-                if (!outFileStream.IsOpen())
-                {
-                    AZ_Error(builderName, false, "Failed to open file to write (%s)\n", finalFilePath.data());
-                    return "";
-                }
-
-                outFileStream.Write(codeInString.size(), codeInString.data());
-
-                // Prevent warning: "warning: End of input with no newline"
-                static constexpr char newLine[] = "\n";
-                outFileStream.Write(sizeof(newLine) - 1, newLine);
-
-                outFileStream.Close();
-
-                return finalFilePath;
-            }
-
-            AZStd::string DumpPreprocessedCode(const char* builderName, const AZStd::string& preprocessedCode, const AZStd::string& tempDirPath, const AZStd::string& stemName, const AZStd::string& apiTypeString)
-            {
-                return DumpCode(builderName, preprocessedCode, tempDirPath, stemName, apiTypeString, "azslin");
-            }
-
-            AZStd::string DumpAzslPrependedCode(const char* builderName, const AZStd::string& nonPreprocessedYetAzslSource, const AZStd::string& tempDirPath, const AZStd::string& stemName, const AZStd::string& apiTypeString)
-            {
-                return DumpCode(builderName, nonPreprocessedYetAzslSource, tempDirPath, stemName, apiTypeString, "azslprepend");
             }
 
             AZStd::string ExtractStemName(const char* path)
@@ -671,7 +768,7 @@ namespace AZ
                     return AssetBuilderSDK::ProcessJobResult_Failed;
                 }
 
-                AzslCompiler azslc(azslData.m_preprocessedFullPath, tempFolder);
+                AzslCompiler azslc(azslData.m_sourceFullPath, tempFolder);
                 if (!azslc.ParseIaPopulateStructData(jsonOutcome.GetValue(), vertexShaderName, inputStruct))
                 {
                     AZ_Error(ShaderBuilderUtilityName, false, "Failed to parse input layout\n");
@@ -764,7 +861,7 @@ namespace AZ
                     return AssetBuilderSDK::ProcessJobResult_Failed;
                 }
 
-                AzslCompiler azslc(azslData.m_preprocessedFullPath, tempFolder);
+                AzslCompiler azslc(azslData.m_sourceFullPath, tempFolder);
                 if (!azslc.ParseOmPopulateStructData(jsonOutcome.GetValue(), fragmentShaderName, outputStruct))
                 {
                     AZ_Error(ShaderBuilderUtilityName, false, "Failed to parse output layout\n");
@@ -853,68 +950,6 @@ namespace AZ
                     }
                 }
                 return success;
-            }
-
-            IncludedFilesParser::IncludedFilesParser()
-            {
-                #define FILE_PATH_REGEX R"([<|"]([\w|/|\\|\.|\-|\:]+)[>|"])"
-                #define INCLUDE_REGEX R"(#\s*include\s+)"
-
-                // TODO(MaterialPipeline): This is a very specialized hack to support material pipelines. The intermediate .azsli file looks like this:
-                //     #define MATERIAL_TYPE_AZSLI_FILE_PATH "D:\o3de\Gems\Atom\TestData\TestData\Materials\Types\MaterialPipelineTest_Animated.azsli" 
-                //     #include "D:\o3de\Gems\Atom\Feature\Common\Assets\Materials\Pipelines\LowEndPipeline\ForwardPass_BaseLighting.azsli"
-                // Then the ForwardPass_BaseLighting.azsli file has this line:
-                //     #include MATERIAL_TYPE_AZSLI_FILE_PATH
-                // So we treat "#define MATERIAL_TYPE_AZSLI_FILE_PATH" the same as an include directive.
-                // The "right" way to handle this would be to use an actual preprocessor which shouild not be done in CreateJobs. We could introduce
-                // an intermediate builder that just preprocesses the file and outputs that as an intermediate asset, then do the normal processing
-                // in a subsequent builder.
-                #define SPECIAL_DEFINE_REGEX R"(#\s*define\s+MATERIAL_TYPE_AZSLI_FILE_PATH\s+)"
-
-                m_includeRegex = AZStd::regex("(?:" INCLUDE_REGEX "|" SPECIAL_DEFINE_REGEX ")" FILE_PATH_REGEX, AZStd::regex::ECMAScript);
-
-                #undef FILE_PATH_REGEX
-                #undef INCLUDE_REGEX
-                #undef SPECIAL_DEFINE_REGEX
-            }
-
-            AZStd::vector<AZStd::string> IncludedFilesParser::ParseStringAndGetIncludedFiles(AZStd::string_view haystack) const
-            {
-                AZStd::vector<AZStd::string> listOfFilePaths;
-                AZStd::smatch match;
-                AZStd::string::const_iterator searchStart(haystack.cbegin());
-                while (AZStd::regex_search(searchStart, haystack.cend(), match, m_includeRegex))
-                {
-                    if (match.size() > 1)
-                    {
-                        AZStd::string relativeFilePath(match[1].str().c_str());
-                        AzFramework::StringFunc::Path::Normalize(relativeFilePath);
-                        listOfFilePaths.push_back(relativeFilePath);
-                    }
-                    searchStart = match.suffix().first;
-                }
-                return listOfFilePaths;
-            }
-
-            AZ::Outcome<AZStd::vector<AZStd::string>, AZStd::string> IncludedFilesParser::ParseFileAndGetIncludedFiles(AZStd::string_view sourceFilePath) const
-            {
-                AZ::IO::FileIOStream stream(sourceFilePath.data(), AZ::IO::OpenMode::ModeRead);
-                if (!stream.IsOpen())
-                {
-                    return AZ::Failure(AZStd::string::format("\"%s\" source file could not be opened.", sourceFilePath.data()));
-                }
-
-                if (!stream.CanRead())
-                {
-                    return AZ::Failure(AZStd::string::format("\"%s\" source file could not be read.", sourceFilePath.data()));
-                }
-
-                AZStd::string hayStack;
-                hayStack.resize_no_construct(stream.GetLength());
-                stream.Read(stream.GetLength(), hayStack.data());
-
-                auto listOfFilePaths = ParseStringAndGetIncludedFiles(hayStack);
-                return AZ::Success(AZStd::move(listOfFilePaths));
             }
 
             AZStd::string GetPlatformNameFromPlatformInfo(const AssetBuilderSDK::PlatformInfo& platformInfo)

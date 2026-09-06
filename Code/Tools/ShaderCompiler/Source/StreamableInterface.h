@@ -8,6 +8,7 @@
 #pragma once
 
 #include <ostream>
+#include <string_view>
 
 namespace AZ
 {
@@ -25,6 +26,7 @@ namespace AZ
         virtual Streamable& operator<<(size_t) = 0;
         virtual Streamable& operator<<(bool) = 0;
         virtual Streamable& operator<<(const std::string&) = 0;
+        virtual Streamable& operator<<(std::string_view) = 0;
     };
 
     // trivial concrete version to wrap classic std::ostream objects
@@ -38,6 +40,7 @@ namespace AZ
         Streamable& operator<<(char c) override                 { m_wrappedStream << c; return *this; }
         Streamable& operator<<(const char* nts) override        { m_wrappedStream << nts; return *this; }
         Streamable& operator<<(const std::string& str) override { m_wrappedStream << str; return *this; }
+        Streamable& operator<<(std::string_view str) override   { m_wrappedStream << str; return *this; }
         Streamable& operator<<(double n) override               { m_wrappedStream << n; return *this; }
         Streamable& operator<<(int64_t n) override              { m_wrappedStream << n; return *this; }
         Streamable& operator<<(uint32_t n) override             { m_wrappedStream << n; return *this; }

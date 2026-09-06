@@ -137,7 +137,37 @@ namespace UnitTest
         EXPECT_TRUE(processOutput.errorResult.starts_with(s_beginToken));
         EXPECT_TRUE(processOutput.errorResult.ends_with(s_endToken));
     }
-   
+
+    TEST_F(ProcessLaunchParseTests, ProcessLauncher_ArgumentArrayPreservesShaderMacroValues)
+    {
+        const AZStd::vector<AZStd::string> values{
+            "path with spaces",
+            R"(VALUE="quoted text")",
+            R"(C:\shader folder\)",
+            R"(backslash\"quote)",
+        };
+        AZStd::vector<AZStd::string> arguments{ (AZ::IO::Path(AZ::Test::GetCurrentExecutablePath()) / "ProcessLaunchTest").Native() };
+        for (size_t i = 0; i < values.size(); ++i)
+        {
+            arguments.push_back(AZStd::string::format("-param%zu", i));
+            arguments.push_back(values[i]);
+        }
+        AzFramework::ProcessLauncher::ProcessLaunchInfo launch;
+        launch.m_commandlineParameters = arguments;
+        launch.m_workingDirectory = AZ::Test::GetCurrentExecutablePath();
+        launch.m_showWindow = false;
+        AzFramework::ProcessOutput output;
+        ASSERT_TRUE(AzFramework::ProcessWatcher::LaunchProcessAndRetrieveOutput(launch, AzFramework::COMMUNICATOR_TYPE_STDINOUT, output));
+        const ProcessLaunchParseTests::ParsedArgMap parsed = ParseParameters(output.outputResult);
+        for (size_t i = 0; i < values.size(); ++i)
+        {
+            ProcessLaunchParseTests::ParsedArgMap::const_iterator entry = parsed.find(AZStd::string::format("param%zu", i));
+            ASSERT_NE(entry, parsed.end());
+            ASSERT_EQ(entry->second.size(), 1);
+            EXPECT_EQ(entry->second[0], values[i]);
+        }
+    }
+
     TEST_F(ProcessLaunchParseTests, ProcessLauncher_BasicParameter_Success)
     {
         ProcessLaunchParseTests::ParsedArgMap argMap;

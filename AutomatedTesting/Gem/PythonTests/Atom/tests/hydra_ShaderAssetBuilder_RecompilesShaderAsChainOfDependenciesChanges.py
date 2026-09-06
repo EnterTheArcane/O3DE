@@ -45,7 +45,7 @@ def ShaderAssetBuilder_RecompilesShaderAsChainOfDependenciesChanges():
         general.idle_wait_frames(1)
  
         # This is the order in which the source assets should be deployed
-        # to avoid source dependency issues with the old MCPP-based CreateJobs. 
+        # to avoid source dependency issues with the old preprocessing-based CreateJobs.
         file_list = [
             "Test2Color.azsli",
             "Test3Color.azsli",
@@ -89,7 +89,7 @@ def ShaderAssetBuilder_RecompilesShaderAsChainOfDependenciesChanges():
         # And this summarizes the importance of this Test: The previous version
         # of ShaderAssetBuilder::CreateJobs was incapable of compiling the shader under the conditions
         # presented in this test, but with the new version of ShaderAssetBuilder::CreateJobs, which
-        # doesn't use MCPP for #include files discovery, it should eventually compile the shader
+        # uses conservative #include discovery during CreateJobs, it should eventually compile the shader
         # once all the source files are in place.
         ShaderAssetTestHelper.copy_tmp_files_in_order(src_assets_subdir, reverse_file_list, game_asset_path, 3.0)
 

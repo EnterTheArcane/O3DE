@@ -14,6 +14,10 @@
 
 namespace AZ::ShaderCompiler
 {
+    DiagnosticStream verboseCout;
+    DiagnosticStream warningCout(std::cerr);
+    Endl azEndl;
+
     bool IsReadWriteView(string_view viewName)
     {
         return (StartsWith(viewName, "RW") || StartsWith(viewName, "RasterizerOrdered") ||
@@ -275,7 +279,7 @@ namespace AZ::ShaderCompiler
         while (ii <= interval.b)
         {
             auto* token = GetNextToken(ii /*inout*/);
-            auto str = token->getText();
+            auto str = TokenTextView(token);
             output << str << ((str == ";" || str == "{") ? '\n' : ' ');
         }
     }
@@ -835,7 +839,7 @@ namespace AZ::ShaderCompiler
 
                 if (!exportedType.IsPackable())
                 {
-                    throw std::logic_error{ " internal error: unpackable type ("
+                    throw SourceError{ " internal error: unpackable type ("
                         + exportedType.m_typeId.m_name
                         + ") found its way in layout member "
                         + memberVar.m_name };

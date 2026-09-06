@@ -6,7 +6,7 @@
  *
  */
 
-#include <ShaderVariantAssetBuilder.h>
+#include "ShaderVariantAssetBuilder.h"
 
 #include <Atom/RPI.Reflect/Shader/ShaderAsset.h>
 #include <Atom/RPI.Reflect/Shader/ShaderVariantAsset.h>
@@ -39,26 +39,26 @@
 #include <AzFramework/Process/ProcessWatcher.h>
 
 #include <AzCore/Asset/AssetManager.h>
-#include <AzCore/JSON/document.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/IOUtils.h>
 #include <AzCore/IO/SystemFile.h>
-#include <AzCore/std/algorithm.h>
-#include <AzCore/std/string/string.h>
-#include <AzCore/std/sort.h>
-#include <AzCore/std/time.h>
+#include <AzCore/JSON/document.h>
 #include <AzCore/Serialization/Json/JsonSerialization.h>
 #include <AzCore/StringFunc/StringFunc.h>
+#include <AzCore/Utils/Utils.h>
+#include <AzCore/std/algorithm.h>
+#include <AzCore/std/sort.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/time.h>
 
+#include "AzslCompiler.h"
+#include "AzslData.h"
 #include "HashedVariantListSourceData.h"
 #include "ShaderAssetBuilder.h"
-#include "ShaderBuilderUtility.h"
-#include "SrgLayoutUtility.h"
-#include "AzslData.h"
-#include "AzslCompiler.h"
-#include <CommonFiles/Preprocessor.h>
-#include <ShaderPlatformInterfaceRequest.h>
 #include "ShaderBuildArgumentsManager.h"
+#include "ShaderBuilderUtility.h"
+#include "ShaderPlatformInterfaceRequest.h"
+#include "SrgLayoutUtility.h"
 
 
 namespace AZ
@@ -624,11 +624,16 @@ namespace AZ
             AZ::StringFunc::Path::GetFileName(shaderSourceFileFullPath.c_str(), shaderFileName);
 
             RPI::ShaderSourceData shaderSourceDescriptor;
-            AZStd::shared_ptr<ShaderFiles> sources =
-                ShaderBuilderUtility::PrepareSourceInput(ShaderVariantAssetBuilderName, shaderSourceFileFullPath, shaderSourceDescriptor);
+            auto sourcePathOutcome = ShaderBuilderUtility::PrepareSourceInput(shaderSourceFileFullPath, shaderSourceDescriptor);
+            if (!sourcePathOutcome.IsSuccess())
+            {
+                AZ_Error(ShaderVariantAssetBuilderName, false, "Failed to load/parse Shader Descriptor JSON: %s", sourcePathOutcome.GetError().c_str());
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                return;
+            }
 
-            // set the input file for eventual error messages, but the compiler won't be called on it.
-            AzslCompiler azslc(sources->m_azslSourceFullPath, request.m_tempDirPath);
+            // Set the input file for diagnostics. The compiler will not be invoked on it.
+            AzslCompiler azslc(sourcePathOutcome.GetValue(), request.m_tempDirPath);
 
             // Request the list of valid shader platform interfaces for the target platform.
             AZStd::vector<RHI::ShaderPlatformInterface*> platformInterfaces =
@@ -972,7 +977,7 @@ namespace AZ
             AZStd::string hlslCodeToPrependForVariant;
 
             // We want to go over all options listed in the variant and set their respective values
-            // This loop will populate the optionGroup and m_shaderCodePrefix in order of the option priority
+            // Populate the option group and HLSL defines in option priority order.
             for (const auto& optionCache : optionList)
             {
                 const RPI::ShaderOptionDescriptor& option = creationContext.m_shaderOptionGroupLayout.GetShaderOption(optionCache.m_optionIndex);
@@ -1016,9 +1021,7 @@ namespace AZ
 
             const RPI::ShaderVariantStableId shaderVariantStableId{shaderVariantInfo.m_stableId};
 
-            // By this time the optionGroup was populated with all option values for the variant and
-            // the m_shaderCodePrefix contains all option related preprocessing macros
-            // Let's add the requested variant:
+            // Create the variant using the populated option group.
             RPI::ShaderVariantAssetCreator variantCreator;
             RPI::ShaderOptionGroup shaderOptions{&creationContext.m_shaderOptionGroupLayout, optionGroup.GetShaderVariantId()};
             variantCreator.Begin(

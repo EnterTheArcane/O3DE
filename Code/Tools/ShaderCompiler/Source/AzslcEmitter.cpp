@@ -8,9 +8,10 @@
 
 #include "AzslcEmitter.h"
 
-#include <tuple>
 #include <cmath>
 #include <filesystem>
+#include <tuple>
+
 namespace StdFs = std::filesystem;
 
 // We should only include the base platform emitter
@@ -444,45 +445,46 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void CodeEmitter::EmitPreprocessorLineDirective(size_t azslLineNumber)
+    void CodeEmitter::EmitPreprocessorLineDirective(SourceLocation source)
     {
-        if (azslLineNumber == 0)
-            return;  // protect for this invalid case. seems to happen for "virtual" symbols (like OverloadSet)
-
-        size_t supposedVirtualLine = m_lineFinder->GetVirtualLineNumber(azslLineNumber);
-        size_t curHlslLine = m_out.GetLineCount() + 1;  // "lines" is a space that is 1-based indexed.
-        auto lastEmitted = Infimum(m_alreadyEmittedPreprocessorLineDirectives, curHlslLine);
-        if (lastEmitted != m_alreadyEmittedPreprocessorLineDirectives.cend())
+        if (!source)
         {
-            // verify if we can skip the line emission if current stream line feed is still in sync with expectations
-            //  image:
-            //            in sync                  out of sync
-            //  1 | #line 1                1 | #line 1
-            //  2 | code                   2 | code
-            //  3 | newSymbol              3 | code
-            //                             4 | #line 2
-            //                             5 | newSymbol
-
-            size_t curHlslPhysicalDistance = curHlslLine - lastEmitted->first;
-            size_t lastVirtualSet = lastEmitted->second;
-            size_t nonAdjustedCurrentLandingLine = lastVirtualSet + curHlslPhysicalDistance - 1;  // -1 because line directives specify the NEXT line
-            if (nonAdjustedCurrentLandingLine == supposedVirtualLine)
-                return; // no need to emit. we can skip
+            return;
         }
-        // get the original file as absolute path:
-        const string& originalFileName = StdFs::absolute( m_lineFinder->GetVirtualFileName(azslLineNumber) ).lexically_normal().generic_string();
-        // emit the line:
-        m_out << "#line " << supposedVirtualLine << " \"" << originalFileName << "\"\n";
-        // remember it:
-        m_alreadyEmittedPreprocessorLineDirectives[curHlslLine] = supposedVirtualLine;
+
+        const ResolvedSourceLocation location = source.Resolve();
+        const string originalFileName = StdFs::absolute(std::string(location.m_file)).lexically_normal().generic_string();
+        const size_t currentLine = m_out.GetLineCount() + 1;
+        auto last = Infimum(m_alreadyEmittedPreprocessorLineDirectives, currentLine);
+        if (last != m_alreadyEmittedPreprocessorLineDirectives.cend()
+            && m_lastEmittedSourceFile == originalFileName
+            && last->second + currentLine - last->first - 1 == location.m_line)
+        {
+            return;
+        }
+
+        // Escape paths for HLSL string literals, including Windows separators.
+        string escaped;
+        for (char c : originalFileName)
+        {
+            if (c == '\\' || c == '"')
+            {
+                escaped += '\\';
+            }
+            escaped += c;
+        }
+
+        m_out << "#line " << location.m_line << " \"" << escaped << "\"\n";
+        m_alreadyEmittedPreprocessorLineDirectives[currentLine] = location.m_line;
+        m_lastEmittedSourceFile = originalFileName;
     }
 
     void CodeEmitter::EmitPreprocessorLineDirective(QualifiedNameView symbolName)
     {
         IdAndKind* idAndkindInfo = m_ir->GetIdAndKindInfo(symbolName);
         KindInfo& info = idAndkindInfo->second;
-        const auto origSourceLine = info.VisitSub(GetOrigSourceLine_Visitor{});
-        EmitPreprocessorLineDirective(origSourceLine);
+        const auto originalSourceLocation = info.VisitSub(GetOriginalSourceLocation_Visitor{});
+        EmitPreprocessorLineDirective(originalSourceLocation);
     }
 
     string CodeEmitter::EmitInheritanceList(const ClassInfo& clInfo)
@@ -950,7 +952,7 @@ namespace AZ::ShaderCompiler
         }
 
         const auto& bindInfo = rootSig.Get(srgId);
-        m_out << "ConstantBuffer " << srgInfo.m_declNode->Name->getText() << "_CBContainer : register(b" << bindInfo.m_registerBinding.m_pair[bindSet].m_registerIndex << ")\n{\n";
+        m_out << "ConstantBuffer " << TokenTextView(srgInfo.m_declNode->Name) << "_CBContainer : register(b" << bindInfo.m_registerBinding.m_pair[bindSet].m_registerIndex << ")\n{\n";
 
         for (const auto& cId : srgInfo.m_CBs)
         {
@@ -1211,7 +1213,7 @@ namespace AZ::ShaderCompiler
         m_out << "/* Generated code from ";
         // We don't emit the SRG attributes (only as a comment), but they can be accessed by the srgId if needed
         EmitAllAttachedAttributes(srgId);
-        m_out << " ShaderResourceGroup " << srgInfo.m_declNode->Name->getText() << "*/\n";
+        m_out << " ShaderResourceGroup " << TokenTextView(srgInfo.m_declNode->Name) << "*/\n";
 
         for (const auto& t : srgInfo.m_srViews)
         {
@@ -1313,11 +1315,11 @@ namespace AZ::ShaderCompiler
                     auto idExpr = m_translations.GetIdExpression(token);
                     if (!idExpr.IsEmpty())
                     {
-                        auto getToken = [this](ssize_t& tokenId) -> string
+                        auto getToken = [this](ssize_t& tokenId) -> string_view
                         {
                             assert(tokenId >= 0);
                             auto* token = m_tokens->get(static_cast<size_t>(tokenId));
-                            return token->getChannel() == Token::DEFAULT_CHANNEL ? token->getText() : string{};
+                            return token->getChannel() == Token::DEFAULT_CHANNEL ? TokenTextView(token) : string_view{};
                         };
                         output << m_translations.TranslateIdExpression(idExpr, ii, getToken) << " ";
                         ii += idExpr.m_span.length() - 1;
@@ -1329,7 +1331,7 @@ namespace AZ::ShaderCompiler
                     IfIsSrgMemberValidateIsDefined(token, astNode);
                     
                     // do minimal reformatting to have a pseudo-readable emitted code
-                    auto str = token->getText();
+                    auto str = TokenTextView(token);
                     bool lineFeed = str == ";" || str == "{";
                     output << str << (lineFeed ? '\n' : ' ');
                 }

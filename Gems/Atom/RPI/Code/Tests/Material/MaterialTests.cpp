@@ -12,16 +12,18 @@
 #include <Common/ShaderAssetTestUtils.h>
 #include <Material/MaterialAssetTestUtils.h>
 
+#include <Atom/RPI.Edit/Material/MaterialFunctorSourceData.h>
 #include <Atom/RPI.Public/ColorManagement/TransformColor.h>
-#include <Atom/RPI.Public/Material/Material.h>
 #include <Atom/RPI.Public/Image/ImageSystemInterface.h>
-#include <Atom/RPI.Reflect/Shader/ShaderOptionGroup.h>
-#include <Atom/RPI.Reflect/Material/MaterialAssetCreator.h>
-#include <Atom/RPI.Reflect/Material/MaterialTypeAssetCreator.h>
-#include <Atom/RPI.Reflect/Material/MaterialNameContext.h>
+#include <Atom/RPI.Public/Material/Material.h>
+#include <Atom/RPI.Public/Shader/Shader.h>
 #include <Atom/RPI.Reflect/Image/ImageMipChainAssetCreator.h>
 #include <Atom/RPI.Reflect/Image/StreamingImageAssetCreator.h>
-#include <Atom/RPI.Edit/Material/MaterialFunctorSourceData.h>
+#include <Atom/RPI.Reflect/Material/MaterialAssetCreator.h>
+#include <Atom/RPI.Reflect/Material/MaterialNameContext.h>
+#include <Atom/RPI.Reflect/Material/MaterialTypeAssetCreator.h>
+#include <Atom/RPI.Reflect/Shader/ShaderOptionGroup.h>
+#include <AzCore/Component/TickBus.h>
 
 namespace UnitTest
 {
@@ -1589,6 +1591,31 @@ namespace UnitTest
         EXPECT_FALSE(wasRenamed);
 
         EXPECT_EQ(indexFromOldName, indexFromNewName);
+    }
+
+    TEST_F(MaterialTests, ShaderReload_UpdatesMaterialAfterMaterialTypeReceivesReplacement)
+    {
+        Data::Instance<Material> material = Material::FindOrCreate(m_testMaterialAsset);
+        Data::Instance<Shader> shader = Shader::FindOrCreate(m_testMaterialShaderAsset);
+        ASSERT_TRUE(material);
+        ASSERT_TRUE(shader);
+        const MaterialPropertyIndex property = material->FindPropertyIndex(Name{ "MyFloat" });
+        ASSERT_TRUE(material->SetPropertyValue(property, 9.5f));
+        const auto root = m_testMaterialShaderAsset->GetRootVariantAsset();
+        // Replay Shader completing before MaterialTypeAsset handles the same replacement.
+        auto& typeHandler = static_cast<Data::AssetBus::MultiHandler&>(*m_testMaterialTypeAsset);
+        typeHandler.BusDisconnect();
+        Data::AssetBus::Event(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+        const auto replacement = CreateTestShaderAsset(m_testMaterialShaderAsset.GetId(), m_testMaterialSrgLayout, nullptr, Name{ "TestShader" }, Name{ "depth" }, root);
+        ASSERT_NE(replacement.Get(), m_testMaterialShaderAsset.Get());
+        ASSERT_EQ(shader->GetAsset().Get(), replacement.Get());
+        EXPECT_EQ(material->GetGeneralShaderCollection()[0].GetShaderAsset().Get(), m_testMaterialShaderAsset.Get());
+        typeHandler.OnAssetReloaded(replacement);
+        ASSERT_EQ(m_testMaterialTypeAsset->GetGeneralShaderCollection()[0].GetShaderAsset().Get(), replacement.Get());
+
+        TickBus::ExecuteQueuedEvents();
+        EXPECT_EQ(material->GetGeneralShaderCollection()[0].GetShaderAsset().Get(), replacement.Get());
+        EXPECT_FLOAT_EQ(material->GetPropertyValue<float>(property), 9.5f);
     }
 
     template<typename T>

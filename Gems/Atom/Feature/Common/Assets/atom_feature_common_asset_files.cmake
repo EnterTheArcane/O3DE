@@ -395,6 +395,7 @@ set(FILES
     ShaderResourceGroups/SceneSrg.azsli
     ShaderResourceGroups/SceneSrgAll.azsli
     ShaderResourceGroups/SkyBox/SceneSrg.azsli
+    ShaderResourceGroups/TerrainSceneSrg.azsli
     ShaderResourceGroups/ViewSrg.azsli
     ShaderResourceGroups/ViewSrgAll.azsli
     Shaders/AuxGeom/AuxGeomObject.azsl

@@ -80,7 +80,8 @@ namespace UnitTest
         AZ::RHI::Ptr<AZ::RHI::ShaderResourceGroupLayout> optionalSrgLayout,
         AZ::RPI::Ptr<AZ::RPI::ShaderOptionGroupLayout> optionalShaderOptions,
         const AZ::Name& shaderName,
-        const AZ::Name& drawListName)
+        const AZ::Name& drawListName,
+        const AZ::Data::Asset<AZ::RPI::ShaderVariantAsset>& optionalRootVariant)
     {
         using namespace AZ;
         using namespace RPI;
@@ -127,8 +128,11 @@ namespace UnitTest
         attributeMaps.resize(RHI::ShaderStageCount);
         creator.SetShaderStageAttributeMapList(attributeMaps);
 
-        Data::Asset<RPI::ShaderVariantAsset> shaderVariantAsset =
-            CreateTestShaderVariantAsset(RPI::ShaderVariantId{}, RPI::ShaderVariantStableId{ 0 });
+        Data::Asset<RPI::ShaderVariantAsset> shaderVariantAsset = optionalRootVariant;
+        if (!shaderVariantAsset)
+        {
+            shaderVariantAsset = CreateTestShaderVariantAsset(RPI::ShaderVariantId{}, RPI::ShaderVariantStableId{ 0 });
+        }
 
         creator.SetRootShaderVariantAsset(shaderVariantAsset);
 

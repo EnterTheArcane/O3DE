@@ -8,12 +8,13 @@
 
 #include <CLI/CLI.hpp>
 
-#include "AzslcReflection.h"
 #include "AzslcEmitter.h"
 #include "AzslcHomonymVisitor.h"
 #include "AzslcPlatformEmitter.h"
-#include "Texture2DMSto2DCodeMutator.h"
+#include "AzslcReflection.h"
+#include "PreprocessingTokenSource.h"
 #include "SubpassInputToTexture2DCodeMutator.h"
+#include "Texture2DMSto2DCodeMutator.h"
 
 #include <cstddef>
 #include <filesystem>
@@ -23,16 +24,12 @@ namespace StdFs = std::filesystem;
 // Correspond to the supported version of the AZSL language.
 #define AZSLC_MAJOR "1"
 // For large features or milestones. Minor version allows for breaking changes. Existing tests can change.
-#define AZSLC_MINOR "8"   // last change: introduction of class inheritance
+#define AZSLC_MINOR "9" // Native preprocessing and source-backed tokens.
 // For small features or bug fixes. They cannot introduce breaking changes. Existing tests shouldn't change.
-#define AZSLC_REVISION "20"  // last change: update antlrv4 to 4.13.2
+#define AZSLC_REVISION "0"
 
 namespace AZ::ShaderCompiler
 {
-    DiagnosticStream verboseCout;
-    DiagnosticStream warningCout(std::cerr);
-    Endl azEndl;
-
     using MapOfStringViewToSetOfString = map<string_view, set<string>>;
 
     template <typename TypeClassFilterPredicate = std::nullptr_t>
@@ -151,67 +148,21 @@ namespace AZ::ShaderCompiler
         return notType && notIdentifier && firstIsalpha;
     }
 
-    void DumpClassifiedTokensToYaml(const MapOfStringViewToSetOfString& classifiedTokens)
-    {
-        for (const auto& [category, tokens] : classifiedTokens)
-        {
-            std::cout << category << ":\n";
-            for (const string& tokenName : tokens)
-            {
-                std::cout << "  - \"" << tokenName << "\"\n";
-            }
-        }
-    }
-
     // outputs information about language keywords related to predefined types
     void DumpPredefinedVocabulary(const azslLexer* lexer)
     {
         MapOfStringViewToSetOfString classifiedTokens;
         ClassifyAllTokens(lexer, classifiedTokens /*out*/, [](TypeClass tc) { return IsPredefinedType(tc); });
-        DumpClassifiedTokensToYaml(classifiedTokens);
-    }
-
-    //! iterates on tokens and build the line number mapping (from preprocessor line directives)
-    void ConstructLineMap(vector<std::unique_ptr<Token>>* allTokens, PreprocessorLineDirectiveFinder* lineFinder)
-    {
-        string lastNonEmptyFileName = lineFinder->m_physicalSourceFileName;
-        for (auto& token : *allTokens) // auto& because each element is a unique_ptr we can't copy
+        Json::Value categories(Json::objectValue);
+        for (const auto& [category, tokens] : classifiedTokens)
         {
-            if (token->getType() == azslLexer::LineDirective)
+            auto& names = categories[string{category}] = Json::Value(Json::arrayValue);
+            for (const string& token : tokens)
             {
-                LineDirectiveInfo directiveInfo{ 0, 0 };
-                const auto lineText = token->getText();
-                //                    the sharp
-                //                        |  any whitespaces
-                //                        | /   optional line token
-                //                        | |     |       decimal
-                // custom raw string      | |     |          |  optional filename between quotes
-                //         delimiter --+  | |     |          |        |
-                std::regex lineRegex(R"__(#\s*(line\s+)?\s*(\d+)\s*("(.*)")?)__");
-                auto matchBegin = std::sregex_iterator(lineText.begin(), lineText.end(), lineRegex);
-                // there can be only 1 match, and it HAS to match since AntlR lexer already matched.
-                auto& groups = *matchBegin; // 4 groups: [0] is the whole line. [1] is the first parenthesized group, [2] the 2nd etc
-                directiveInfo.m_physicalTokenLine = token->getLine();
-                directiveInfo.m_forcedLineNumber = std::atoi(groups[2].str().c_str());
-                directiveInfo.m_containingFilename = groups[4];
-                if (directiveInfo.m_containingFilename.empty())
-                {
-                    // if we don't have a filename specified on the line, it means the last seen filename is still active.
-                    // storing it this way simplifies the lookup algorithm using this data.
-                    directiveInfo.m_containingFilename = lastNonEmptyFileName;
-                }
-                else
-                {
-                    lastNonEmptyFileName = directiveInfo.m_containingFilename;
-                }
-                lineFinder->PushLineDirective(directiveInfo);
+                names.append(token);
             }
         }
-        if (lineFinder->m_lineMap.find(1) == lineFinder->m_lineMap.end())
-        {
-            // if we have no line directives on line 1, add one before the file's first line (at 0), that can always be found by Infimum
-            lineFinder->PushLineDirective({0, 1, lineFinder->m_physicalSourceFileName});
-        }
+        std::cout << categories << '\n';
     }
 }
 
@@ -264,7 +215,7 @@ namespace AZ::ShaderCompiler::Main
              {
                  std::cout << "- {categ: " << RelationshipExtent::ToStr(category)
                            << ", id: " << Decorate("'", at.m_referredDefinition.GetName())
-                           << ", at: ':" << at.m_where.m_line << ":" << at.m_where.m_charPos + 1 << "'"
+                     << ", at: ':" << at.m_where.m_sourceLocation << ":" << at.m_where.m_charPos + 1 << "'"
                            << ", token#: " << at.m_where.m_focusedTokenId << "}\n";
              },
             visitOptions);
@@ -325,6 +276,47 @@ int main(int argc, const char* argv[])
 
     std::string output;
     cli.add_option("-o", output, "Output file (writes to stdout if omitted).");
+
+    PreprocessRequest preprocessRequest;
+    bool preprocessOnly = false;
+    bool dependenciesOnly = false;
+    cli.add_flag("--dependencies", dependenciesOnly, "Report preprocessing dependencies as JSON");
+    cli.add_option_function<std::string>(
+           "-D",
+           [&](const std::string& value)
+           {
+               preprocessRequest.m_macros.push_back({ false, value });
+           },
+           "Define a preprocessing macro")
+        ->trigger_on_parse();
+    cli.add_option_function<std::string>(
+           "-U",
+           [&](const std::string& value)
+           {
+               preprocessRequest.m_macros.push_back({ true, value });
+           },
+           "Undefine a preprocessing macro")
+        ->trigger_on_parse();
+    cli.add_option_function<std::string>(
+           "-I",
+           [&](const std::string& value)
+           {
+               preprocessRequest.m_includeDirectories.push_back(value);
+           },
+           "Add an ordered include directory")
+        ->trigger_on_parse();
+    cli.add_option_function<std::string>(
+           "--include",
+           [&](const std::string& value)
+           {
+               preprocessRequest.m_forcedIncludes.push_back(value);
+           },
+           "Force an include before the root source")
+        ->trigger_on_parse();
+    cli.add_flag("-E", preprocessOnly, "Stream preprocessed text")->excludes("--dependencies");
+    cli.add_flag("--preprocessed", preprocessRequest.m_preprocessed, "Read previously preprocessed AZSL");
+    cli.add_flag("-C", "Preserve comments (the default)");
+    cli.add_flag("-+", "Use the AZSL C++ preprocessing dialect (the default)");
 
     bool uniqueIdx = false;
     cli.add_flag("--unique-idx", uniqueIdx, "Use unique indices for all registers. e.g. b0, t0, u0, s0 becomes b0, t1, u2, s3. Use on platforms that don't differentiate registers by resource type.");
@@ -419,7 +411,7 @@ int main(int argc, const char* argv[])
     cli.add_flag("-r", visitRecursively, "(Option of --visitsym) Visit recursively.");
 
     bool listPredefined = false;
-    cli.add_flag("--listpredefined", listPredefined, "Output a list of all predefined types in AZSLang.");
+    cli.add_flag("--listpredefined", listPredefined, "Output all predefined AZSL types as JSON arrays by category.");
 
     int maxSpaces = std::numeric_limits<int>::max();
     auto maxSpacesOpt = cli.add_option("--max-spaces", maxSpaces, "Will choose register spaces that do not extend past this limit.");
@@ -483,44 +475,110 @@ int main(int argc, const char* argv[])
         verboseCout.m_on = verbose;
 
         bool useStdin = inputFile == '-';
-        // we need to scope a stream object here, to be able to bind a polymorphic reference to it
-        std::ifstream ifs;
-        if (!useStdin)
-        {
-            ifs = std::ifstream{ inputFile }; // try to open as file
-        }
-
-        std::istream& in{useStdin ? std::cin : ifs};
-        if (!in.good())
-        {
-            throw std::runtime_error("input file could not be opened");
-        }
-
         if (rootSig && namespaces.empty())
         {
             throw std::runtime_error("--root-sig requested but no API was selected. Use a --namespace option as well.");
         }
 
         const string inputFileName = useStdin ? "" : inputFile;
-        PreprocessorLineDirectiveFinder lineFinder;
-        lineFinder.m_physicalSourceFileName = useStdin ? "stdin" : inputFile;
-        // setup the line finder address on the exception system so that errors are canonically mutated to "virtual line space"
-        AzslcException::s_lineFinder = &lineFinder;
-
         bool useOutputFile = !output.empty();
         const string outputFileName = output;
-
-        ANTLRInputStream input(in);
-        azslLexer lexer(&input);
-        CommonTokenStream tokens(&lexer);
-        IntermediateRepresentation ir(&lexer);
-        auto allTokens = lexer.getAllTokens();
-        if (lexer.getNumberOfSyntaxErrors() > 0)
+        warningCout.m_onErrorCallback = [](string_view message)
         {
-            throw std::runtime_error("syntax errors present");
+            throw AzslcException{ WX_WARNINGS_AS_ERRORS, "as-error", string{ message } };
+        };
+        ParseWarningLevel(warningOpts, warningCout);
+        preprocessRequest.m_warning = [](std::string_view diagnostic)
+        {
+            warningCout << Warn::W1 << (std::string(diagnostic) + '\n');
+        };
+        CompilationUnit unit;
+        auto writeDependencies = [&](bool complete)
+        {
+            Json::Value report(Json::objectValue);
+            report["version"] = 1;
+            report["complete"] = complete;
+            report["dependencies"] = Json::Value(Json::arrayValue);
+            std::set<std::string> paths;
+            for (const DependencyEvent& event : unit.Dependencies())
+            {
+                paths.insert(event.m_resolvedPath);
+            }
+            for (const std::string& path : paths)
+            {
+                report["dependencies"].append(path);
+            }
+            std::ofstream file;
+            std::ostream* destination = &std::cout;
+            if (useOutputFile && outputFileName != "-")
+            {
+                file.open(outputFileName, std::ios::binary);
+                if (!file)
+                {
+                    throw SourceError("cannot open dependency output: " + outputFileName);
+                }
+                destination = &file;
+            }
+            *destination << report << '\n';
+            destination->flush();
+            if (!*destination)
+            {
+                throw SourceError("cannot write dependency output");
+            }
+        };
+        preprocessRequest.m_sourcePath = inputFileName;
+        try
+        {
+            if (useStdin)
+            {
+                preprocessRequest.m_source = unit.m_sources.AddSource("<stdin>", std::string(std::istreambuf_iterator<char>(std::cin), {}));
+            }
+            unit.Preprocess(preprocessRequest);
         }
-        ConstructLineMap(&allTokens, &lineFinder);
-        lexer.reset();
+        catch (const std::exception&)
+        {
+            if (dependenciesOnly)
+            {
+                writeDependencies(false);
+            }
+            throw;
+        }
+        if (dependenciesOnly)
+        {
+            writeDependencies(true);
+            return 0;
+        }
+        if (preprocessOnly)
+        {
+            if (useOutputFile)
+            {
+                std::ofstream preprocessedOutput(outputFileName, std::ios::binary);
+                if (!preprocessedOutput)
+                {
+                    throw std::runtime_error("cannot open preprocessing output");
+                }
+                unit.WritePreprocessed(preprocessedOutput);
+                preprocessedOutput.flush();
+                if (!preprocessedOutput)
+                {
+                    throw std::runtime_error("cannot write preprocessing output");
+                }
+            }
+            else
+            {
+                unit.WritePreprocessed(std::cout);
+                std::cout.flush();
+                if (!std::cout)
+                {
+                    throw SourceError("cannot write preprocessing output");
+                }
+            }
+            return 0;
+        }
+        PreprocessingTokenSource tokenSource(unit);
+        CommonTokenStream tokens(&tokenSource);
+        tokens.fill();
+        IntermediateRepresentation ir(tokenSource.Vocabulary());
         AzslParserEventListener azslParserEventListener;
         azslParser parser(&tokens);
         parser.removeErrorListeners();
@@ -564,10 +622,6 @@ int main(int argc, const char* argv[])
             Texture2DMSto2DCodeMutator texture2DMSto2DCodeMutator(&ir, &tokens);
             SubpassInputToTexture2DCodeMutator subpassInputToTexture2DCodeMutator(&ir, &tokens, subpassInputSupport);
             SemaCheckListener semanticListener{&ir};
-            warningCout.m_onErrorCallback = [](string_view message) {
-                throw AzslcException{WX_WARNINGS_AS_ERRORS, "as-error", string{message}};
-            };
-            ParseWarningLevel(warningOpts, warningCout);
             bool nonValidativeOptions[] = {full, ia, om, srg, options, dumpsym, ast, bindingdep, !visitName.empty(), stripUnusedSrgs};
             bool anyNonValidativeOption = std::any_of(std::begin(nonValidativeOptions), std::end(nonValidativeOptions), [](bool opt) { return opt; });
             semanticListener.m_silentPrintExtensions = !semantic || verbose; // print-extensions are useful for interested parties; but not normal operation.
@@ -654,7 +708,7 @@ int main(int argc, const char* argv[])
                                                          emitOptions.m_forceMatrixRowMajor,
                                                          emitOptions.m_padRootConstantCB,
                                                          emitOptions.m_skipAlignmentValidation};
-            ir.MiddleEnd(middleEndConfigration, &lineFinder);
+            ir.MiddleEnd(middleEndConfigration);
             if (noMS)
             {
                 texture2DMSto2DCodeMutator.RunMiddleEndMutations();
@@ -727,7 +781,7 @@ int main(int argc, const char* argv[])
                     std::ofstream outFile = std::ofstream(outputName);
                     if (!outFile.good())
                     {
-                        throw std::runtime_error("output file '" + outputName + "' could not be opened");
+                        throw SourceError("output file '" + outputName + "' could not be opened");
                     }
 
                     std::ostream& out{outFile};
@@ -738,7 +792,7 @@ int main(int argc, const char* argv[])
 
                 if (full)
                 { // Combine the default emission and the ia, om, srg, options, bindingdep commands
-                    CodeEmitter emitter{&ir, &tokens, out, &lineFinder};
+                    CodeEmitter emitter{&ir, &tokens, out};
                     if (noMS)
                     {
                         emitter.AddCodeMutator(&texture2DMSto2DCodeMutator);
@@ -752,7 +806,7 @@ int main(int argc, const char* argv[])
 
                     prepareOutputAndCall("ia", [&](CodeReflection& r) { r.DumpShaderEntries(); });
                     prepareOutputAndCall("om", [&](CodeReflection& r) { r.DumpOutputMergerLayout(); });
-                    prepareOutputAndCall("srg", [&](CodeReflection& r) { r.DumpSRGLayout(emitOptions, &lineFinder); });
+                    prepareOutputAndCall("srg", [&](CodeReflection& r) { r.DumpSRGLayout(emitOptions); });
                     prepareOutputAndCall("options", [&](CodeReflection& r) { r.DumpVariantList(emitOptions); });
                     prepareOutputAndCall("bindingdep", [&](CodeReflection& r) { r.DumpResourceBindingDependencies(emitOptions); });
                 }
@@ -766,7 +820,7 @@ int main(int argc, const char* argv[])
                 }
                 else if (srg)
                 { // Reflect the Shader Resource Groups layout
-                    reflecter.DumpSRGLayout(emitOptions, &lineFinder);
+                    reflecter.DumpSRGLayout(emitOptions);
                 }
                 else if (options)
                 { // Reflect the list of available variant options for this shader
@@ -778,7 +832,7 @@ int main(int argc, const char* argv[])
                 }
                 else
                 { // Emit the shader source code
-                    CodeEmitter emitter{&ir, &tokens, out, &lineFinder};
+                    CodeEmitter emitter{&ir, &tokens, out};
                     if (noMS)
                     {
                         emitter.AddCodeMutator(&texture2DMSto2DCodeMutator);

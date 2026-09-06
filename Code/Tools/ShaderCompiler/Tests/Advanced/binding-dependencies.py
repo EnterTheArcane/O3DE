@@ -49,7 +49,7 @@ def verifyBindingDependencies(thefile, compilerPath, silent):
     return True if ok else False
 
 def verifyBindingDependencies_2(thefile, compilerPath, silent):
-    symbols, ok = testfuncs.buildAndGetJson(thefile, compilerPath, silent, ["--bindingdep"])
+    symbols, ok = testfuncs.buildAndGetJson(thefile, compilerPath, silent, ["--preprocessed", "--bindingdep"])
 
     if ok:
         predicates = []
@@ -86,7 +86,7 @@ def verifyBindingDependencies_3(thefile, compilerPath, silent):
     return 1 if ok else 0
 
 def verifyBindingDependencies_4(thefile, compilerPath, silent):
-    symbols, ok = testfuncs.buildAndGetJson(thefile, compilerPath, silent, ["--bindingdep"])
+    symbols, ok = testfuncs.buildAndGetJson(thefile, compilerPath, silent, ["--preprocessed", "--bindingdep"])
 
     if ok:
         predicates = []
@@ -117,13 +117,13 @@ def doTests(compiler, silent, az3rdParty):
     if verifyBindingDependencies(os.path.join(workDir, "entry-dependencies.azsl"), compiler, silent) : result += 1
     else: resultFailed += 1
 
-    if result and verifyBindingDependencies_2(os.path.join(workDir, "../Semantic/standardpbr_forwardpass.azsl"), compiler, silent)  : result += 1
+    if result and verifyBindingDependencies_2(os.path.join(workDir, "../Semantic/standardpbr_forwardpass.preprocessed"), compiler, silent)  : result += 1
     else: resultFailed += 1
 
     if result and verifyBindingDependencies_3(os.path.join(workDir, "../Semantic/Triangle.azsl"), compiler, silent) : result += 1
     else: resultFailed += 1
 
-    if result and verifyBindingDependencies_4(os.path.join(workDir, "BakeAcesOutputTransformLutCS.azslin"), compiler, silent) : result += 1
+    if result and verifyBindingDependencies_4(os.path.join(workDir, "BakeAcesOutputTransformLutCS.preprocessed"), compiler, silent) : result += 1
     else: resultFailed += 1
 
 if __name__ == "__main__":

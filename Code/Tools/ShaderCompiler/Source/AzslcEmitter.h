@@ -8,8 +8,8 @@
 #pragma once
 
 #include "AzslcBackend.h"
-#include "AzslcSymbolTranslation.h"
 #include "AzslcCodeEmissionMutator.h"
+#include "AzslcSymbolTranslation.h"
 
 namespace Json
 {
@@ -26,11 +26,10 @@ namespace AZ::ShaderCompiler
 
     struct CodeEmitter : Backend
     {
-        CodeEmitter(IntermediateRepresentation* ir, TokenStream* tokens, std::ostream& out, PreprocessorLineDirectiveFinder* lineFinder)
+        CodeEmitter(IntermediateRepresentation* ir, TokenStream* tokens, std::ostream& out)
             :
             Backend(ir, tokens),
-            m_out(out),
-            m_lineFinder(lineFinder)
+            m_out(out)
         {}
 
         //! Create a companion database of mutations on the IR, through which the emitter backend can query symbols scope and names.
@@ -69,7 +68,7 @@ namespace AZ::ShaderCompiler
 
         //! Emits the closest preprocessor generated "#line <int> <filepath>" directive located before
         //! @originalLineNumber. Keeps track of the best finds so the #line directives are not emitted more than once.
-        void EmitPreprocessorLineDirective(size_t originalLineNumber);
+        void EmitPreprocessorLineDirective(SourceLocation originalLocation);
 
         //! Emits the closest preprocessor generated "#line <int> <filepath>" directive located near
         //! @symbolName. See above, EmitPreprocessorLineDirective (size_t), for more details.
@@ -213,6 +212,7 @@ namespace AZ::ShaderCompiler
         unordered_set<IdentifierUID> m_alreadyEmittedFunctionDeclarations;
         unordered_set<IdentifierUID> m_alreadyEmittedFunctionDefinitions;
         map<size_t, size_t> m_alreadyEmittedPreprocessorLineDirectives;
+        std::string m_lastEmittedSourceFile;
 
         IdentifierUID m_shaderVariantFallbackUid;
         
@@ -226,10 +226,6 @@ namespace AZ::ShaderCompiler
         //! To avoid spamming the output with line directives, we can keep track of whether a deviation
         //! has been introduced since the last emitted line directive and the desired virtual line of the currently emitted code construct.
         mutable NewLineCounterStream m_out;
-
-        PreprocessorLineDirectiveFinder* m_lineFinder;
-
-
 
         //! This is a readability function for class emission code. Serves for HLSL declarator of classes
         string EmitInheritanceList(const ClassInfo& clInfo);

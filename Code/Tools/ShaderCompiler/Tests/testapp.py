@@ -46,7 +46,8 @@ def GetStatusVerbose(numPass, numFail, inputsource, suffixMessage, extraColor, e
             suffixMessage+ extraColor+ extraMessage+ style.RESET_ALL)
         return testResult(numPass, 0, numFail, 0)
 
-    if inputsource.find("wip-") >= 0:
+    existing_todos = {"wip-interface-semanticerror-lack-member2.azsl", "wip-generic-constraint-undeclared.azsl", "wip-partial-double-srg.azsl"}
+    if os.path.basename(inputsource) in existing_todos:
         print (fg.YELLOW+ style.BRIGHT+ "\\\\[ TODO ]// : {}".format(inputsource)+\
             suffixMessage+ extraColor+ extraMessage+ style.RESET_ALL)
         return testResult(numPass, numFail, 0, 0)
@@ -92,6 +93,8 @@ def testFile(advancedFolder, inputsource, expectPass, whatToTest, compilerPath, 
         return runResult
 
     options = [inputsource]
+    if inputsource.endswith(".preprocessed"):
+        options.append("--preprocessed")
     if whatToTest == "[syntax]":
         options.append("--syntax")
     if whatToTest == "[semantic]":
@@ -167,7 +170,7 @@ def runTests(testsRoot, paths, compiler, verboseLevel, az3rdParty):
                         if f.endswith(".py"):
                             if verboseLevel > 0: print (fg.MAGENTA+ style.BRIGHT+ "== advanced script "+ join(root,f)+ style.RESET_ALL)
                             numTotal.add( testFile(joinDir, join(root, f), expectPass, whatToTest, compiler, True if verboseLevel < 2 else False, az3rdParty) )
-                    elif f.endswith(".azsl"):
+                    elif f.endswith((".azsl", ".preprocessed")):
                         whatmust = "must [pass]" if expectPass else "must [fail]"
                         if verboseLevel > 0: print (fg.MAGENTA + style.BRIGHT + "== start to build " + join(root,f) + " == "+ whatmust + whatToTest + style.RESET_ALL)
                         numTotal.add( testFile(joinDir, join(root, f), expectPass, whatToTest, compiler, True if verboseLevel < 2 else False, az3rdParty) )
@@ -193,13 +196,6 @@ def runAll(testsRoot, paths, compiler, verboseLevel, az3rdParty):
 
 if __name__ == "__main__":
     os.system('') # activate VT100 mode for windows console
-
-    try:
-        import yaml
-    except ImportError as err:
-        print ( fg.YELLOW + style.BRIGHT + "It seems your python environment lacks pyyaml. Run first through project-root's \"test.and.py\" (or pip install it)" + style.RESET_ALL )
-        if input("Continue (may result in false failures)? y/n:").lower() != "y":
-            exit(0)
 
     parser = ArgumentParser()
     parser.add_argument(
@@ -245,3 +241,5 @@ if __name__ == "__main__":
     print (fg.RED + style.BRIGHT + "FAIL = {}".format(numAllTests.numFail) + fg.WHITE+ " /{}".format(numTotal) + style.RESET_ALL)
     td = timedelta(seconds=(endTime - startTime))
     print (fg.CYAN + style.BRIGHT + "Time taken: " + fg.WHITE + str(td) + style.RESET_ALL)
+
+    sys.exit(1 if numAllTests.numFail or numAllTests.numEC else 0)

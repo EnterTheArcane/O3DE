@@ -419,13 +419,13 @@ namespace AZ::ShaderCompiler
         }
 
         //! if the type is a SubpassInput, it's an input attachment
-        bool IsInputAttachment(const azslLexer* lexer) const
+        bool IsInputAttachment(const antlr4::dfa::Vocabulary& vocabulary) const
         {
             return IsViewType(m_typeClass)
-                 && (  m_typeId.GetNameLeaf() == Trim(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInput), "\'")
-                    || m_typeId.GetNameLeaf() == Trim(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputMS), "\'")
-                    || m_typeId.GetNameLeaf() == Trim(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputDS), "\'")
-                    || m_typeId.GetNameLeaf() == Trim(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputDSMS), "\'"));
+                 && (  m_typeId.GetNameLeaf() == Trim(vocabulary.getLiteralName(azslLexer::SubpassInput), "\'")
+                    || m_typeId.GetNameLeaf() == Trim(vocabulary.getLiteralName(azslLexer::SubpassInputMS), "\'")
+                    || m_typeId.GetNameLeaf() == Trim(vocabulary.getLiteralName(azslLexer::SubpassInputDS), "\'")
+                    || m_typeId.GetNameLeaf() == Trim(vocabulary.getLiteralName(azslLexer::SubpassInputDSMS), "\'"));
         }
 
         friend bool operator == (const TypeRefInfo& lhs, const TypeRefInfo& rhs)

@@ -8,15 +8,16 @@
 #pragma once
 
 
-#include "AzslcMangling.h"
 #include "AzslcCommon.h"
 #include "AzslcException.h"
+#include "AzslcMangling.h"
 #include "DiagnosticStream.h"
 
-#include "antlr4-runtime.h"
-#include <Grammar/azslLexer.h>
-#include <Grammar/azslParserBaseListener.h>
-#include <Grammar/azslParser.h>
+#include "Grammar/azslLexer.h"
+#include "Grammar/azslParser.h"
+#include "Grammar/azslParserBaseListener.h"
+
+#include <antlr4-runtime.h>
 
 #include "AzslcPredefinedTypes.h"
 
@@ -84,25 +85,20 @@ namespace AZ::ShaderCompiler
     }
 
     // this format is the Microsoft standard for error list parsing "file(line,column): message"
-    inline string DiagLine(size_t line)
+    inline string DiagLine(SourceLocation source)
     {
-        using namespace std::string_literals;
-        return AzslcException::s_lineFinder->GetVirtualFileName(line) + "("s + std::to_string(line) + "):";
+        const ResolvedSourceLocation location = source.Resolve();
+        return std::string(location.m_file) + "(" + std::to_string(location.m_line) + "):";
     }
 
-    inline string DiagLine(optional<int> line)
+    inline string DiagLine(optional<SourceLocation> sourceLocation)
     {
-        return line ? DiagLine(static_cast<size_t>(*line)) : string{};
-    }
-
-    inline string DiagLine(optional<size_t> line)
-    {
-        return line ? DiagLine(*line) : string{};
+        return sourceLocation ? DiagLine(*sourceLocation) : string{};
     }
 
     inline string DiagLine(antlr4::Token* token)
     {
-        return DiagLine(token->getLine());
+        return DiagLine(GetSourceLocation(token));
     }
 
     inline string DiagLine(tree::TerminalNode* astNode)
@@ -112,27 +108,28 @@ namespace AZ::ShaderCompiler
 
     //! low level version with everything parameterizable
     template<typename... Types>
-    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, optional<size_t> lineNumber, optional<size_t> column, Types&&... messageBits)
+    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, optional<SourceLocation> sourceLocation, optional<size_t> column, Types&&... messageBits)
     {
+        const auto location = sourceLocation ? sourceLocation->Resolve() : ResolvedSourceLocation{};
         stream << PushLevel{} << level
-               << AzslcException::MakeErrorMessage(lineNumber ? AzslcException::s_lineFinder->GetVirtualFileName(*lineNumber) : "",
-                                                   lineNumber ? ToString(AzslcException::s_lineFinder->GetVirtualLineNumber(*lineNumber)) : "", column ? ToString(*column) : "",
+               << AzslcException::MakeErrorMessage(location.m_file,
+                                                   location.m_line ? ToString(location.m_line) : "", column ? ToString(*column) : "",
                                                    "", false, "", ConcatString(messageBits..., "\n"))
                << PopLevel{};
     }
 
-    //! version for clients with only, maybe, a line number
+    //! Version for clients with an optional source location.
     template<typename... Types>
-    inline void PrintWarning(Warn::EnumType level, optional<size_t> line, Types&&... messageBits)
+    inline void PrintWarning(Warn::EnumType level, optional<SourceLocation> sourceLocation, Types&&... messageBits)
     {
-        PrintWarning(warningCout, level, line, none, messageBits...);
+        PrintWarning(warningCout, level, sourceLocation, none, messageBits...);
     }
 
     //! version for clients with a token (richest, preferred way)
     template<typename... Types>
     inline void PrintWarning(Warn::EnumType level, antlr4::Token* token, Types&&... messageBits)
     {
-        PrintWarning(warningCout, level, token->getLine(), token->getCharPositionInLine() + 1, messageBits...);
+        PrintWarning(warningCout, level, GetSourceLocation(token), token->getCharPositionInLine() + 1, messageBits...);
     }
 
     inline AstTypeofNode* ExtractTypeofAstNode(AstType* ctx)
@@ -792,7 +789,7 @@ namespace AZ::ShaderCompiler
     {
         misc::Interval m_expressionSpan;  // eg for `void F()` -> type id-expr brace brace -> m_expressionSpan concerns id-expr. for `nested::leaf` -> all 3 tokens are in the span
         ssize_t        m_focusedTokenId;  // eg for `void F()` -> `F` is the focused token. for id-expr, each nested identifier has a seenat. in `nested::leaf` -> 2 TokensLocation. one with 'nested' as focus, one with 'leaf' as focus; both with the same expression span.
-        size_t         m_line;
+        SourceLocation m_sourceLocation;
         size_t         m_charPos;
     };
 
@@ -803,7 +800,7 @@ namespace AZ::ShaderCompiler
         TokensLocation tl;
         tl.m_expressionSpan = const_cast<std::remove_const_t<ContextT>*>(ctx)->getSourceInterval();
         tl.m_focusedTokenId = static_cast<ssize_t>(focusedToken->getTokenIndex());
-        tl.m_line           = focusedToken->getLine();
+        tl.m_sourceLocation = GetSourceLocation(focusedToken);
         tl.m_charPos        = focusedToken->getCharPositionInLine();
         return tl;
     };
@@ -814,7 +811,7 @@ namespace AZ::ShaderCompiler
         TokensLocation tl;
         tl.m_expressionSpan = misc::Interval{tok->getTokenIndex(), tok->getTokenIndex()};
         tl.m_focusedTokenId = static_cast<ssize_t>(tok->getTokenIndex());
-        tl.m_line           = tok->getLine();
+        tl.m_sourceLocation = GetSourceLocation(tok);
         tl.m_charPos        = tok->getCharPositionInLine();
         return tl;
     };
@@ -826,46 +823,12 @@ namespace AZ::ShaderCompiler
                                      // (it's an interval because of nested-name-specifiers)
     };
 
-// before being able to clean that up with C++20 concepts, let's factorize the SFINAE expression to filter the accepted iterator types by an expected trait
-#define SFINAE_IS_SAME(DependentTypeToCompare, ExpectedType)\
-    enable_if_t< is_same_v<typename DependentTypeToCompare, ExpectedType> >* = nullptr
-
-    // Create a yaml element list for 'any collection' of Seenat (passed as a pseudo range)
-    // - {line: x, col: y}
-    template <typename SeenatRangeIter, SFINAE_IS_SAME(SeenatRangeIter::value_type, Seenat) >
-    string ToYaml(SeenatRangeIter begin, SeenatRangeIter end, string_view indent)
-    {
-        string s;
-        for (SeenatRangeIter it = begin; it != end; ++it)
-        {
-            s += indent;
-            s += "- {line: " + std::to_string(it->m_where.m_line);
-            s += ", col: " + std::to_string(it->m_where.m_charPos + 1);  // +1 because charPos starts at 0. most editors start at 1
-            s += "}\n";
-        }
-        return s;
-    }
-
-    // version for pseudo-range of IdentifierUID elements
-    template <typename UIDRangeIter, SFINAE_IS_SAME(UIDRangeIter::value_type, IdentifierUID) >
-    string ToYaml(UIDRangeIter begin, UIDRangeIter end, string_view indent)
-    {
-        string s;
-        for (UIDRangeIter it = begin; it != end; ++it)
-        {
-            s += indent;
-            s += "- {name: '" + it->m_name + "'}\n";
-        }
-        return s;
-    }
-#undef SFINAE_IS_SAME
-
     // like PathPart but more specialized for grammatical elements specificity of an idExpression
     struct IdExpressionPart
     {
-        string GetText() const
+        string_view GetText() const
         {
-            return m_token->getText();
+            return TokenTextView(m_token);
         }
 
         bool IsScopeToken() const
@@ -875,7 +838,7 @@ namespace AZ::ShaderCompiler
 
         // Azslc Intermediate Representation uses slash separators for scopes
         // This function can help constructing internal "mangled" forms of qualified symbol names
-        string GetAZIRMangledText() const
+        string_view GetAZIRMangledText() const
         {
             return IsScopeToken() ? "/" : GetText();
         }
@@ -908,11 +871,16 @@ namespace AZ::ShaderCompiler
             {
                 action(IdExpressionPart{globalSROToken, IdExpressionPart::GlobalScopeOperator});
             }
-            for (auto* identifier : ctx->qualifiedId()->nestedNameSpecifier()->Identifier())
+            azslParser::NestedNameSpecifierContext* nested = ctx->qualifiedId()->nestedNameSpecifier();
+            size_t scopeIndex = 0;
+            if (globalSROToken)
+            {
+                scopeIndex = 1;
+            }
+            for (auto* identifier : nested->Identifier())
             {
                 action(IdExpressionPart{identifier->getSymbol(), IdExpressionPart::NestedNameSpecifier});
-                std::unique_ptr<Token> nextToken = identifier->getSymbol()->getTokenSource()->nextToken();
-                action(IdExpressionPart{nextToken.get(), IdExpressionPart::ScopeResolutionOperator});
+                action(IdExpressionPart{nested->ColonColon(scopeIndex++)->getSymbol(), IdExpressionPart::ScopeResolutionOperator});
             }
             Token* last = ctx->qualifiedId()->unqualifiedId()->Identifier()->getSymbol();
             action(IdExpressionPart{last, IdExpressionPart::QualifiedLeaf});

@@ -25,3 +25,14 @@ pwsh Code/Tools/ShaderCompiler/Source/Grammar/Generate.ps1
 
 The script downloads ANTLR when it is not cached locally before invoking it.
 Commit grammar and generated-source changes together.
+
+## Preprocessing and Testing
+
+AZSLC preprocesses original AZSL files natively. Pass `-I` include directories, ordered `-D`/`-U` macro operations, and repeatable `--include` forced headers directly to the compiler. Use `-E` to stream an explicit preprocessing export and `--preprocessed` for legacy preprocessed input. See [the preprocessing design](Docs/Preprocessing.md) for the dialect, source ownership, diagnostics and prior art.
+
+Build and run the registered frontend checks:
+
+```sh
+cmake --build <build-directory> --target Azslc ShaderCompiler.Tests --config profile
+ctest --test-dir <build-directory> -C profile -R 'ShaderCompiler\.' --output-on-failure
+```

@@ -5,6 +5,11 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 #
 
+if(MSVC)
+    remove_definitions(-D_HAS_EXCEPTIONS=0)
+    add_compile_definitions(_HAS_EXCEPTIONS=1)
+endif()
+
 o3de_fetch_content(jsoncpp
     VERSION "1.6.2"
     LICENSE "Public Domain OR MIT"

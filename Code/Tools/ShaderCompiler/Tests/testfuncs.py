@@ -7,9 +7,12 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
+import json
 import re
 import subprocess
 import sys
+
 
 def findTokenToInt(output, expression):
     castStringToInt = lambda str : int(str) if str.isdigit() else -2
@@ -66,48 +69,12 @@ def launchCompiler(compilerPath, options, silent):
         sys.stderr.write(err.decode('utf-8'))
     return (out, err, process.returncode)
 
-def parseYaml(text):
-    '''designed to read-in the output of --dumpsym'''
-    try:
-        import yaml
-        #from yaml import CLoader as Loader
-    except ImportError:
-        print ("no yaml module. execute `pip install pyyaml`")
-        return None
-    try:
-        return yaml.load(text, Loader=yaml.FullLoader)
-    except yaml.YAMLError as e:
-        print ("Parsing YAML string failed")
-        if hasattr(e, "reason"):
-            print ("Reason:", e.reason)
-            print ("At position: {0} (line {1}) with encoding {2}".format(e.position, len(text[0:e.position].splitlines()), e.encoding))
-            print ("Invalid char code:", e.character)
-            print ("culprit context:", text[e.position - 8 : e.position + 8])
-        else: raise
-        raise
-    except AttributeError as ae:
-        if "has no attribute 'FullLoader'" in str(ae):
-            return yaml.load(text)
-        else: raise
-
 def buildAndGetSymbols(thefile, compilerPath, silent, extraArgs=[]):
-    '''returns tuple: (symbols-in-algebraic-form, ok-bool)'''
-    import clr
-    stdout, stderr, code = launchCompiler(compilerPath, [thefile, "--dumpsym"] + extraArgs, silent)
-    if code != 0:
-        if not silent: print (clr.fg.RED + clr.style.BRIGHT + "compilation failed " + clr.style.NORMAL + thefile + clr.style.RESET_ALL)
-        return (None, False)
-    else:
-        symbols = parseYaml(stdout)
-        if symbols is None:
-            print (clr.fg.RED + "Parsing result of --dumpsym failed" + clr.style.RESET_ALL)
-            return (None, False)
-        return (symbols, code == 0)
+    return buildAndGetJson(thefile, compilerPath, silent, ["--dumpsym"] + extraArgs)
 
 def buildAndGetJson(thefile, compilerPath, silent, extraArgs):
     '''returns tuple: (layouts-in-json-format, ok-bool)'''
     import clr
-    import json
 
     stdout, stderr, code = launchCompiler(compilerPath, [thefile] + extraArgs, silent)
     if code != 0:
@@ -150,7 +117,7 @@ def dumpKeywords(compilerPath):
         print (clr.fg.RED + "compilation failed" + clr.style.RESET_ALL)
         return (None, False)
     else:
-        tokens = parseYaml(stdout)
+        tokens = json.loads(stdout)
         if tokens is None:
             print (clr.fg.RED + "Parsing result of --listpredefined failed" + clr.style.RESET_ALL)
             return (None, False)

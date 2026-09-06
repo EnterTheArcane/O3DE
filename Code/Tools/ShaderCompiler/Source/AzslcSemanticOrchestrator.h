@@ -7,10 +7,10 @@
  */
 #pragma once
 
-#include "AzslcScopeTracker.h"
-#include "PreprocessorLineDirectiveFinder.h"
-#include "AzslcUnboundedArraysValidator.h"
 #include "AzslcKindInfo.h"
+#include "AzslcScopeTracker.h"
+#include "AzslcUnboundedArraysValidator.h"
+#include "SourceManager.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -24,7 +24,7 @@ namespace AZ::ShaderCompiler
     //! Deals with jobs that requires access to both Scope and SymbolTable
     struct SemanticOrchestrator
     {
-        SemanticOrchestrator(SymbolAggregator* sema, ScopeTracker* scope, azslLexer* lexer);
+        SemanticOrchestrator(SymbolAggregator* sema, ScopeTracker* scope, const antlr4::dfa::Vocabulary& vocabulary);
 
         //! Helper shortcut: uses the current scope as a starting location to lookup a symbol.
         //! Returns whatever SymbolAggretator's eponymous returns.
@@ -41,9 +41,9 @@ namespace AZ::ShaderCompiler
         //! Does this symbol resolves to an existing ID from the current scope ?
         //! Helper shortcut: will concatenate your symbol name to current scope before passing to SymbolAggregator
         //! Returns whatever SymbolAggretator's eponymous returns.
-        decltype(auto) AddIdentifier(UnqualifiedNameView usym, Kind kind, optional<size_t> lineNumber = none)
+        decltype(auto) AddIdentifier(UnqualifiedNameView usym, Kind kind, optional<SourceLocation> sourceLocation = none)
         {
-            return m_symbols->AddIdentifier(MakeFullyQualified(usym), kind, lineNumber);
+            return m_symbols->AddIdentifier(MakeFullyQualified(usym), kind, sourceLocation);
         }
 
         auto GetCurrentScopeIdAndKind() -> IdAndKind&;
@@ -91,8 +91,8 @@ namespace AZ::ShaderCompiler
         auto RegisterStructuredType(ContextType* ctx, Kind kind) -> IdAndKind&
         {
             auto const& idText     = ctx->Name->getText();
-            size_t line            = ctx->Name->getLine();
-            verboseCout << line << ": " << Kind::ToStr(kind) << " decl: " << idText << "\n";
+            SourceLocation sourceLocation = GetSourceLocation(ctx->Name);
+            verboseCout << sourceLocation << ": " << Kind::ToStr(kind) << " decl: " << idText << "\n";
             auto uqNameView        = UnqualifiedNameView{idText};
             if (auto* param = ExtractSpecificParent<azslParser::FunctionParamContext>(ctx))
             {
@@ -103,7 +103,7 @@ namespace AZ::ShaderCompiler
                                                               ") within function arguments is ill-formed"));
             }
             // register the new identifier:
-            IdAndKind& symbol      = AddIdentifier(uqNameView, kind, line);
+            IdAndKind& symbol      = AddIdentifier(uqNameView, kind, sourceLocation);
             auto& [uid, info]      = symbol;
             // now fillup what we can about the kindinfo:
             auto& classInfo        = info.GetSubRefAs<ClassInfo>();
@@ -197,7 +197,7 @@ namespace AZ::ShaderCompiler
 
         //! look up the type, verify that it exists and is a kind that may hold sub-members.
         //! takes supplementary parameters for better verbose or warning diagnostics.
-        auto VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, optional<string> lhsExpressionText = none, optional<size_t> line = none) const -> pair<bool, QualifiedName>;
+        auto VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, optional<string> lhsExpressionText = none, optional<SourceLocation> sourceLocation = none) const -> pair<bool, QualifiedName>;
 
         //! assemble a type (left) and an idexpr (right) to see if it forms a symbol that exists, and extracts its type.
         auto ComposeMemberNameWithScopeAndGetType(QualifiedName scopingType, AstIdExpr* rhsMember) const -> QualifiedName;
@@ -274,7 +274,7 @@ namespace AZ::ShaderCompiler
         enum class OnNotFoundOrWrongKind { Diagnose, Empty, CopeByCopy };
         //! Shorthand for symbol lookup, but with supplementary checks, specifics to types.
         //! throws if: the found symbol is not a type, or no found symbol and policy is Diagnose.
-        auto LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy, optional<size_t> sourceline = none) const noexcept(false) -> IdentifierUID;
+        auto LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy, optional<SourceLocation> sourceLocation = none) const noexcept(false) -> IdentifierUID;
 
         //! Find and return a registered type from an AST node. Will also resolve typeof expressions.
         //! could work from any sort of context that has an ExtractTypeNameFromAstContext override
@@ -315,7 +315,7 @@ namespace AZ::ShaderCompiler
                 // TODO: if it is a matrix<float,3,4> it needs to be canonicalized to float3x4
                 if (policy == OnNotFoundOrWrongKind::Diagnose)
                 {
-                    throw std::runtime_error(DiagLine(ctx->start) + uqName + " is not a supported type expression ?");
+                    throw SourceError(DiagLine(ctx->start) + uqName + " is not a supported type expression ?");
                 }
                 PrintWarning(Warn::W3, ctx->start, "unidentified name ", uqName, " in type expression");
                 if (policy == OnNotFoundOrWrongKind::CopeByCopy)
@@ -386,7 +386,7 @@ namespace AZ::ShaderCompiler
     public:
         SymbolAggregator* m_symbols;
         ScopeTracker*     m_scope;
-        azslLexer*        m_lexer;
+        const antlr4::dfa::Vocabulary& m_vocabulary;
         UnboundedArraysValidator m_unboundedArraysValidator;
 
     private:

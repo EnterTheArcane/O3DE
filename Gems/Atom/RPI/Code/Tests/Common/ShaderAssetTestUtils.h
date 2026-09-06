@@ -19,6 +19,7 @@ namespace UnitTest
         AZ::RHI::Ptr<AZ::RHI::ShaderResourceGroupLayout> optionalSrgLayout = nullptr,
         AZ::RPI::Ptr<AZ::RPI::ShaderOptionGroupLayout> optionalShaderOptions = nullptr,
         const AZ::Name& shaderName = AZ::Name{ "TestShader" },
-        const AZ::Name& drawListName = AZ::Name{ "depth" } );
+        const AZ::Name& drawListName = AZ::Name{ "depth" },
+        const AZ::Data::Asset<AZ::RPI::ShaderVariantAsset>& optionalRootVariant = {});
 
 } //namespace UnitTest

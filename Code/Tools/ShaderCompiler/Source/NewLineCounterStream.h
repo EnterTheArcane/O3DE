@@ -60,6 +60,19 @@ namespace AZ
             return *this;
         }
 
+        Self& operator<<(std::string_view text) override
+        {
+            for (char c : text)
+            {
+                if (c == '\n')
+                {
+                    ++m_lineCount;
+                }
+            }
+            m_wrappedStream << text;
+            return *this;
+        }
+
         template <class Any>
         Self& operator<<(Any&& thing)
         {

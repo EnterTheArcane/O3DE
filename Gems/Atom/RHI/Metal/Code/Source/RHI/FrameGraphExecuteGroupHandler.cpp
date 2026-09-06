@@ -110,7 +110,9 @@ namespace AZ
                     scopeAttachment != nullptr;
                     scopeAttachment = scopeAttachment->GetNext())
                 {
-                    if (scopeAttachment->GetUsage() == RHI::ScopeAttachmentUsage::Shader)
+                    // Copies also need a drawable-backed memory view and a non-framebuffer-only texture.
+                    if (scopeAttachment->GetUsage() == RHI::ScopeAttachmentUsage::Shader
+                        || scopeAttachment->GetUsage() == RHI::ScopeAttachmentUsage::Copy)
                     {
                         needsImageView = true;
                         break;

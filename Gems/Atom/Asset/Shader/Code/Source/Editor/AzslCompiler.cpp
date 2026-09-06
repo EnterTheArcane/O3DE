@@ -7,27 +7,18 @@
  */
 
 #include <AzCore/Casting/numeric_cast.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/IO/SystemFile.h>
-#include <AzCore/std/string/string.h>
-#include <AzCore/std/string/conversions.h>
-#include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/Memory/OSAllocator.h>
+#include <AzCore/Settings/SettingsRegistry.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/string/conversions.h>
+#include <AzCore/std/string/string.h>
 
 #include <Atom/RHI.Edit/ShaderPlatformInterface.h>
 #include <Atom/RHI.Edit/Utils.h>
 
-#include <Atom/RPI.Edit/Common/JsonUtils.h>
 #include <Atom/RPI.Reflect/Shader/ShaderOptionGroupLayout.h>
 
-#include <AzCore/Serialization/Json/JsonUtils.h>
-
-#include <AzFramework/IO/LocalFileIO.h>
-#include <AzFramework/IO/FileOperations.h> // [GFX TODO] Remove when [ATOM-15472]
 #include <AzFramework/StringFunc/StringFunc.h>
-
-#include <AzFramework/Process/ProcessCommunicator.h>
-#include <AzFramework/Process/ProcessWatcher.h>
 
 #include <AzslCompiler.h>
 #include <CommonFiles/CommonTypes.h>
@@ -50,8 +41,7 @@ namespace AZ
         {
         }
 
-        bool AzslCompiler::Compile(const AZStd::string& compilerParams,
-                                   const AZStd::string& outputFilePath) const
+        static AZStd::string GetAzslcExecutablePath()
         {
             // Relative executable paths are resolved from the engine binary directory, where runtime dependencies are staged.
             AZStd::string azslcPath = AZ_TRAIT_ATOM_SHADERBUILDER_AZSLC;
@@ -66,71 +56,93 @@ namespace AZ
                 }
             }
 
-            // Compilation parameters
-            AZStd::string azslcCommandOptions = AZStd::string::format("\"%s\"", m_inputFilePath.c_str());
-            // NOTE: On macOS AZSLc executable fails if there is an extra space in the command line when there are no compiler parameters,
-            // checking if there is no compiler parameters to avoid adding the extra space.
-            if (!compilerParams.empty())
-            {
-                AZStd::vector<AZStd::string> tokenizedArguments;
-                AzFramework::StringFunc::Tokenize(compilerParams, tokenizedArguments, " ");
-                AZStd::string cleanParams;
-                AzFramework::StringFunc::Join(cleanParams, tokenizedArguments.begin(), tokenizedArguments.end(), " ");
-                azslcCommandOptions += AZStd::string::format(" %s", cleanParams.c_str());
-            }
-
-            if (!outputFilePath.empty())
-            {
-                azslcCommandOptions += AZStd::string::format(" -o \"%s\"", outputFilePath.c_str());
-            }
-
-            // Run Shader Compiler
-            if (!RHI::ExecuteShaderCompiler(azslcPath, azslcCommandOptions, m_inputFilePath, m_tempFolder, "AZSLc"))
-            {
-                return false;
-            }
-
-            return true;
+            return azslcPath;
         }
 
-        bool AzslCompiler::EmitShader(AZ::IO::GenericStream& outputStream,
-                                      const AZStd::string& compilerParams) const
+        Outcome<AZStd::vector<AZStd::string>, AZStd::string> AzslCompiler::ParseDependencyReport(
+            AZStd::string_view json,
+            AZ::u32 exitCode)
         {
-            // .azslin for input and .azslout for output (in the same folder)
-            AZStd::string hlslOutputFile = m_inputFilePath;
-            AzFramework::StringFunc::Path::ReplaceExtension(hlslOutputFile, "azslout");
-
-            // Add the flag for the warning level
-            const AZStd::string parameters = compilerParams;
-            if (!Compile(parameters, hlslOutputFile))
+            if (json.empty())
             {
-                return false;
+                return Failure(AZStd::string("Empty AZSL dependency report"));
             }
-
-            AZ::IO::FileIOStream readAZSLOutput(hlslOutputFile.data(), AZ::IO::OpenMode::ModeRead);
-                
-            if (!readAZSLOutput.IsOpen())
+            rapidjson::Document document;
+            document.Parse<rapidjson::kParseValidateEncodingFlag>(json.data(), json.size());
+            if (document.HasParseError()
+                || !document.IsObject()
+                || !document.HasMember("version")
+                || !document["version"].IsUint()
+                || document["version"].GetUint() != 1
+                || !document.HasMember("complete")
+                || !document["complete"].IsBool()
+                || !document.HasMember("dependencies")
+                || !document["dependencies"].IsArray())
             {
-                AZ_Error(ShaderCompilerName, false, "Failed because the shader source file \"%s\" could not be opened %s", hlslOutputFile.data());
-                return false;
+                return Failure(AZStd::string("Invalid or unsupported AZSL dependency report"));
             }
-
-            if (!readAZSLOutput.CanRead())
+            if (exitCode > 1 || document["complete"].GetBool() != (exitCode == 0))
             {
-                AZ_Error(ShaderCompilerName, false, "Failed because the shader source file \"%s\" could not be read %s", hlslOutputFile.data());
-                readAZSLOutput.Close();
-                AZ::IO::SystemFile::Delete(hlslOutputFile.c_str());
-                return false;
+                return Failure(AZStd::string("AZSL dependency report disagrees with its process exit status"));
             }
+            AZStd::vector<AZStd::string> paths;
+            for (const auto& path : document["dependencies"].GetArray())
+            {
+                if (!path.IsString()
+                    || !path.GetStringLength()
+                    || strlen(path.GetString()) != path.GetStringLength()
+                    || !IO::PathView(path.GetString()).IsAbsolute())
+                {
+                    return Failure(AZStd::string("AZSL dependency report contains an invalid path"));
+                }
+                paths.emplace_back(path.GetString(), path.GetStringLength());
+            }
+            return Success(AZStd::move(paths));
+        }
 
-            AZStd::string readBuffer;
-            readBuffer.resize(readAZSLOutput.GetLength());
-            readAZSLOutput.Read(readBuffer.size(), readBuffer.data());
-            AZ_Assert(outputStream.CanWrite(), "Failed because the output stream for azslcout is not open for write!");
-            outputStream.Write(readBuffer.size(), readBuffer.data());
-            readAZSLOutput.Close();
+        Outcome<AZStd::vector<AZStd::string>, AZStd::string> AzslCompiler::DiscoverDependencies(
+            const AZStd::vector<AZStd::string>& compilerArguments) const
+        {
+            AZStd::vector<AZStd::string> arguments{ m_inputFilePath };
+            arguments.insert(arguments.end(), compilerArguments.begin(), compilerArguments.end());
+            arguments.push_back("--dependencies");
+            arguments.push_back("-o");
+            arguments.push_back("-");
+            const auto process = RHI::RunShaderCompiler(GetAzslcExecutablePath(), arguments, m_inputFilePath, "AZSL dependencies");
+            if (!process.m_launched || process.m_timedOut)
+            {
+                return Failure(AZStd::string("AZSL dependency discovery could not run to completion"));
+            }
+            auto paths = ParseDependencyReport(process.m_stdout, process.m_exitCode);
+            if (!paths.IsSuccess())
+            {
+                return Failure(paths.GetError() + ": " + process.m_stderr);
+            }
+            if (paths.GetValue().empty())
+            {
+                return Failure(AZStd::string("AZSL dependency discovery omitted the source dependencies"));
+            }
+            if (process.m_exitCode == 1)
+            {
+                AZ_Warning(
+                    ShaderCompilerName,
+                    false,
+                    "Dependency scan is incomplete. Compilation will report the source error.\n%s",
+                    process.m_stderr.c_str());
+            }
+            return paths;
+        }
 
-            return true;
+        bool AzslCompiler::Compile(const AZStd::vector<AZStd::string>& compilerParams, const AZStd::string& outputFilePath) const
+        {
+            AZStd::vector<AZStd::string> arguments{ m_inputFilePath };
+            arguments.insert(arguments.end(), compilerParams.begin(), compilerParams.end());
+            if (!outputFilePath.empty())
+            {
+                arguments.push_back("-o");
+                arguments.push_back(outputFilePath);
+            }
+            return RHI::ExecuteShaderCompiler(GetAzslcExecutablePath(), arguments, m_inputFilePath, m_tempFolder, "AZSLc");
         }
 
         namespace SubProducts = ShaderBuilderUtility::AzslSubProducts;
@@ -138,8 +150,7 @@ namespace AZ
         Outcome<SubProducts::Paths> AzslCompiler::EmitFullData(const AZStd::vector<AZStd::string>& azslcArguments,
                                                                const AZStd::string& outputFile) const
         {
-            const auto azslArgsStr = RHI::ShaderBuildArguments::ListAsString(azslcArguments);
-            bool success = Compile(azslArgsStr, outputFile);
+            bool success = Compile(azslcArguments, outputFile);
             if (!success)
             {
                 return Failure();
@@ -155,13 +166,7 @@ namespace AZ
                 subProductFilePath += AZStd::any_of(AZ_BEGIN_END(listOfJsons), [&](auto v) { return v == subProduct.m_value; }) ? ".json" : "";
                 productPaths[subProduct.m_value] = subProductFilePath;
             }
-            productPaths[SubProducts::azslin] = GetInputFilePath();  // post-fixup this one after the loop, because it's not an output of azslc, it's an output of the builder though.
             return { productPaths };
-        }
-
-        bool AzslCompiler::EmitInputAssembler(rapidjson::Document& output) const
-        {
-            return CompileToFileAndPrepareJsonDocument(output, "--ia", "ia.json") == BuildResult::Success;
         }
 
         bool AzslCompiler::ParseIaPopulateStructData(const rapidjson::Document& input, const AZStd::string& vertexEntryName, StructData& outStructData) const
@@ -264,11 +269,6 @@ namespace AZ
             outStructData.m_id = vertexEntryName;
             outStructData.m_members = structMembers;
             return true;
-        }
-
-        bool AzslCompiler::EmitOutputMerger(rapidjson::Document& output) const
-        {
-            return CompileToFileAndPrepareJsonDocument(output, "--om", "om.json") == BuildResult::Success;
         }
 
         bool AzslCompiler::ParseOmPopulateStructData(const rapidjson::Document& input, const AZStd::string& fragmentShaderName, StructData& outStructData) const
@@ -522,17 +522,6 @@ namespace AZ
             }
 
             return true;
-        }
-
-        const AZStd::string& AzslCompiler::GetInputFilePath() const
-        {
-            return m_inputFilePath;
-        }
-
-        bool AzslCompiler::EmitSrgData(rapidjson::Document& output, const AZStd::string& extraCompilerParams) const
-        {
-            AZStd::string parameters = AZStd::string::format("--srg %s", extraCompilerParams.c_str());
-            return CompileToFileAndPrepareJsonDocument(output, parameters.c_str(), "srg.json") == BuildResult::Success;
         }
 
         bool AzslCompiler::ParseSrgPopulateSrgData(const rapidjson::Document& input, SrgDataContainer& outSrgData) const
@@ -894,11 +883,6 @@ namespace AZ
             return true;
         }
 
-        bool AzslCompiler::EmitOptionsList(rapidjson::Document& output) const
-        {
-            return CompileToFileAndPrepareJsonDocument(output, "--options", "options.json") == BuildResult::Success;
-        }
-
         bool AzslCompiler::ParseOptionsPopulateOptionGroupLayout(
             const rapidjson::Document& input,
             RPI::Ptr<RPI::ShaderOptionGroupLayout>& shaderOptionGroupLayout,
@@ -1085,11 +1069,6 @@ namespace AZ
             return onSuccess();
         }
 
-        bool AzslCompiler::EmitBindingDependencies(rapidjson::Document& output) const
-        {
-            return PrepareJsonDocument(output, "bindingdep.json") == BuildResult::Success;
-        }
-
         bool AzslCompiler::ParseBindingdepPopulateBindingDependencies(
             const rapidjson::Document& input, BindingDependencies& bindingDependencies) const
         {
@@ -1190,55 +1169,6 @@ namespace AZ
             return true;
         }
         
-        AzslCompiler::BuildResult AzslCompiler::CompileToFileAndPrepareJsonDocument(
-            rapidjson::Document& outputJson,
-            const char* compilerCommandSwitch,
-            const char* outputExtension,
-            AfterRead deleteOutputFileAfterReading /*= AfterRead::Keep*/) const
-        {
-            // Emitted output filename and path is same as input file, but extension is .json
-            AZStd::string outputFile = m_inputFilePath;
-            AzFramework::StringFunc::Path::ReplaceExtension(outputFile, outputExtension);
-
-            AZ_Error("AzslCompiler", AZ::IO::SystemFile::Exists(outputFile.c_str()), "Destination file %s, exists. will be overwritten", outputFile.c_str());
-
-            if (!Compile(compilerCommandSwitch, outputFile))
-            {
-                return BuildResult::CompilationFailed;
-            }
-
-            auto readJsonResult = JsonSerializationUtils::ReadJsonFile(outputFile, AZ::RPI::JsonUtils::DefaultMaxFileSize);
-
-            if (readJsonResult.IsSuccess())
-            {
-                outputJson = readJsonResult.TakeValue();
-                if (deleteOutputFileAfterReading == AfterRead::Delete)
-                {
-                    AZ::IO::SystemFile::Delete(outputFile.c_str());  // Delete the .json file after reading
-                }
-            }
-            return BuildResult::Success;
-        }
-
-        AzslCompiler::BuildResult AzslCompiler::PrepareJsonDocument(
-            rapidjson::Document& outputJson,
-            const char* outputExtension) const
-        {
-            // Emitted output filename and path is same as input file, but extension is .json
-            AZStd::string outputFile = m_inputFilePath;
-            AzFramework::StringFunc::Path::ReplaceExtension(outputFile, outputExtension);
-
-            auto readJsonResult = JsonSerializationUtils::ReadJsonFile(outputFile, AZ::RPI::JsonUtils::DefaultMaxFileSize);
-
-            if (readJsonResult.IsSuccess())
-            {
-                outputJson = readJsonResult.TakeValue();
-                return BuildResult::Success;
-            }
-
-            return BuildResult::JsonReadbackFailed;
-        }
-
         AZStd::any AsAny(const rapidjson::Value& value)
         {
             if (value.IsBool())
