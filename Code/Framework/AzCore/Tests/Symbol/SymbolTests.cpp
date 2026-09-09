@@ -284,7 +284,7 @@ namespace UnitTest
         EXPECT_TRUE(symbol.IsEmpty());
         EXPECT_TRUE(symbol.GetStringView().empty());
         EXPECT_STREQ(symbol.GetCStr(), "");
-        EXPECT_EQ(AZ::SymbolHash{}(symbol), 0);
+        EXPECT_EQ(AZStd::hash<AZ::Symbol>{}(symbol), 0);
     }
 
     TEST_F(SymbolTests, EmptyValueHasIdenticalConstructionAndOptionalSemantics)
@@ -462,7 +462,7 @@ namespace UnitTest
 
         EXPECT_EQ(first, second);
         EXPECT_EQ(first, literal);
-        EXPECT_EQ(AZ::SymbolHash{}(first), AZ::SymbolHash{}(literal));
+        EXPECT_EQ(AZStd::hash<AZ::Symbol>{}(first), AZStd::hash<AZ::Symbol>{}(literal));
         EXPECT_EQ(first.GetStringView(), "CanonicalSymbol");
         EXPECT_STREQ(first.GetCStr(), "CanonicalSymbol");
     }
@@ -473,8 +473,28 @@ namespace UnitTest
         const AZ::Symbol upper{AZStd::string_view{"Player"}};
 
         EXPECT_NE(lower, upper);
-        EXPECT_TRUE(AZ::SymbolEqual{}(lower, lower));
-        EXPECT_FALSE(AZ::SymbolEqual{}(lower, upper));
+        EXPECT_TRUE(AZStd::equal_to<AZ::Symbol>{}(lower, lower));
+        EXPECT_FALSE(AZStd::equal_to<AZ::Symbol>{}(lower, upper));
+    }
+
+    TEST_F(SymbolTests, UnorderedMapUsesDefaultHashAndEquality)
+    {
+        using namespace AZ::Literals;
+
+        AZStd::unordered_map<AZ::Symbol, int> values;
+        EXPECT_TRUE(values.emplace(AZ::Symbol{}, 0).second);
+        EXPECT_TRUE(values.emplace(AZ::Symbol{"MapKey"}, 42).second);
+        EXPECT_TRUE(values.emplace(AZ::Symbol{"mapkey"}, 99).second);
+        EXPECT_FALSE(values.emplace("MapKey"_sym, 7).second);
+
+        EXPECT_EQ(values.size(), 3);
+        ASSERT_NE(values.find(AZ::Symbol{""}), values.end());
+        ASSERT_NE(values.find("MapKey"_sym), values.end());
+        ASSERT_NE(values.find(AZ::Symbol{"mapkey"}), values.end());
+        EXPECT_EQ(values.at(AZ::Symbol{""}), 0);
+        EXPECT_EQ(values.at("MapKey"_sym), 42);
+        EXPECT_EQ(values.at(AZ::Symbol{"mapkey"}), 99);
+        EXPECT_EQ(values.find(AZ::Symbol{"MissingMapKey"}), values.end());
     }
 
     TEST_F(SymbolTests, LiteralIsCanonicalAcrossTranslationUnits)

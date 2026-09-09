@@ -117,25 +117,7 @@ namespace AZ
         const Internal::SymbolEntry* m_entry = nullptr;
 
         friend struct Internal::SymbolAccess;
-        friend struct SymbolHash;
-    };
-
-    struct SymbolHash final
-    {
-        [[nodiscard]]
-        size_t operator()(Symbol value) const
-        {
-            return AZStd::hash<const Internal::SymbolEntry*>{}(value.m_entry);
-        }
-    };
-
-    struct SymbolEqual final
-    {
-        [[nodiscard]]
-        constexpr bool operator()(Symbol lhs, Symbol rhs) const
-        {
-            return lhs == rhs;
-        }
+        friend struct AZStd::hash<Symbol>;
     };
 } // namespace AZ
 
@@ -145,6 +127,6 @@ struct AZStd::hash<AZ::Symbol>
     [[nodiscard]]
     size_t operator()(const AZ::Symbol value) const
     {
-        return AZ::SymbolHash{}(value);
+        return AZStd::hash<const AZ::Internal::SymbolEntry*>{}(value.m_entry);
     }
 };

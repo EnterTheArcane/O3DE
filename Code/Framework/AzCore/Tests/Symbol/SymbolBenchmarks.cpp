@@ -121,7 +121,7 @@ namespace AZ::SymbolBenchmarks
 
         for ([[maybe_unused]] auto iteration : state)
         {
-            benchmark::DoNotOptimize(SymbolHash{}(symbol));
+            benchmark::DoNotOptimize(AZStd::hash<Symbol>{}(symbol));
         }
         state.SetItemsProcessed(state.iterations());
     }
