@@ -858,6 +858,48 @@ namespace UnitTest
         }
     }
 
+    TEST_F(SymbolTests, FullHashCollisionChainsRemainCanonicalAcrossResizeBoundaries)
+    {
+        FailingSymbolAllocator allocator{(std::numeric_limits<size_t>::max)()};
+        AZ::Internal::SymbolTable table{allocator};
+        constexpr AZ::u64 Hash = 0x6FFFFFFFFFFFFFB7;
+        constexpr size_t ValueCount = 1024;
+        AZStd::array<AZStd::string, ValueCount> values;
+        AZStd::array<const AZ::Internal::SymbolEntry*, ValueCount> entries{};
+        const size_t shardIndex = AZ::Internal::SymbolTableTestAccess::SplitHash(Hash).m_shardIndex;
+        size_t previousCapacity = 0;
+
+        for (size_t index = 0; index < ValueCount; ++index)
+        {
+            values[index] = AZStd::string::format("CollisionChainValue%04zu", index);
+            entries[index] = AZ::Internal::SymbolTableTestAccess::InternWithHash(table, values[index], Hash);
+            ASSERT_NE(entries[index], nullptr);
+            const auto storage = AZ::Internal::SymbolTableTestAccess::GetTableStorage(table, shardIndex);
+            if (storage.m_capacity != previousCapacity)
+            {
+                for (size_t existingIndex = 0; existingIndex <= index; ++existingIndex)
+                {
+                    EXPECT_EQ(
+                        AZ::Internal::SymbolTableTestAccess::FindWithHash(table, values[existingIndex], Hash),
+                        entries[existingIndex]);
+                }
+                previousCapacity = storage.m_capacity;
+            }
+        }
+
+        const size_t allocationCount = allocator.GetAllocations().size();
+        const size_t storageBytes = table.GetStorageBytes();
+        allocator.FailNextAllocation();
+        for (size_t index = 0; index < ValueCount; ++index)
+        {
+            EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::FindWithHash(table, values[index], Hash), entries[index]);
+            EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::InternWithHash(table, values[index], Hash), entries[index]);
+        }
+        EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::FindWithHash(table, "CollisionChainValue9999", Hash), nullptr);
+        EXPECT_EQ(allocator.GetAllocations().size(), allocationCount);
+        EXPECT_EQ(table.GetStorageBytes(), storageBytes);
+    }
+
     TEST_F(SymbolTests, KnownHitReturnsBeforeValidation)
     {
         constexpr char InvalidValue[] = {'a', '\0', 'b'};

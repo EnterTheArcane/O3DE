@@ -18,23 +18,54 @@ namespace UnitTest
 
     TEST_F(SymbolGroupTests, EveryLaneMaskMatchesAndFindsEmptyControls)
     {
-        AZ::u8 controls[AZ::Internal::SymbolGroup::Width];
-        for (AZ::u32 mask = 0; mask <= 0xFFFF; ++mask)
+        alignas(16) AZ::u8 storage[AZ::Internal::SymbolGroup::Width * 2];
+        for (size_t offset = 0; offset < AZ::Internal::SymbolGroup::Width; ++offset)
         {
-            for (size_t lane = 0; lane < AZ::Internal::SymbolGroup::Width; ++lane)
+            AZ::u8* controls = storage + offset;
+            for (AZ::u32 mask = 0; mask <= 0xFFFF; ++mask)
             {
-                controls[lane] = AZ::Internal::SymbolGroupEmptyControl;
-                if ((mask & (1u << lane)) != 0)
+                for (size_t lane = 0; lane < AZ::Internal::SymbolGroup::Width; ++lane)
                 {
-                    controls[lane] = 0x7F;
+                    controls[lane] = AZ::Internal::SymbolGroupEmptyControl;
+                    if ((mask & (1u << lane)) != 0)
+                    {
+                        controls[lane] = 0x7F;
+                    }
+                }
+                const auto native = AZ::Internal::SymbolGroup::Match(controls, 0x7F);
+                const auto scalar = AZ::Internal::SymbolGroup::MatchScalar(controls, 0x7F);
+                EXPECT_EQ(native.m_matches, mask);
+                EXPECT_EQ(native.m_empty, static_cast<AZ::u16>(~mask));
+                EXPECT_EQ(native.m_matches, scalar.m_matches);
+                EXPECT_EQ(native.m_empty, scalar.m_empty);
+            }
+        }
+    }
+
+    TEST_F(SymbolGroupTests, EveryFingerprintKeepsMatchAndEmptyLanesDistinct)
+    {
+        AZ::u8 controls[AZ::Internal::SymbolGroup::Width];
+        for (AZ::u16 fingerprint = 0; fingerprint < 0x80; ++fingerprint)
+        {
+            for (size_t matchLane = 0; matchLane < AZ::Internal::SymbolGroup::Width; ++matchLane)
+            {
+                for (size_t emptyLane = 0; emptyLane < AZ::Internal::SymbolGroup::Width; ++emptyLane)
+                {
+                    if (matchLane == emptyLane)
+                    {
+                        continue;
+                    }
+                    for (AZ::u8& control : controls)
+                    {
+                        control = static_cast<AZ::u8>(fingerprint ^ 1);
+                    }
+                    controls[matchLane] = static_cast<AZ::u8>(fingerprint);
+                    controls[emptyLane] = AZ::Internal::SymbolGroupEmptyControl;
+                    const auto masks = AZ::Internal::SymbolGroup::Match(controls, static_cast<AZ::u8>(fingerprint));
+                    EXPECT_EQ(masks.m_matches, 1u << matchLane);
+                    EXPECT_EQ(masks.m_empty, 1u << emptyLane);
                 }
             }
-            const auto native = AZ::Internal::SymbolGroup::Match(controls, 0x7F);
-            const auto scalar = AZ::Internal::SymbolGroup::MatchScalar(controls, 0x7F);
-            EXPECT_EQ(native.m_matches, mask);
-            EXPECT_EQ(native.m_empty, static_cast<AZ::u16>(~mask));
-            EXPECT_EQ(native.m_matches, scalar.m_matches);
-            EXPECT_EQ(native.m_empty, scalar.m_empty);
         }
     }
 
