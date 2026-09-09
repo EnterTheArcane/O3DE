@@ -12,6 +12,7 @@
 #include <AzCore/std/createdestroy.h>
 #include <AzCore/std/typetraits/is_destructible.h>
 #include <AzCore/std/utility/move.h>
+#include <AzCore/std/utils.h>
 
 #include <new>
 
@@ -27,19 +28,19 @@ namespace AZ
         {
         public:
             template<class... Args>
-            explicit NoDestructorStorage(Args&&... args)
+            explicit constexpr NoDestructorStorage(Args&&... args)
                 : m_value(AZStd::forward<Args>(args)...)
             {
             }
 
             [[nodiscard]]
-            T& Get()
+            constexpr T& Get()
             {
                 return m_value;
             }
 
             [[nodiscard]]
-            const T& Get() const
+            constexpr const T& Get() const
             {
                 return m_value;
             }
@@ -76,7 +77,8 @@ namespace AZ
     } // namespace Internal
 
     //! Owns an in-place value whose destructor is deliberately never invoked.
-    //! Trivially destructible values are stored directly. Other values use aligned byte storage so this wrapper remains trivially destructible.
+    //! Trivially destructible values are stored directly.
+    //! Other values use aligned byte storage so this wrapper remains trivially destructible.
     //! This suppresses destruction only.
     //! It does not pin the containing module or extend the lifetime of allocators, services, vtables, or constructor arguments used by T.
     template<class T>
@@ -86,45 +88,45 @@ namespace AZ
         AZ_DISABLE_COPY_MOVE(NoDestructor);
 
         template<class... Args>
-        explicit NoDestructor(Args&&... args)
+        explicit constexpr NoDestructor(Args&&... args)
             : m_storage(AZStd::forward<Args>(args)...)
         {
         }
 
         [[nodiscard]]
-        T& Get()
+        constexpr T& Get()
         {
             return m_storage.Get();
         }
 
         [[nodiscard]]
-        const T& Get() const
+        constexpr const T& Get() const
         {
             return m_storage.Get();
         }
 
         [[nodiscard]]
-        T& operator*()
+        constexpr T& operator*()
         {
             return Get();
         }
 
         [[nodiscard]]
-        const T& operator*() const
+        constexpr const T& operator*() const
         {
             return Get();
         }
 
         [[nodiscard]]
-        T* operator->()
+        constexpr T* operator->()
         {
-            return &Get();
+            return AZStd::addressof(Get());
         }
 
         [[nodiscard]]
-        const T* operator->() const
+        constexpr const T* operator->() const
         {
-            return &Get();
+            return AZStd::addressof(Get());
         }
 
     private:

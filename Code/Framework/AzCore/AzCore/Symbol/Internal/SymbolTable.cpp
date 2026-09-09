@@ -9,7 +9,6 @@
 #include <AzCore/Symbol/Internal/SymbolTable.h>
 
 #include <AzCore/Math/Random.h>
-#include <AzCore/Symbol/Internal/SymbolFailure.h>
 #include <AzCore/Symbol/Internal/SymbolGroup.h>
 #include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
@@ -20,6 +19,8 @@
 #include <AzCore/std/parallel/lock.h>
 
 #include <bit>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <limits>
 
@@ -31,8 +32,6 @@
 
 namespace AZ::Internal
 {
-    constexpr size_t SymbolStorageBudgetBytes = size_t{1024} * 1024 * 1024;
-
     namespace
     {
         constexpr size_t SymbolTableInvalidSlot = static_cast<size_t>(-1);
@@ -45,19 +44,19 @@ namespace AZ::Internal
         [[nodiscard]]
         bool FillProcessHashSecret(
             void* data,
-            const size_t dataSize)
+            const size_t size)
         {
             BetterPseudoRandom random;
-            return random.GetRandom(data, dataSize);
+            return random.GetRandom(data, size);
         }
 
         [[nodiscard]]
         bool EntriesMatch(
             const SymbolEntry& entry,
             const AZStd::string_view value,
-            const u64 tableHash)
+            const u64 hash)
         {
-            if (entry.m_tableHash != tableHash || entry.m_size != value.size())
+            if (entry.m_hash != hash || entry.m_size != value.size())
             {
                 return false;
             }
@@ -128,30 +127,38 @@ namespace AZ::Internal
 
     const SymbolEntry* SymbolTable::InternValidated(const AZStd::string_view value)
     {
-        if (value.empty() || value.size() > Symbol::MaxStringSize)
+        if (value.empty())
+        {
+            return nullptr;
+        }
+        if (!IsSymbolValueSizeAllowed(value.size()))
         {
             return nullptr;
         }
 
-        const u64 tableHash = HashValue(value);
-        return TryInternWithTableHash(value, tableHash);
+        const u64 hash = HashValue(value);
+        return TryInternWithHash(value, hash);
     }
 
     const SymbolEntry* SymbolTable::TryIntern(const AZStd::string_view value)
     {
-        if (value.empty() || value.size() > Symbol::MaxStringSize)
+        if (value.empty())
+        {
+            return nullptr;
+        }
+        if (!IsSymbolValueSizeAllowed(value.size()))
         {
             return nullptr;
         }
 
-        const u64 tableHash = HashValue(value);
-        const HashParts hashParts = SplitHash(tableHash);
+        const u64 hash = HashValue(value);
+        const HashParts hashParts = SplitHash(hash);
         Shard& shard = m_shards[hashParts.m_shardIndex];
         {
             AZStd::lock_guard<AZStd::mutex> lock(shard.m_mutex);
             if (shard.m_table.m_controls)
             {
-                const ProbeResult result = Probe(shard.m_table, value, tableHash);
+                const ProbeResult result = Probe(shard.m_table, value, hash);
                 if (result.m_entry)
                 {
                     return result.m_entry;
@@ -159,22 +166,20 @@ namespace AZ::Internal
             }
         }
 
-        if (ValidateSymbolValue(value, Symbol::MaxStringSize) != SymbolValidationError::None)
+        // Keep validation outside the shard lock so missing values do not stall unrelated hits during the UTF-8 scan.
+        // Another thread can insert during validation.
+        // The insertion path must probe again after reacquiring the lock.
+        if (!Symbol::IsValid(value))
         {
             return nullptr;
         }
 
-        return TryInternWithTableHash(value, tableHash);
+        return TryInternWithHash(value, hash);
     }
 
     const SymbolEntry* SymbolTable::Find(const AZStd::string_view value)
     {
-        if (value.size() > Symbol::MaxStringSize)
-        {
-            return nullptr;
-        }
-
-        return FindWithTableHash(value, HashValue(value));
+        return FindWithHash(value, HashValue(value));
     }
 
     SymbolStorageStats SymbolTable::GetStorageStats() const
@@ -210,13 +215,13 @@ namespace AZ::Internal
         return XXH3_64bits_withSecret(value.data(), value.size(), m_hashSecret, HashSecretByteCount);
     }
 
-    SymbolTable::HashParts SymbolTable::SplitHash(const u64 tableHash)
+    SymbolTable::HashParts SymbolTable::SplitHash(const u64 hash)
     {
         constexpr u64 FingerprintMask = (u64{1} << FingerprintBitCount) - 1;
         constexpr u64 PlacementMask = (u64{1} << PlacementBitCount) - 1;
-        const u64 h1 = tableHash >> FingerprintBitCount;
+        const u64 h1 = hash >> FingerprintBitCount;
         return HashParts{
-            .m_h2 = static_cast<u8>(tableHash & FingerprintMask),
+            .m_h2 = static_cast<u8>(hash & FingerprintMask),
             .m_shardIndex = static_cast<size_t>(h1 >> PlacementBitCount),
             .m_placement = h1 & PlacementMask,
         };
@@ -225,14 +230,14 @@ namespace AZ::Internal
     SymbolTable::ProbeResult SymbolTable::Probe(
         const TableStorage& table,
         const AZStd::string_view value,
-        const u64 tableHash)
+        const u64 hash)
     {
         constexpr u64 FingerprintMask = (u64{1} << FingerprintBitCount) - 1;
         constexpr u64 PlacementMask = (u64{1} << PlacementBitCount) - 1;
         const size_t groupCount = table.m_capacity / SymbolGroup::Width;
         const size_t groupMask = groupCount - 1;
-        const u8 fingerprint = static_cast<u8>(tableHash & FingerprintMask);
-        const u64 placement = (tableHash >> FingerprintBitCount) & PlacementMask;
+        const u8 fingerprint = static_cast<u8>(hash & FingerprintMask);
+        const u64 placement = (hash >> FingerprintBitCount) & PlacementMask;
         size_t groupIndex = static_cast<size_t>(placement) & groupMask;
 
         for (size_t probeIndex = 0; probeIndex < groupCount; ++probeIndex)
@@ -248,7 +253,7 @@ namespace AZ::Internal
 
                 const SymbolEntry* entry = table.m_slots[groupStart + lane];
                 AZ_Assert(entry, "Occupied AZ::Symbol control has no entry");
-                if (entry && EntriesMatch(*entry, value, tableHash))
+                if (entry && EntriesMatch(*entry, value, hash))
                 {
                     return ProbeResult{
                         .m_entry = entry,
@@ -271,18 +276,18 @@ namespace AZ::Internal
         return ProbeResult{};
     }
 
-    const SymbolEntry* SymbolTable::TryInternWithTableHash(
+    const SymbolEntry* SymbolTable::TryInternWithHash(
         const AZStd::string_view value,
-        const u64 tableHash)
+        const u64 hash)
     {
-        const HashParts hashParts = SplitHash(tableHash);
+        const HashParts hashParts = SplitHash(hash);
         Shard& shard = m_shards[hashParts.m_shardIndex];
 
         AZStd::lock_guard<AZStd::mutex> lock(shard.m_mutex);
         ProbeResult result;
         if (shard.m_table.m_controls)
         {
-            result = Probe(shard.m_table, value, tableHash);
+            result = Probe(shard.m_table, value, hash);
             if (result.m_entry)
             {
                 return result.m_entry;
@@ -290,7 +295,7 @@ namespace AZ::Internal
         }
 
         const SymbolArena::Checkpoint arenaCheckpoint = shard.m_arena.GetCheckpoint();
-        SymbolEntry* entry = shard.m_arena.AllocateEntry(value, tableHash);
+        SymbolEntry* entry = shard.m_arena.AllocateEntry(value, hash);
         if (!entry)
         {
             return nullptr;
@@ -303,7 +308,7 @@ namespace AZ::Internal
                 shard.m_arena.Rollback(arenaCheckpoint);
                 return nullptr;
             }
-            result = Probe(shard.m_table, value, tableHash);
+            result = Probe(shard.m_table, value, hash);
         }
 
         if (shard.m_size >= shard.m_table.m_capacity - shard.m_table.m_capacity / 8)
@@ -313,7 +318,7 @@ namespace AZ::Internal
                 shard.m_arena.Rollback(arenaCheckpoint);
                 return nullptr;
             }
-            result = Probe(shard.m_table, value, tableHash);
+            result = Probe(shard.m_table, value, hash);
         }
 
         if (result.m_emptySlot == SymbolTableInvalidSlot)
@@ -328,11 +333,11 @@ namespace AZ::Internal
         return entry;
     }
 
-    const SymbolEntry* SymbolTable::FindWithTableHash(
+    const SymbolEntry* SymbolTable::FindWithHash(
         const AZStd::string_view value,
-        const u64 tableHash)
+        const u64 hash)
     {
-        const HashParts hashParts = SplitHash(tableHash);
+        const HashParts hashParts = SplitHash(hash);
         Shard& shard = m_shards[hashParts.m_shardIndex];
 
         AZStd::lock_guard<AZStd::mutex> lock(shard.m_mutex);
@@ -340,7 +345,7 @@ namespace AZ::Internal
         {
             return nullptr;
         }
-        return Probe(shard.m_table, value, tableHash).m_entry;
+        return Probe(shard.m_table, value, hash).m_entry;
     }
 
     bool SymbolTable::AllocateTableStorage(
@@ -348,8 +353,9 @@ namespace AZ::Internal
         TableStorage& table)
     {
         size_t storageByteSize = 0;
-        if (capacity < SymbolGroup::Width || capacity % SymbolGroup::Width != 0 ||
-            !CalculateTableStorageByteSize(capacity, storageByteSize))
+        if (capacity < SymbolGroup::Width
+            || capacity % SymbolGroup::Width != 0
+            || !CalculateTableStorageByteSize(capacity, storageByteSize))
         {
             return false;
         }
@@ -430,11 +436,11 @@ namespace AZ::Internal
         TableStorage& table,
         const SymbolEntry* entry)
     {
-        const HashParts hashParts = SplitHash(entry->m_tableHash);
+        const HashParts hashParts = SplitHash(entry->m_hash);
         const ProbeResult result = Probe(
             table,
-            AZStd::string_view{entry->GetData(), entry->m_size},
-            entry->m_tableHash);
+            AZStd::string_view{entry->GetData(), static_cast<size_t>(entry->m_size)},
+            entry->m_hash);
         AZ_Assert(!result.m_entry && result.m_emptySlot != SymbolTableInvalidSlot, "Invalid AZ::Symbol rehash result");
         table.m_slots[result.m_emptySlot] = entry;
         table.m_controls[result.m_emptySlot] = hashParts.m_h2;
@@ -465,7 +471,11 @@ namespace AZ::Internal
     {
         if (!randomFill(hashSecret, HashSecretByteCount))
         {
-            FailSymbol("Failed to initialize the AZ::Symbol process hash secret");
+            constexpr const char* reason = "Failed to initialize the AZ::Symbol process hash secret";
+            std::fprintf(stderr, "AZ::Symbol fatal error: %s\n", reason);
+            std::fflush(stderr);
+            AZ_Assert(false, "%s", reason);
+            std::abort();
         }
     }
 

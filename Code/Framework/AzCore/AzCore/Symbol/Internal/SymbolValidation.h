@@ -16,7 +16,6 @@ namespace AZ::Internal
     enum class SymbolValidationError : u8
     {
         None,
-        TooLong,
         EmbeddedNull,
         MalformedUtf8,
     };
@@ -27,34 +26,28 @@ namespace AZ::Internal
         return (value & 0xC0) == 0x80;
     }
 
-    //! Validates UTF-8 without normalization or case folding. U+0000 is excluded so every value has a faithful C-string view.
+    //! Validates UTF-8 without normalization or case folding.
+    //! U+0000 is excluded so every value has a faithful C-string view.
     [[nodiscard]]
-    constexpr SymbolValidationError ValidateSymbolValue(
-        const AZStd::string_view value,
-        const size_t maximumSize)
+    constexpr SymbolValidationError ValidateSymbolValue(const AZStd::string_view value)
     {
-        if (value.size() > maximumSize)
-        {
-            return SymbolValidationError::TooLong;
-        }
-
         size_t offset = 0;
         while (offset < value.size())
         {
             const u8 first = static_cast<u8>(value[offset]);
-            if (first == 0)
-            {
-                return SymbolValidationError::EmbeddedNull;
-            }
-            if (first < 0x80)
+            if (first >= 0x01 && first <= 0x7F)
             {
                 ++offset;
                 continue;
             }
+            if (first == 0)
+            {
+                return SymbolValidationError::EmbeddedNull;
+            }
 
             if (first >= 0xC2 && first <= 0xDF)
             {
-                if (offset + 1 >= value.size()
+                if (value.size() - offset < 2
                     || !IsUtf8Continuation(static_cast<u8>(value[offset + 1])))
                 {
                     return SymbolValidationError::MalformedUtf8;
@@ -65,7 +58,7 @@ namespace AZ::Internal
 
             if (first >= 0xE0 && first <= 0xEF)
             {
-                if (offset + 2 >= value.size())
+                if (value.size() - offset < 3)
                 {
                     return SymbolValidationError::MalformedUtf8;
                 }
@@ -87,7 +80,7 @@ namespace AZ::Internal
 
             if (first >= 0xF0 && first <= 0xF4)
             {
-                if (offset + 3 >= value.size())
+                if (value.size() - offset < 4)
                 {
                     return SymbolValidationError::MalformedUtf8;
                 }
@@ -120,8 +113,6 @@ namespace AZ::Internal
         {
         case SymbolValidationError::None:
             return "valid AZ::Symbol value";
-        case SymbolValidationError::TooLong:
-            return "AZ::Symbol value exceeds AZ::Symbol::MaxStringSize";
         case SymbolValidationError::EmbeddedNull:
             return "AZ::Symbol value contains U+0000";
         case SymbolValidationError::MalformedUtf8:

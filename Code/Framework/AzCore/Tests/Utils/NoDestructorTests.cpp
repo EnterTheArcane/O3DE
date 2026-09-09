@@ -12,14 +12,36 @@
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/typetraits/is_destructible.h>
+#include <AzCore/std/utils.h>
 
 namespace UnitTest
 {
+    static_assert([]() constexpr
+    {
+        AZ::NoDestructor<int> value{41};
+        ++*value;
+        const AZ::NoDestructor<int>& constantValue = value;
+        return constantValue.Get() == 42 && *constantValue.operator->() == 42;
+    }());
+
     namespace
     {
         struct TrivialValue final
         {
             int m_value;
+        };
+
+        struct OverloadedAddressValue final
+        {
+            OverloadedAddressValue* operator&()
+            {
+                return nullptr;
+            }
+
+            const OverloadedAddressValue* operator&() const
+            {
+                return nullptr;
+            }
         };
 
         struct ForwardedValue final
@@ -91,6 +113,15 @@ namespace UnitTest
 
         EXPECT_EQ(value->m_source, &source);
         EXPECT_EQ(value->m_value, 29);
+    }
+
+    TEST(NoDestructorTests, ArrowAccessBypassesOverloadedAddressOperator)
+    {
+        AZ::NoDestructor<OverloadedAddressValue> value;
+        EXPECT_EQ(value.operator->(), AZStd::addressof(value.Get()));
+
+        const AZ::NoDestructor<OverloadedAddressValue>& constValue = value;
+        EXPECT_EQ(constValue.operator->(), AZStd::addressof(constValue.Get()));
     }
 
     TEST(NoDestructorTests, StoragePreservesContainedAlignment)

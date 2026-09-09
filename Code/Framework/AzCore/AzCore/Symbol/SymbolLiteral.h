@@ -40,7 +40,7 @@ namespace AZ::Internal
     {
         constexpr AZStd::string_view value{Literal.m_value, Literal.GetSize()};
         static_assert(
-            ValidateSymbolValue(value, Symbol::MaxStringSize) == SymbolValidationError::None,
+            Symbol::IsValid(value),
             "AZ::Symbol literal is outside the supported text domain");
 
         if constexpr (Literal.GetSize() == 0)
@@ -48,7 +48,8 @@ namespace AZ::Internal
             return Symbol{};
         }
 
-        //! The first executed use interns the literal and can lock or allocate. Later uses return this cached pointer identity directly.
+        // The first executed use interns the literal and can lock or allocate.
+        // Later uses return this cached pointer identity directly.
         static const Symbol symbol = InternValidatedSymbol(value);
         return symbol;
     }

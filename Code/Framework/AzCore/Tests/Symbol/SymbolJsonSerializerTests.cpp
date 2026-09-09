@@ -8,6 +8,7 @@
 
 #include <AzCore/Symbol/Symbol.h>
 #include <AzCore/Symbol/SymbolJsonSerializer.h>
+#include <AzCore/Symbol/Internal/SymbolStorageBudget.h>
 #include <AzCore/std/string/string.h>
 
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
@@ -73,9 +74,29 @@ namespace JsonSerializationTests
         EXPECT_TRUE(output.IsEmpty());
     }
 
+    TEST_F(SymbolJsonSerializerTests, ValidValueAbovePolicyIsUnavailableAndPreservesDestination)
+    {
+        if constexpr (AZ::Internal::SymbolValueSizeLimit != 0)
+        {
+            const AZStd::string value(AZ::Internal::SymbolValueSizeLimit + 1, 'j');
+            rapidjson::Value jsonValue;
+            jsonValue.SetString(value.data(), static_cast<rapidjson::SizeType>(value.size()));
+            const AZ::Symbol original{"JsonPolicyOriginal"};
+            AZ::Symbol output = original;
+            const auto result = m_serializer->Load(
+                &output,
+                azrtti_typeid<AZ::Symbol>(),
+                jsonValue,
+                *m_jsonDeserializationContext);
+            EXPECT_EQ(result.GetResultCode().GetOutcome(), AZ::JsonSerializationResult::Outcomes::Unavailable);
+            EXPECT_EQ(output, original);
+            EXPECT_FALSE(AZ::Symbol::Find(value));
+        }
+    }
+
     TEST_F(SymbolJsonSerializerTests, RawLengthAwareValueBypassesObjectStreamTextCodec)
     {
-        AZStd::string rawValue{"Json%"};
+        AZStd::string rawValue(16384, '%');
         rawValue.push_back('\x01');
         rawValue.append("\xEF\xBF\xBE", 3);
         rawValue.append("\xEF\xBF\xBF", 3);
@@ -114,14 +135,15 @@ namespace JsonSerializationTests
         rapidjson::Value malformed;
         constexpr char invalidUtf8[] = {static_cast<char>(0xC0), static_cast<char>(0xAF)};
         malformed.SetString(invalidUtf8, sizeof(invalidUtf8), document.GetAllocator());
-        const AZStd::string oversizedValue(AZ::Symbol::MaxStringSize + 1, 'x');
-        rapidjson::Value oversized;
-        oversized.SetString(
-            oversizedValue.data(),
-            static_cast<rapidjson::SizeType>(oversizedValue.size()),
+        AZStd::string longInvalidValue(65536, 'x');
+        longInvalidValue.back() = '\0';
+        rapidjson::Value longInvalid;
+        longInvalid.SetString(
+            longInvalidValue.data(),
+            static_cast<rapidjson::SizeType>(longInvalidValue.size()),
             document.GetAllocator());
 
-        rapidjson::Value* invalidValues[] = {&objectValue, &embeddedNull, &malformed, &oversized};
+        rapidjson::Value* invalidValues[] = {&objectValue, &embeddedNull, &malformed, &longInvalid};
         for (rapidjson::Value* invalidValue : invalidValues)
         {
             AZ::Symbol output = existing;

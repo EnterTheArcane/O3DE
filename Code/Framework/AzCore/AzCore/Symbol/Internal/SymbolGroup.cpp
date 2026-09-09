@@ -27,8 +27,8 @@ namespace AZ::Internal
                 1, 2, 4, 8, 16, 32, 64, 128,
             };
 
-            const uint8x16_t bits = vandq_u8(lanes, vdupq_n_u8(1));
-            const uint8x16_t weightedBits = vmulq_u8(bits, vld1q_u8(LaneWeights));
+            // Comparison lanes are 0x00 or 0xFF, so masking selects each lane's weight directly.
+            const uint8x16_t weightedBits = vandq_u8(lanes, vld1q_u8(LaneWeights));
             const uint16x8_t pairs = vpaddlq_u8(weightedBits);
             const uint32x4_t quads = vpaddlq_u16(pairs);
             const uint64x2_t halves = vpaddlq_u32(quads);

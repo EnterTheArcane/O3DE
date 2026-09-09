@@ -20,7 +20,8 @@ namespace AZ::Internal
     class SymbolTableTestAccess;
     struct SymbolStorageStats;
 
-    //! Process-local concurrent canonical string table. Hashes and the hash secret are implementation details.
+    //! Process-local concurrent canonical string table.
+    //! Hashes and the hash secret are implementation details.
     class AZCORE_API SymbolTable final
     {
     public:
@@ -36,7 +37,8 @@ namespace AZ::Internal
         [[nodiscard]]
         static SymbolTable& Instance();
 
-        //! Interns a value already checked by ValidateSymbolValue. Returns null only on storage failure.
+        //! Interns a value already checked by ValidateSymbolValue.
+        //! Returns null for empty input, admission-policy rejection, or storage failure.
         [[nodiscard]]
         const SymbolEntry* InternValidated(AZStd::string_view value);
 
@@ -99,23 +101,23 @@ namespace AZ::Internal
         u64 HashValue(AZStd::string_view value) const;
 
         [[nodiscard]]
-        static HashParts SplitHash(u64 tableHash);
+        static HashParts SplitHash(u64 hash);
 
         [[nodiscard]]
         static ProbeResult Probe(
             const TableStorage& table,
             AZStd::string_view value,
-            u64 tableHash);
+            u64 hash);
 
         [[nodiscard]]
-        const SymbolEntry* TryInternWithTableHash(
+        const SymbolEntry* TryInternWithHash(
             AZStd::string_view value,
-            u64 tableHash);
+            u64 hash);
 
         [[nodiscard]]
-        const SymbolEntry* FindWithTableHash(
+        const SymbolEntry* FindWithHash(
             AZStd::string_view value,
-            u64 tableHash);
+            u64 hash);
 
         [[nodiscard]]
         bool AllocateTableStorage(

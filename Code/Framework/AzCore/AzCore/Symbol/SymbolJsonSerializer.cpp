@@ -42,7 +42,7 @@ namespace AZ
         }
 
         const AZStd::string_view value{inputValue.GetString(), inputValue.GetStringLength()};
-        const Internal::SymbolValidationError error = Internal::ValidateSymbolValue(value, Symbol::MaxStringSize);
+        const Internal::SymbolValidationError error = Internal::ValidateSymbolValue(value);
         if (error != Internal::SymbolValidationError::None)
         {
             return context.Report(
@@ -57,7 +57,7 @@ namespace AZ
             return context.Report(
                 JSR::Tasks::ReadField,
                 JSR::Outcomes::Unavailable,
-                "AZ::Symbol storage budget or allocation exhausted");
+                "AZ::Symbol value exceeds the configured admission limit, or storage is unavailable");
         }
 
         *symbol = *loadedSymbol;

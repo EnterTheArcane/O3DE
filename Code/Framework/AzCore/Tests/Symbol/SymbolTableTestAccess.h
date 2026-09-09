@@ -56,9 +56,9 @@ namespace AZ::Internal
         }
 
         [[nodiscard]]
-        static HashParts SplitHash(const u64 tableHash)
+        static HashParts SplitHash(const u64 hash)
         {
-            const SymbolTable::HashParts parts = SymbolTable::SplitHash(tableHash);
+            const SymbolTable::HashParts parts = SymbolTable::SplitHash(hash);
             return HashParts{
                 .m_h2 = parts.m_h2,
                 .m_shardIndex = parts.m_shardIndex,
@@ -67,21 +67,21 @@ namespace AZ::Internal
         }
 
         [[nodiscard]]
-        static const SymbolEntry* InternWithTableHash(
+        static const SymbolEntry* InternWithHash(
             SymbolTable& table,
             const AZStd::string_view value,
-            const u64 tableHash)
+            const u64 hash)
         {
-            return table.TryInternWithTableHash(value, tableHash);
+            return table.TryInternWithHash(value, hash);
         }
 
         [[nodiscard]]
-        static const SymbolEntry* FindWithTableHash(
+        static const SymbolEntry* FindWithHash(
             SymbolTable& table,
             const AZStd::string_view value,
-            const u64 tableHash)
+            const u64 hash)
         {
-            return table.FindWithTableHash(value, tableHash);
+            return table.FindWithHash(value, hash);
         }
 
         [[nodiscard]]

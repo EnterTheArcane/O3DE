@@ -9,6 +9,7 @@
 #include <AzCore/Symbol/SymbolSerializer.h>
 
 #include <AzCore/IO/GenericStreams.h>
+#include <AzCore/Symbol/Internal/SymbolSerializerBuffer.h>
 #include <AzCore/std/containers/array.h>
 
 #include <cstring>
@@ -17,12 +18,12 @@ namespace AZ
 {
     namespace
     {
-        constexpr size_t MaxEncodedTextSize = Symbol::MaxStringSize * 3;
+        constexpr size_t MaxEncodedTextSize = Internal::SymbolStorageBudgetBytes * 3;
         constexpr size_t TextOutputChunkSize = 256;
         constexpr char UppercaseHexDigits[] = "0123456789ABCDEF";
 
         [[nodiscard]]
-        bool TryDecodeHexDigit(
+        constexpr bool TryDecodeHexDigit(
             const char digit,
             unsigned char& value)
         {
@@ -50,20 +51,22 @@ namespace AZ
         IO::GenericStream& output,
         bool)
     {
-        const size_t dataSize = static_cast<size_t>(input.GetLength());
-        if (dataSize == 0 || dataSize > Symbol::MaxStringBufferSize)
+        const AZ::u64 inputSize = input.GetLength();
+        if (inputSize == 0 || inputSize > Internal::SymbolStorageBudgetBytes)
         {
             return 0;
         }
 
-        AZStd::array<char, Symbol::MaxStringBufferSize> serializedValue;
-        if (input.Read(dataSize, serializedValue.data()) != dataSize
-            || serializedValue[dataSize - 1] != '\0')
+        const size_t binarySize = static_cast<size_t>(inputSize);
+        Internal::SymbolSerializerBuffer serializedValue;
+        if (!serializedValue.Reserve(binarySize)
+            || input.Read(binarySize, serializedValue.GetData()) != binarySize
+            || serializedValue[binarySize - 1] != '\0')
         {
             return 0;
         }
 
-        const AZStd::string_view value{serializedValue.data(), dataSize - 1};
+        const AZStd::string_view value{serializedValue.GetData(), binarySize - 1};
         if (!Symbol::IsValid(value))
         {
             return 0;
@@ -176,7 +179,33 @@ namespace AZ
             return 0;
         }
 
-        AZStd::array<char, Symbol::MaxStringBufferSize> decodedValue;
+        Internal::SymbolSerializerBuffer decodedValue;
+        if (encodedSize >= decodedValue.GetCapacity())
+        {
+            // Count encoded units before allocating.
+            // Escaped short values still fit inline, and the decode loop needs no growth checks.
+            // Every escape produces exactly one byte or fails.
+            size_t capacity = encodedSize + 1;
+            for (size_t textIndex = 0; textIndex < encodedSize; ++textIndex)
+            {
+                if (text[textIndex] == '%')
+                {
+                    if (encodedSize - textIndex < 3)
+                    {
+                        return 0;
+                    }
+                    capacity -= 2;
+                    textIndex += 2;
+                }
+            }
+            if (!decodedValue.Reserve(capacity))
+            {
+                return 0;
+            }
+        }
+
+        // Cache the data pointer so byte writes cannot make the compiler reload the buffer member on every iteration.
+        char* decodedData = decodedValue.GetData();
         size_t decodedSize = 0;
         size_t index = 0;
         while (index < encodedSize)
@@ -205,14 +234,14 @@ namespace AZ
                 ++index;
             }
 
-            if (decodedByte == 0 || decodedSize == Symbol::MaxStringSize)
+            if (decodedByte == 0)
             {
                 return 0;
             }
-            decodedValue[decodedSize++] = static_cast<char>(decodedByte);
+            decodedData[decodedSize++] = static_cast<char>(decodedByte);
         }
 
-        const AZStd::string_view value{decodedValue.data(), decodedSize};
+        const AZStd::string_view value{decodedValue.GetData(), decodedSize};
         if (!Symbol::IsValid(value))
         {
             return 0;
@@ -220,7 +249,7 @@ namespace AZ
 
         decodedValue[decodedSize] = '\0';
         const size_t serializedSize = decodedSize + 1;
-        if (stream.Write(serializedSize, decodedValue.data()) != serializedSize)
+        if (stream.Write(serializedSize, decodedValue.GetData()) != serializedSize)
         {
             return 0;
         }
@@ -248,20 +277,22 @@ namespace AZ
         unsigned int,
         bool)
     {
-        const size_t size = static_cast<size_t>(stream.GetLength());
-        if (size == 0 || size > Symbol::MaxStringBufferSize)
+        const AZ::u64 inputSize = stream.GetLength();
+        if (inputSize == 0 || inputSize > Internal::SymbolStorageBudgetBytes)
         {
             return false;
         }
 
-        AZStd::array<char, Symbol::MaxStringBufferSize> encodedValue;
-        if (stream.Read(size, encodedValue.data()) != size
+        const size_t size = static_cast<size_t>(inputSize);
+        Internal::SymbolSerializerBuffer encodedValue;
+        if (!encodedValue.Reserve(size)
+            || stream.Read(size, encodedValue.GetData()) != size
             || encodedValue[size - 1] != '\0')
         {
             return false;
         }
 
-        const AZStd::string_view value{encodedValue.data(), size - 1};
+        const AZStd::string_view value{encodedValue.GetData(), size - 1};
         const AZStd::optional<Symbol> symbol = Symbol::TryCreate(value);
         if (!symbol)
         {

@@ -14,6 +14,25 @@
 
 namespace AZ::Internal
 {
+    constexpr size_t SymbolStorageBudgetBytes = size_t{1024} * 1024 * 1024;
+
+    //! Build-time admission policy in UTF-8 bytes, excluding the terminator.
+    //! Zero disables the policy ceiling without changing storage or serialization layouts.
+    constexpr size_t SymbolValueSizeLimit = size_t{32} * 1024;
+
+    [[nodiscard]]
+    constexpr bool IsSymbolValueSizeAllowed([[maybe_unused]] const size_t size)
+    {
+        if constexpr (SymbolValueSizeLimit != 0)
+        {
+            return size <= SymbolValueSizeLimit;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
     //! Accounts for every requested dynamically allocated byte owned by one SymbolTable.
     class SymbolStorageBudget final
     {

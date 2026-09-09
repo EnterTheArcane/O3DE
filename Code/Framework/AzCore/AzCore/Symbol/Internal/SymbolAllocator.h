@@ -19,8 +19,8 @@ namespace AZ::Internal
     public:
         SymbolAllocator() = default;
 
-        explicit SymbolAllocator(IAllocator& testAllocator)
-            : m_testAllocator{&testAllocator}
+        explicit SymbolAllocator(IAllocator& allocator)
+            : m_allocator{&allocator}
         {
         }
 
@@ -30,9 +30,9 @@ namespace AZ::Internal
             size_t alignment,
             [[maybe_unused]] const char* name)
         {
-            if (m_testAllocator)
+            if (m_allocator)
             {
-                return m_testAllocator->allocate(byteSize, alignment).GetAddress();
+                return m_allocator->allocate(byteSize, alignment).GetAddress();
             }
             return AZ_OS_MALLOC(byteSize, alignment);
         }
@@ -42,15 +42,15 @@ namespace AZ::Internal
             size_t byteSize,
             size_t alignment)
         {
-            if (m_testAllocator)
+            if (m_allocator)
             {
-                m_testAllocator->deallocate(address, byteSize, alignment);
+                m_allocator->deallocate(address, byteSize, alignment);
                 return;
             }
             AZ_OS_FREE(address);
         }
 
     private:
-        IAllocator* m_testAllocator = nullptr;
+        IAllocator* m_allocator = nullptr;
     };
 } // namespace AZ::Internal

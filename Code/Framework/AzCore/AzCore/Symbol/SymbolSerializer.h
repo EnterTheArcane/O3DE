@@ -13,7 +13,7 @@
 
 namespace AZ
 {
-    //! Serializes a Symbol as value bytes followed by one mandatory zero marker.
+    //! Serializes a Symbol as value bytes followed by one trailing NUL.
     class AZCORE_API SymbolSerializer final
         : public SerializeContext::IDataSerializer
     {

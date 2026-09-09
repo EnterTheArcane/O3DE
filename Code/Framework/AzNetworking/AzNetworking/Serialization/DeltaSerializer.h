@@ -165,7 +165,8 @@ namespace AzNetworking
 
     //! A serializer that is used to apply a SerializerDelta to a base object in order to reconstruct the second object.
     //! NOTE: The objects serialized must have a consistent serialization footprint i.e. no changes in branches during serialization
-    //! DeltaSerializerApply instances are single-use. A failure can leave fields visited before the failure modified.
+    //! DeltaSerializerApply instances are single-use.
+    //! A failure can leave fields visited before the failure modified.
     class DeltaSerializerApply
         : public ISerializer
     {

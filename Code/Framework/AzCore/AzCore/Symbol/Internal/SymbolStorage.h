@@ -25,7 +25,8 @@ namespace AZ::Internal
     [[nodiscard]]
     AZCORE_API SymbolStorageStats GetSymbolStorageStats();
 
-    //! Interns a value already checked by ValidateSymbolValue. Allocation or budget failure terminates.
+    //! Interns a value already checked by ValidateSymbolValue.
+    //! Admission-policy, allocation, or budget failure terminates.
     [[nodiscard]]
     AZCORE_API Symbol InternValidatedSymbol(AZStd::string_view value);
 
@@ -33,7 +34,8 @@ namespace AZ::Internal
     [[nodiscard]]
     AZCORE_API bool TryCreateSymbol(Symbol& result, AZStd::string_view value);
 
-    //! Looks up a value without creating permanent storage. Empty is always found as the null Symbol.
+    //! Looks up a value without creating permanent storage.
+    //! Empty is always found as the valid empty Symbol.
     [[nodiscard]]
     AZCORE_API bool FindSymbol(Symbol& result, AZStd::string_view value);
 } // namespace AZ::Internal

@@ -26,7 +26,9 @@ namespace AZ::Internal
         ~SymbolArena();
 
         [[nodiscard]]
-        SymbolEntry* AllocateEntry(AZStd::string_view value, u64 tableHash);
+        SymbolEntry* AllocateEntry(
+            AZStd::string_view value,
+            u64 hash);
 
     private:
         friend class SymbolTable;

@@ -517,6 +517,11 @@ namespace AzNetworking
     template <>
     struct SerializeObjectHelper<AZ::Symbol>
     {
+        //! Raw Symbol serialization uses a bounded u16-length encoding, independent of Symbol's storage representation.
+        //! Values and existing decode destinations exceeding this limit fail without truncation or assignment.
+        //! The fixed 1,024-byte Delta payload has room for at most 1,022 value bytes after the length field.
+        static constexpr AZ::u32 MaxStringSize = 1023;
+
         static bool SerializeObject(ISerializer& serializer, AZ::Symbol& value);
     };
 }

@@ -12,11 +12,14 @@
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Symbol/Symbol.h>
 #include <AzCore/Symbol/SymbolSerializer.h>
+#include <AzCore/Symbol/Internal/SymbolStorageBudget.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
+
+#include <limits>
 
 namespace UnitTest
 {
@@ -57,6 +60,33 @@ namespace UnitTest
             value.append("\xF0\x9F\x99\x82", 4);
             return value;
         }
+
+        class ReportedLengthStream final
+            : public AZ::IO::MemoryStream
+        {
+        public:
+            explicit ReportedLengthStream(AZ::IO::SizeType length)
+                : MemoryStream("x", 2)
+                , m_length{length}
+            {
+            }
+
+            AZ::IO::SizeType GetLength() const override
+            {
+                return m_length;
+            }
+
+            AZ::IO::SizeType Read(AZ::IO::SizeType bytes, void* output) override
+            {
+                m_readCalled = true;
+                return MemoryStream::Read(bytes, output);
+            }
+
+            bool m_readCalled = false;
+
+        private:
+            AZ::IO::SizeType m_length;
+        };
 
         class ShortReadStream final
             : public AZ::IO::GenericStream
@@ -163,8 +193,9 @@ namespace UnitTest
                     &serializeContext,
                     strictFilter)) << "Truncated size " << truncatedSize;
 
-                // ObjectStream does not provide whole-object transactionality. The leaf serializer has already committed when only
-                // the final structural end tag is missing, but every truncation within the leaf must preserve its destination.
+                // ObjectStream does not provide whole-object transactionality.
+                // The leaf has already committed when only the final structural end tag is missing.
+                // Every truncation within the leaf must preserve its destination.
                 if (truncatedSize < buffer.size() - 2)
                 {
                     EXPECT_EQ(truncatedOutput, unchangedValue) << "Truncated size " << truncatedSize;
@@ -179,7 +210,7 @@ namespace UnitTest
     {
     };
 
-    TEST_F(SymbolSerializerTests, BinarySerializationUsesExactMarkerAndMaximumSize)
+    TEST_F(SymbolSerializerTests, BinarySerializationPreservesLongValuesAndTerminalNul)
     {
         AZ::SymbolSerializer serializer;
 
@@ -190,23 +221,23 @@ namespace UnitTest
         ASSERT_EQ(emptyBytes.size(), 1);
         EXPECT_EQ(emptyBytes.front(), 0);
 
-        const AZStd::string maximumValue(AZ::Symbol::MaxStringSize, 'm');
-        const AZ::Symbol maximumSymbol{maximumValue};
-        AZStd::vector<AZ::u8> maximumBytes;
-        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> maximumStream(&maximumBytes);
-        EXPECT_EQ(serializer.Save(&maximumSymbol, maximumStream, false), AZ::Symbol::MaxStringBufferSize);
-        ASSERT_EQ(maximumBytes.size(), AZ::Symbol::MaxStringBufferSize);
-        EXPECT_EQ(maximumBytes.back(), 0);
-        const AZStd::string_view serializedMaximum{
-            reinterpret_cast<const char*>(maximumBytes.data()),
-            maximumValue.size(),
+        const AZStd::string longValue(32768, 'm');
+        const AZ::Symbol longSymbol{longValue};
+        AZStd::vector<AZ::u8> longBytes;
+        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> longStream(&longBytes);
+        EXPECT_EQ(serializer.Save(&longSymbol, longStream, false), longValue.size() + 1);
+        ASSERT_EQ(longBytes.size(), longValue.size() + 1);
+        EXPECT_EQ(longBytes.back(), 0);
+        const AZStd::string_view serializedValue{
+            reinterpret_cast<const char*>(longBytes.data()),
+            longValue.size(),
         };
-        EXPECT_EQ(serializedMaximum, maximumValue);
+        EXPECT_EQ(serializedValue, longValue);
 
         AZ::Symbol loaded;
-        AZ::IO::MemoryStream inputStream(maximumBytes.data(), maximumBytes.size());
+        AZ::IO::MemoryStream inputStream(longBytes.data(), longBytes.size());
         EXPECT_TRUE(serializer.Load(&loaded, inputStream, 0, false));
-        EXPECT_EQ(loaded, maximumSymbol);
+        EXPECT_EQ(loaded, longSymbol);
     }
 
     TEST_F(SymbolSerializerTests, BinaryLoadRejectsMalformedAndShortInputWithoutAssignment)
@@ -219,9 +250,10 @@ namespace UnitTest
             {'n', 'o', 'm', 'a', 'r', 'k', 'e', 'r'},
             {'a', 0, 'b', 0},
             {static_cast<AZ::u8>(0xC0), static_cast<AZ::u8>(0xAF), 0},
-            AZStd::vector<AZ::u8>(AZ::Symbol::MaxStringBufferSize + 1, 'x'),
+            AZStd::vector<AZ::u8>(65537 + 1, 'x'),
         };
         invalidValues.back().back() = 0;
+        invalidValues.back()[65536] = 0xFF;
 
         for (const AZStd::vector<AZ::u8>& invalidValue : invalidValues)
         {
@@ -237,6 +269,86 @@ namespace UnitTest
         AZ::Symbol output = existing;
         EXPECT_FALSE(serializer.Load(&output, shortInput, 0, false));
         EXPECT_EQ(output, existing);
+    }
+
+    TEST_F(SymbolSerializerTests, ImpossibleStreamLengthsFailBeforeReadingOrAssigning)
+    {
+        constexpr AZ::IO::SizeType Lengths[] = {
+            0,
+            AZ::Internal::SymbolStorageBudgetBytes + 1,
+            AZ::IO::SizeType{(std::numeric_limits<AZ::u32>::max)()} + 1,
+            (std::numeric_limits<AZ::IO::SizeType>::max)(),
+        };
+        const AZ::Symbol original{"LengthRejectionPreservesValue"};
+        AZ::SymbolSerializer serializer;
+        for (const AZ::IO::SizeType length : Lengths)
+        {
+            SCOPED_TRACE(length);
+            ReportedLengthStream input{length};
+            AZ::Symbol output = original;
+            EXPECT_FALSE(serializer.Load(&output, input, 0, false));
+            EXPECT_EQ(output, original);
+            EXPECT_FALSE(input.m_readCalled);
+            AZStd::vector<char> text{'x'};
+            AZ::IO::ByteContainerStream<AZStd::vector<char>> textOutput{&text};
+            EXPECT_EQ(serializer.DataToText(input, textOutput, false), 0);
+            EXPECT_FALSE(input.m_readCalled);
+            EXPECT_EQ(textOutput.GetCurPos(), 0);
+            EXPECT_EQ(text, AZStd::vector<char>{'x'});
+        }
+    }
+
+    TEST_F(SymbolSerializerTests, TextAndBinaryRoundTripAcrossInlineAndLongValueBoundaries)
+    {
+        constexpr size_t Lengths[] = {1022, 1023, 1024, 1025, 32767, 32768};
+        AZ::SymbolSerializer serializer;
+        for (const size_t length : Lengths)
+        {
+            for (const char fill : {'v', '%'})
+            {
+                SCOPED_TRACE(length);
+                SCOPED_TRACE(fill);
+                AZStd::string value(length, fill);
+                size_t utf8Offset = 1021;
+                if (utf8Offset > length - 4)
+                {
+                    utf8Offset = length - 4;
+                }
+                value.replace(utf8Offset, 4, "\xF0\x9F\x99\x82", 4);
+                const AZ::Symbol input{value};
+                AZStd::vector<char> binary;
+                AZ::IO::ByteContainerStream<AZStd::vector<char>> binaryOutput{&binary};
+                ASSERT_EQ(serializer.Save(&input, binaryOutput, false), value.size() + 1);
+                AZ::IO::MemoryStream binaryInput{binary.data(), binary.size()};
+                AZStd::vector<char> text;
+                AZ::IO::ByteContainerStream<AZStd::vector<char>> textOutput{&text};
+                ASSERT_GT(serializer.DataToText(binaryInput, textOutput, false), 0);
+                text.push_back('\0');
+                AZStd::vector<char> decoded;
+                AZ::IO::ByteContainerStream<AZStd::vector<char>> decodedOutput{&decoded};
+                ASSERT_EQ(serializer.TextToData(text.data(), 0, decodedOutput, false), value.size() + 1);
+                EXPECT_EQ(decoded, binary);
+                AZ::IO::MemoryStream decodedInput{decoded.data(), decoded.size()};
+                AZ::Symbol output;
+                ASSERT_TRUE(serializer.Load(&output, decodedInput, 0, false));
+                EXPECT_EQ(output, input);
+            }
+        }
+    }
+
+    TEST_F(SymbolSerializerTests, BinaryLoadPreservesDestinationWhenValueExceedsPolicy)
+    {
+        if constexpr (AZ::Internal::SymbolValueSizeLimit != 0)
+        {
+            AZStd::string value(AZ::Internal::SymbolValueSizeLimit + 1, 'p');
+            const AZ::Symbol original{"BinaryPolicyOriginal"};
+            AZ::Symbol output = original;
+            AZ::IO::MemoryStream stream(value.c_str(), value.size() + 1);
+            AZ::SymbolSerializer serializer;
+            EXPECT_FALSE(serializer.Load(&output, stream, 0, false));
+            EXPECT_EQ(output, original);
+            EXPECT_FALSE(AZ::Symbol::Find(value));
+        }
     }
 
     TEST_F(SymbolSerializerTests, TextEncodingIsCanonicalForEveryXmlUnsafeValue)
@@ -296,22 +408,22 @@ namespace UnitTest
         EXPECT_EQ(reencodedText, "%2525");
     }
 
-    TEST_F(SymbolSerializerTests, TextCodecEnforcesEncodedAndDecodedBounds)
+    TEST_F(SymbolSerializerTests, TextCodecRoundTripsLongValues)
     {
         AZ::SymbolSerializer serializer;
-        const AZStd::string maximumValue(AZ::Symbol::MaxStringSize, '%');
-        const AZ::Symbol maximumSymbol{maximumValue};
+        const AZStd::string longValue(32768, '%');
+        const AZ::Symbol longSymbol{longValue};
 
         AZStd::vector<AZ::u8> binary;
         AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> binaryOutput(&binary);
-        ASSERT_EQ(serializer.Save(&maximumSymbol, binaryOutput, false), AZ::Symbol::MaxStringBufferSize);
+        ASSERT_EQ(serializer.Save(&longSymbol, binaryOutput, false), longValue.size() + 1);
 
         AZ::IO::MemoryStream binaryInput(binary.data(), binary.size());
         AZStd::vector<char> encoded;
         AZ::IO::ByteContainerStream<AZStd::vector<char>> textOutput(&encoded);
-        constexpr size_t MaxEncodedTextSize = AZ::Symbol::MaxStringSize * 3;
-        ASSERT_EQ(serializer.DataToText(binaryInput, textOutput, false), MaxEncodedTextSize);
-        ASSERT_EQ(encoded.size(), MaxEncodedTextSize);
+        constexpr size_t EncodedTextSize = 32768 * 3;
+        ASSERT_EQ(serializer.DataToText(binaryInput, textOutput, false), EncodedTextSize);
+        ASSERT_EQ(encoded.size(), EncodedTextSize);
         for (size_t index = 0; index < encoded.size(); index += 3)
         {
             EXPECT_EQ(encoded[index], '%');
@@ -322,24 +434,26 @@ namespace UnitTest
         encoded.push_back('\0');
         AZStd::vector<AZ::u8> decodedBinary;
         AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> decodedOutput(&decodedBinary);
-        EXPECT_EQ(serializer.TextToData(encoded.data(), 0, decodedOutput, false), AZ::Symbol::MaxStringBufferSize);
+        EXPECT_EQ(serializer.TextToData(encoded.data(), 0, decodedOutput, false), longValue.size() + 1);
 
         AZ::Symbol decoded;
         AZ::IO::MemoryStream decodedInput(decodedBinary.data(), decodedBinary.size());
         ASSERT_TRUE(serializer.Load(&decoded, decodedInput, 0, false));
-        EXPECT_EQ(decoded, maximumSymbol);
+        EXPECT_EQ(decoded, longSymbol);
 
-        const AZStd::string oversizedEncoded(MaxEncodedTextSize + 1, 'e');
-        AZStd::vector<AZ::u8> oversizedEncodedOutput;
-        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> oversizedEncodedStream(&oversizedEncodedOutput);
-        EXPECT_EQ(serializer.TextToData(oversizedEncoded.c_str(), 0, oversizedEncodedStream, false), 0);
-        EXPECT_EQ(oversizedEncodedStream.GetCurPos(), 0);
+        AZStd::string invalidEncoded(EncodedTextSize + 1, 'e');
+        invalidEncoded.append("%GG");
+        AZStd::vector<AZ::u8> invalidEncodedOutput;
+        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> invalidEncodedStream(&invalidEncodedOutput);
+        EXPECT_EQ(serializer.TextToData(invalidEncoded.c_str(), 0, invalidEncodedStream, false), 0);
+        EXPECT_EQ(invalidEncodedStream.GetCurPos(), 0);
 
-        const AZStd::string oversizedDecoded(AZ::Symbol::MaxStringSize + 1, 'd');
-        AZStd::vector<AZ::u8> oversizedDecodedOutput;
-        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> oversizedDecodedStream(&oversizedDecodedOutput);
-        EXPECT_EQ(serializer.TextToData(oversizedDecoded.c_str(), 0, oversizedDecodedStream, false), 0);
-        EXPECT_EQ(oversizedDecodedStream.GetCurPos(), 0);
+        AZStd::string invalidDecoded(65536 + 1, 'd');
+        invalidDecoded.append("%00");
+        AZStd::vector<AZ::u8> invalidDecodedOutput;
+        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> invalidDecodedStream(&invalidDecodedOutput);
+        EXPECT_EQ(serializer.TextToData(invalidDecoded.c_str(), 0, invalidDecodedStream, false), 0);
+        EXPECT_EQ(invalidDecodedStream.GetCurPos(), 0);
     }
 
     TEST_F(SymbolSerializerTests, TextCodecRejectsMalformedInputBeforeWriting)
@@ -358,6 +472,10 @@ namespace UnitTest
             "%00",
             "%C0%AF",
             "%ED%A0%80",
+            AZStd::string(1024, 'v') + "%",
+            AZStd::string(1024, 'v') + "%0",
+            AZStd::string(1024, 'v') + "%GG",
+            AZStd::string(1024, 'v') + "%C0%AF",
         };
         AZStd::string malformedUtf8;
         malformedUtf8.push_back(static_cast<char>(0xC0));
@@ -380,9 +498,10 @@ namespace UnitTest
             {'n', 'o', 'm', 'a', 'r', 'k', 'e', 'r'},
             {'a', 0, 'b', 0},
             {static_cast<AZ::u8>(0xC0), static_cast<AZ::u8>(0xAF), 0},
-            AZStd::vector<AZ::u8>(AZ::Symbol::MaxStringBufferSize + 1, 'x'),
+            AZStd::vector<AZ::u8>(65537 + 1, 'x'),
         };
         invalidBinaryValues.back().back() = 0;
+        invalidBinaryValues.back()[65536] = 0xFF;
         for (const AZStd::vector<AZ::u8>& invalidValue : invalidBinaryValues)
         {
             AZ::IO::MemoryStream inputStream(invalidValue.data(), invalidValue.size());
@@ -527,7 +646,9 @@ namespace UnitTest
     {
         AZ::SerializeContext serializeContext;
         AZ::Symbol::Reflect(&serializeContext);
-        const AZ::Symbol input{MakeXmlUnsafeSymbolValue()};
+        AZStd::string value(16384, 's');
+        value.append(MakeXmlUnsafeSymbolValue());
+        const AZ::Symbol input{value};
 
         constexpr AZ::ObjectStream::StreamType StreamTypes[] = {
             AZ::ObjectStream::ST_BINARY,
@@ -592,7 +713,7 @@ namespace UnitTest
         AZ::SerializeContext serializeContext;
         AZ::Symbol::Reflect(&serializeContext);
 
-        const AZStd::string value(300, 's');
+        const AZStd::string value(2048, 's');
         const AZ::Symbol input{value};
         const AZ::Symbol unchanged{AZStd::string_view{"UnchangedTruncatedSymbol"}};
         ExpectBinaryObjectStreamTruncationRejected(input, unchanged, serializeContext);

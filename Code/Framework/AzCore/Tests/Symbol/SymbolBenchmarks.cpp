@@ -63,6 +63,45 @@ namespace AZ::SymbolBenchmarks
     }
     BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, DynamicCacheHitContended)->Threads(1)->Threads(8)->Threads(32);
 
+    BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, MixedInvalidMissSameShard)(::benchmark::State& state)
+    {
+        constexpr AZStd::string_view Value{"SymbolMixedInvalidMissReader"};
+        benchmark::DoNotOptimize(Symbol{Value});
+        Internal::SymbolTable& table = Internal::SymbolTable::Instance();
+        const auto targetParts = Internal::SymbolTableTestAccess::SplitHash(
+            Internal::SymbolTableTestAccess::HashValue(table, Value));
+
+        AZStd::string invalidValue;
+        for (size_t index = 0; ; ++index)
+        {
+            invalidValue = AZStd::string::format("InvalidSymbol%zu", index);
+            invalidValue.resize(static_cast<size_t>(state.range(0)), 'v');
+            invalidValue.back() = '\0';
+            const auto parts = Internal::SymbolTableTestAccess::SplitHash(
+                Internal::SymbolTableTestAccess::HashValue(table, invalidValue));
+            if (parts.m_shardIndex == targetParts.m_shardIndex)
+            {
+                break;
+            }
+        }
+
+        size_t operation = 0;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (++operation % 64 == 0)
+            {
+                benchmark::DoNotOptimize(table.TryIntern(invalidValue));
+            }
+            else
+            {
+                benchmark::DoNotOptimize(table.TryIntern(Value));
+            }
+        }
+        state.SetItemsProcessed(state.iterations());
+    }
+    BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, MixedInvalidMissSameShard)
+        ->Arg(32)->Arg(1023)->Threads(1)->Threads(8)->Threads(32);
+
     BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, Equality)(::benchmark::State& state)
     {
         const Symbol lhs{"EqualitySymbol"};
@@ -127,7 +166,8 @@ namespace AZ::SymbolBenchmarks
 
     BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, MaximumLengthDynamicHit)(::benchmark::State& state)
     {
-        const AZStd::string value(Symbol::MaxStringSize, 'm');
+        // Preserve the original workload size for comparison with pre-length-limit-removal results.
+        const AZStd::string value(1023, 'm');
         benchmark::DoNotOptimize(Symbol{value});
 
         for ([[maybe_unused]] auto iteration : state)
@@ -150,6 +190,28 @@ namespace AZ::SymbolBenchmarks
         state.SetItemsProcessed(state.iterations());
     }
     BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, ColdTableInsertion);
+
+    BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, DynamicInsertionBatch)(::benchmark::State& state)
+    {
+        constexpr size_t ValueCount = 256;
+        AZStd::array<AZStd::string, ValueCount> values;
+        for (size_t index = 0; index < ValueCount; ++index)
+        {
+            values[index] = AZStd::string::format("SymbolInsertion%zu", index);
+            values[index].resize(static_cast<size_t>(state.range(0)), 'v');
+        }
+
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            Internal::SymbolTable table;
+            for (const AZStd::string& value : values)
+            {
+                benchmark::DoNotOptimize(table.TryIntern(value));
+            }
+        }
+        state.SetItemsProcessed(state.iterations() * ValueCount);
+    }
+    BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, DynamicInsertionBatch)->Arg(32)->Arg(1023);
 
     BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, PopulatedTableFind)(::benchmark::State& state)
     {
@@ -182,13 +244,13 @@ namespace AZ::SymbolBenchmarks
         for (size_t index = 0; index < ValueCount; ++index)
         {
             values[index] = AZStd::string::format("CollisionBenchmark%zu", index);
-            benchmark::DoNotOptimize(Internal::SymbolTableTestAccess::InternWithTableHash(table, values[index], Hash));
+            benchmark::DoNotOptimize(Internal::SymbolTableTestAccess::InternWithHash(table, values[index], Hash));
         }
 
         const AZStd::string_view target = values.back();
         for ([[maybe_unused]] auto iteration : state)
         {
-            benchmark::DoNotOptimize(Internal::SymbolTableTestAccess::FindWithTableHash(table, target, Hash));
+            benchmark::DoNotOptimize(Internal::SymbolTableTestAccess::FindWithHash(table, target, Hash));
         }
         state.SetItemsProcessed(state.iterations());
     }

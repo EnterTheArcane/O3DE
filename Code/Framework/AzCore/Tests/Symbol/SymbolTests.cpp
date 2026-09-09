@@ -15,6 +15,7 @@
 #include <AzCore/Symbol/Internal/SymbolTable.h>
 #include <AzCore/Symbol/Internal/SymbolGroup.h>
 #include <AzCore/Symbol/Internal/SymbolStorage.h>
+#include <AzCore/Symbol/Internal/SymbolSerializerBuffer.h>
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
 #include <AzCore/Symbol/Symbol.h>
 #include <AzCore/Symbol/SymbolLiteral.h>
@@ -46,6 +47,9 @@ namespace UnitTest
 {
     namespace
     {
+        template<class T>
+        concept HasPublicMaxStringSize = requires { T::MaxStringSize; };
+
         class FailingSymbolAllocator final
             : public AZ::IAllocator
         {
@@ -137,12 +141,12 @@ namespace UnitTest
 
         bool FillDeterministicHashSecret(
             void* data,
-            const size_t dataSize)
+            const size_t size)
         {
             ++RandomFillCallCount;
-            RandomFillByteCount = dataSize;
+            RandomFillByteCount = size;
             AZ::u8* bytes = reinterpret_cast<AZ::u8*>(data);
-            for (size_t index = 0; index < dataSize; ++index)
+            for (size_t index = 0; index < size; ++index)
             {
                 bytes[index] = static_cast<AZ::u8>(index * 29 + 7);
             }
@@ -171,6 +175,7 @@ namespace UnitTest
 
     TEST_F(SymbolTests, TraitsArePointerSizedAndTrivial)
     {
+        static_assert(!HasPublicMaxStringSize<AZ::Symbol>);
         static_assert(AZ::Symbol::IsValid(""));
         static_assert(AZ::Symbol::IsValid("a"));
         static_assert(sizeof(AZ::Symbol) == sizeof(void*));
@@ -318,7 +323,6 @@ namespace UnitTest
 
     TEST_F(SymbolTests, TryCreateRejectsInvalidValuesWithoutProducingAnEmptySymbol)
     {
-        const AZStd::string oversized(AZ::Symbol::MaxStringBufferSize, 'x');
         constexpr char nullAtStart[] = {'\0', 'a'};
         constexpr char nullInMiddle[] = {'a', '\0', 'b'};
         constexpr char nullAtEnd[] = {'a', '\0'};
@@ -331,7 +335,6 @@ namespace UnitTest
             static_cast<char>(0x80),
         };
 
-        EXPECT_FALSE(AZ::Symbol::TryCreate(oversized).has_value());
         EXPECT_FALSE(AZ::Symbol::TryCreate(AZStd::string_view{nullAtStart, sizeof(nullAtStart)}).has_value());
         EXPECT_FALSE(AZ::Symbol::TryCreate(AZStd::string_view{nullInMiddle, sizeof(nullInMiddle)}).has_value());
         EXPECT_FALSE(AZ::Symbol::TryCreate(AZStd::string_view{nullAtEnd, sizeof(nullAtEnd)}).has_value());
@@ -339,6 +342,30 @@ namespace UnitTest
         EXPECT_FALSE(AZ::Symbol::TryCreate(AZStd::string_view{surrogate, sizeof(surrogate)}).has_value());
         EXPECT_FALSE(AZ::Symbol::TryCreate(AZStd::string_view{aboveUnicode, sizeof(aboveUnicode)}).has_value());
         EXPECT_FALSE(AZ::Symbol::Find(AZStd::string_view{overlong, sizeof(overlong)}).has_value());
+    }
+
+    TEST_F(SymbolTests, ValidationClassifiesEverySingleByteAndAsciiBoundary)
+    {
+        using AZ::Internal::SymbolValidationError;
+        static_assert(AZ::Symbol::IsValid("\x01\x7F"));
+        static_assert(!AZ::Symbol::IsValid(AZStd::string_view{"\0", 1}));
+
+        for (AZ::u32 value = 0; value <= 0xFF; ++value)
+        {
+            SymbolValidationError expected = SymbolValidationError::MalformedUtf8;
+            if (value == 0)
+            {
+                expected = SymbolValidationError::EmbeddedNull;
+            }
+            else if (value <= 0x7F)
+            {
+                expected = SymbolValidationError::None;
+            }
+
+            const AZStd::array<char, 3> text{'a', static_cast<char>(value), 'z'};
+            EXPECT_EQ(AZ::Internal::ValidateSymbolValue(AZStd::string_view{text.data() + 1, 1}), expected) << value;
+            EXPECT_EQ(AZ::Internal::ValidateSymbolValue(AZStd::string_view{text.data(), text.size()}), expected) << value;
+        }
     }
 
     TEST_F(SymbolTests, Utf8ValidationRejectsEveryMalformedSequenceCategory)
@@ -457,25 +484,226 @@ namespace UnitTest
         EXPECT_EQ("CrossTranslationUnitSymbol"_sym, GetCrossTranslationUnitSymbol());
     }
 
-    TEST_F(SymbolTests, MaximumValueIsAcceptedAndNullTerminated)
+    TEST_F(SymbolTests, LongValuesAreCanonicalAndNullTerminated)
     {
-        const AZStd::string value(AZ::Symbol::MaxStringSize, 'm');
-        const AZ::Symbol symbol{value};
+        constexpr size_t Lengths[] = {0, 1, 1023, 1024, 1025, 32767, 32768, 32769, 65536, 1024 * 1024 + 1};
+        for (const size_t length : Lengths)
+        {
+            SCOPED_TRACE(length);
+            const AZStd::string value(length, 'm');
+            ASSERT_TRUE(AZ::Symbol::IsValid(value));
+            if (!AZ::Internal::IsSymbolValueSizeAllowed(length))
+            {
+                EXPECT_FALSE(AZ::Symbol::TryCreate(value));
+                EXPECT_FALSE(AZ::Symbol::Find(value));
+                continue;
+            }
+            const AZStd::optional<AZ::Symbol> tried = AZ::Symbol::TryCreate(value);
+            ASSERT_TRUE(tried);
+            const AZ::Symbol symbol{value};
+            EXPECT_EQ(symbol, *tried);
+            EXPECT_EQ(symbol, AZ::Symbol::Create(value));
+            EXPECT_EQ(AZ::Symbol::Find(value), tried);
+            EXPECT_EQ(symbol.GetStringView(), value);
+            EXPECT_EQ(symbol.GetCStr()[length], '\0');
+        }
+    }
 
-        EXPECT_FALSE(symbol.IsEmpty());
-        EXPECT_EQ(symbol.GetStringView(), value);
-        EXPECT_EQ(symbol.GetCStr()[AZ::Symbol::MaxStringSize], '\0');
+    TEST_F(SymbolTests, LongValuesStillRejectInvalidUtf8AndNulAtTheTail)
+    {
+        AZStd::string value(16384, 'v');
+        value.append("\xF0\x9F\x99\x82", 4);
+        ASSERT_TRUE(AZ::Symbol::TryCreate(value));
+        value.pop_back();
+        EXPECT_FALSE(AZ::Symbol::IsValid(value));
+        EXPECT_FALSE(AZ::Symbol::TryCreate(value));
+        EXPECT_FALSE(AZ::Symbol::Find(value));
+        value.resize(16384);
+        value.back() = '\0';
+        EXPECT_FALSE(AZ::Symbol::IsValid(value));
+        EXPECT_FALSE(AZ::Symbol::TryCreate(value));
+    }
+
+    TEST_F(SymbolTests, LongLiteralUsesTheSameCanonicalEntry)
+    {
+        constexpr auto literal = []() consteval
+        {
+            char value[2049]{};
+            for (size_t index = 0; index < sizeof(value) - 1; ++index)
+            {
+                value[index] = 'L';
+            }
+            return AZ::Internal::SymbolLiteral{value};
+        }();
+        const AZ::Symbol symbol = AZ::Internal::GetLiteralSymbol<literal>();
+        EXPECT_EQ(symbol.GetStringView().size(), 2048);
+        EXPECT_EQ(symbol, AZ::Symbol{AZStd::string(2048, 'L')});
+        EXPECT_EQ(symbol, AZ::Internal::GetLiteralSymbol<literal>());
+    }
+
+    TEST_F(SymbolTests, ValuePolicyRejectsNewStorageWithoutChangingTextValidity)
+    {
+        static_assert(sizeof(AZ::Internal::SymbolEntry) == 16);
+        static_assert(sizeof(AZ::Internal::SymbolEntry::m_size) == sizeof(AZ::u64));
+        static_assert(AZ::Internal::IsSymbolValueSizeAllowed(0));
+
+        if (AZ::Internal::SymbolValueSizeLimit != 0)
+        {
+            const AZStd::string value(AZ::Internal::SymbolValueSizeLimit + 1, 'p');
+            EXPECT_TRUE(AZ::Symbol::IsValid(value));
+            EXPECT_FALSE(AZ::Symbol::TryCreate(value));
+
+            FailingSymbolAllocator allocator{0};
+            AZ::Internal::SymbolTable table{allocator};
+            EXPECT_EQ(table.TryIntern(value), nullptr);
+            EXPECT_EQ(table.InternValidated(value), nullptr);
+            EXPECT_EQ(table.GetStorageBytes(), 0);
+            EXPECT_TRUE(allocator.GetAllocations().empty());
+
+            const AZ::Symbol original{"PolicyRejectionPreservesDestination"};
+            AZ::Symbol output = original;
+            EXPECT_FALSE(AZ::Internal::TryCreateSymbol(output, value));
+            EXPECT_EQ(output, original);
+
+            const AZStd::string boundary(AZ::Internal::SymbolValueSizeLimit, 'p');
+            EXPECT_TRUE(AZ::Symbol::TryCreate(boundary));
+            EXPECT_DEATH((void)AZ::Symbol{value}, "configured limit");
+            EXPECT_DEATH((void)AZ::Symbol::Create(value), "configured limit");
+            EXPECT_DEATH((void)AZ::Internal::InternValidatedSymbol(value), "configured limit");
+        }
+        else
+        {
+            static_assert(AZ::Internal::SymbolValueSizeLimit != 0
+                || AZ::Internal::IsSymbolValueSizeAllowed((std::numeric_limits<size_t>::max)()));
+            const AZStd::string value(1024 * 1024 + 1, 'p');
+            const auto symbol = AZ::Symbol::TryCreate(value);
+            ASSERT_TRUE(symbol);
+            EXPECT_EQ(symbol->GetStringView(), value);
+        }
+    }
+
+    TEST_F(SymbolTests, SerializerBufferIndexingSupportsMutableAndConstAccessAcrossGrowth)
+    {
+        FailingSymbolAllocator allocator{1};
+        AZ::Internal::SymbolSerializerBuffer buffer{allocator};
+        const AZ::Internal::SymbolSerializerBuffer& constBuffer = buffer;
+        static_assert(std::is_same_v<decltype(buffer[0]), char&>);
+        static_assert(std::is_same_v<decltype(constBuffer[0]), const char&>);
+
+        buffer[0] = 'a';
+        buffer[buffer.GetCapacity() - 1] = 'z';
+        EXPECT_EQ(constBuffer[0], 'a');
+        EXPECT_EQ(constBuffer[buffer.GetCapacity() - 1], 'z');
+        EXPECT_EQ(&buffer[0], buffer.GetData());
+        EXPECT_TRUE(allocator.GetAllocations().empty());
+
+        ASSERT_TRUE(buffer.Reserve(2048, 1));
+        EXPECT_EQ(constBuffer[0], 'a');
+        buffer[0] = 'b';
+        buffer[buffer.GetCapacity() - 1] = '\0';
+        EXPECT_EQ(constBuffer[0], 'b');
+        EXPECT_EQ(constBuffer[buffer.GetCapacity() - 1], '\0');
+        EXPECT_EQ(&constBuffer[0], buffer.GetData());
+        EXPECT_EQ(allocator.GetAllocations().size(), 1);
+    }
+
+    TEST_F(SymbolTests, SerializerBufferKeepsShortValuesInlineAndPreservesStateOnAllocationFailure)
+    {
+        FailingSymbolAllocator allocator{1};
+        {
+            AZ::Internal::SymbolSerializerBuffer buffer{allocator};
+            const size_t inlineCapacity = buffer.GetCapacity();
+            ASSERT_EQ(inlineCapacity, 1024);
+            ASSERT_TRUE(buffer.Reserve(inlineCapacity));
+            EXPECT_TRUE(allocator.GetAllocations().empty());
+            std::memset(buffer.GetData(), 'b', inlineCapacity);
+
+            ASSERT_TRUE(buffer.Reserve(65537, inlineCapacity));
+            ASSERT_EQ(allocator.GetAllocations().size(), 1);
+            const char* allocatedData = buffer.GetData();
+            EXPECT_EQ(buffer.GetCapacity(), 65537);
+            EXPECT_EQ(AZStd::string_view(buffer.GetData(), inlineCapacity), AZStd::string(inlineCapacity, 'b'));
+            EXPECT_TRUE(buffer.Reserve(32768));
+            EXPECT_EQ(allocator.GetAllocations().size(), 1);
+
+            EXPECT_FALSE(buffer.Reserve(131072, inlineCapacity));
+            EXPECT_EQ(buffer.GetData(), allocatedData);
+            EXPECT_EQ(buffer.GetCapacity(), 65537);
+            EXPECT_EQ(AZStd::string_view(buffer.GetData(), inlineCapacity), AZStd::string(inlineCapacity, 'b'));
+            EXPECT_FALSE(buffer.Reserve(AZ::Internal::SymbolStorageBudgetBytes + 1));
+            EXPECT_FALSE(buffer.Reserve(131072, 65538));
+            EXPECT_TRUE(allocator.GetDeallocations().empty());
+        }
+        ASSERT_EQ(allocator.GetDeallocations().size(), 1);
+        EXPECT_EQ(allocator.GetDeallocations()[0].m_address, allocator.GetAllocations()[0].m_address);
+        EXPECT_EQ(allocator.GetDeallocations()[0].m_byteSize, allocator.GetAllocations()[0].m_byteSize);
+        EXPECT_EQ(allocator.GetDeallocations()[0].m_alignment, allocator.GetAllocations()[0].m_alignment);
+
+        FailingSymbolAllocator alwaysFail{0};
+        AZ::Internal::SymbolSerializerBuffer buffer{alwaysFail};
+        char* inlineData = buffer.GetData();
+        EXPECT_FALSE(buffer.Reserve(1025));
+        EXPECT_EQ(buffer.GetData(), inlineData);
+        EXPECT_EQ(buffer.GetCapacity(), 1024);
+        EXPECT_TRUE(buffer.Reserve(1024));
+    }
+
+    TEST_F(SymbolTests, LongCollidingValuesRemainDistinctAndFindDoesNotAllocate)
+    {
+        FailingSymbolAllocator allocator{(std::numeric_limits<size_t>::max)()};
+        AZ::Internal::SymbolTable table{allocator};
+        AZStd::string first(65536, 'c');
+        AZStd::string second = first;
+        second.back() = 'd';
+        constexpr AZ::u64 Hash = 7;
+        const auto* firstEntry = AZ::Internal::SymbolTableTestAccess::InternWithHash(table, first, Hash);
+        const auto* secondEntry = AZ::Internal::SymbolTableTestAccess::InternWithHash(table, second, Hash);
+        ASSERT_NE(firstEntry, nullptr);
+        ASSERT_NE(secondEntry, nullptr);
+        EXPECT_NE(firstEntry, secondEntry);
+        const size_t allocationCount = allocator.GetAllocations().size();
+        const size_t storageBytes = table.GetStorageBytes();
+        allocator.FailNextAllocation();
+        EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::FindWithHash(table, first, Hash), firstEntry);
+        EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::InternWithHash(table, first, Hash), firstEntry);
+        second.back() = 'e';
+        EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::FindWithHash(table, second, Hash), nullptr);
+        EXPECT_EQ(table.GetStorageBytes(), storageBytes);
+        EXPECT_EQ(allocator.GetAllocations().size(), allocationCount);
+    }
+
+    TEST_F(SymbolTests, LongValueBudgetAndAllocationFailuresLeaveTableUnchanged)
+    {
+        const AZStd::string value(16384, 'f');
+        FailingSymbolAllocator allocator{(std::numeric_limits<size_t>::max)()};
+        AZ::Internal::SymbolTable limited{allocator, 8192};
+        EXPECT_EQ(limited.TryIntern(value), nullptr);
+        EXPECT_EQ(limited.Find(value), nullptr);
+        EXPECT_EQ(limited.GetStorageBytes(), 0);
+        EXPECT_TRUE(allocator.GetAllocations().empty());
+
+        FailingSymbolAllocator failArena{0};
+        AZ::Internal::SymbolTable failedArena{failArena};
+        EXPECT_EQ(failedArena.TryIntern(value), nullptr);
+        EXPECT_EQ(failedArena.GetStorageBytes(), 0);
+        EXPECT_EQ(failedArena.Find(value), nullptr);
+
+        FailingSymbolAllocator failTable{1};
+        AZ::Internal::SymbolTable failedTable{failTable};
+        EXPECT_EQ(failedTable.TryIntern(value), nullptr);
+        EXPECT_EQ(failedTable.GetStorageBytes(), 0);
+        EXPECT_EQ(failedTable.Find(value), nullptr);
+        ASSERT_EQ(failTable.GetAllocations().size(), 1);
+        ASSERT_EQ(failTable.GetDeallocations().size(), 1);
     }
 
     TEST_F(SymbolTests, InvalidDirectConstructionTerminates)
     {
-        const AZStd::string oversized(AZ::Symbol::MaxStringSize + 1, 'x');
         constexpr char embeddedNull[] = {'a', '\0', 'b'};
         constexpr char malformed[] = {static_cast<char>(0xC0), static_cast<char>(0xAF)};
         const AZStd::string_view embeddedNullView{embeddedNull, sizeof(embeddedNull)};
         const AZStd::string_view malformedView{malformed, sizeof(malformed)};
 
-        EXPECT_DEATH((void)AZ::Symbol{oversized}, "");
         EXPECT_DEATH((void)AZ::Symbol{embeddedNullView}, "");
         EXPECT_DEATH((void)AZ::Symbol{malformedView}, "");
     }
@@ -488,9 +716,7 @@ namespace UnitTest
             static_cast<char>(0xF4), static_cast<char>(0x8F), static_cast<char>(0xBF), static_cast<char>(0xBF),
         };
 
-        EXPECT_EQ(
-            AZ::Internal::ValidateSymbolValue(AZStd::string_view{valid, sizeof(valid)}, AZ::Symbol::MaxStringSize),
-            AZ::Internal::SymbolValidationError::None);
+        EXPECT_TRUE(AZ::Symbol::IsValid(AZStd::string_view{valid, sizeof(valid)}));
         const AZ::Symbol symbol{AZStd::string_view{valid, sizeof(valid)}};
         EXPECT_FALSE(symbol.IsEmpty());
     }
@@ -515,7 +741,7 @@ namespace UnitTest
         EXPECT_EQ(table.GetStorageBytes(), 0);
     }
 
-    TEST_F(SymbolTests, FixedSecretProducesDeterministicProcessLocalTableHashes)
+    TEST_F(SymbolTests, FixedSecretProducesDeterministicProcessLocalHashes)
     {
         constexpr size_t SecretByteCount = AZ::Internal::SymbolTableTestAccess::GetHashSecretByteCount();
         AZStd::array<AZ::u8, SecretByteCount> firstSecret{};
@@ -566,25 +792,25 @@ namespace UnitTest
         constexpr AZ::u64 H2 = 0x55;
         constexpr AZ::u64 Placement = 0x000A123456789ABCull;
         constexpr size_t ShardIndex = 0x1B;
-        constexpr AZ::u64 TableHash = (static_cast<AZ::u64>(ShardIndex) << 59) | (Placement << 7) | H2;
+        constexpr AZ::u64 Hash = (static_cast<AZ::u64>(ShardIndex) << 59) | (Placement << 7) | H2;
         const AZ::Internal::SymbolTableTestAccess::HashParts parts =
-            AZ::Internal::SymbolTableTestAccess::SplitHash(TableHash);
+            AZ::Internal::SymbolTableTestAccess::SplitHash(Hash);
 
         EXPECT_EQ(parts.m_h2, H2);
         EXPECT_EQ(parts.m_placement, Placement);
         EXPECT_EQ(parts.m_shardIndex, ShardIndex);
 
-        const auto changedH2 = AZ::Internal::SymbolTableTestAccess::SplitHash(TableHash ^ 0x7F);
+        const auto changedH2 = AZ::Internal::SymbolTableTestAccess::SplitHash(Hash ^ 0x7F);
         EXPECT_NE(changedH2.m_h2, parts.m_h2);
         EXPECT_EQ(changedH2.m_placement, parts.m_placement);
         EXPECT_EQ(changedH2.m_shardIndex, parts.m_shardIndex);
 
-        const auto changedPlacement = AZ::Internal::SymbolTableTestAccess::SplitHash(TableHash ^ (AZ::u64{1} << 30));
+        const auto changedPlacement = AZ::Internal::SymbolTableTestAccess::SplitHash(Hash ^ (AZ::u64{1} << 30));
         EXPECT_EQ(changedPlacement.m_h2, parts.m_h2);
         EXPECT_NE(changedPlacement.m_placement, parts.m_placement);
         EXPECT_EQ(changedPlacement.m_shardIndex, parts.m_shardIndex);
 
-        const auto changedShard = AZ::Internal::SymbolTableTestAccess::SplitHash(TableHash ^ (AZ::u64{1} << 62));
+        const auto changedShard = AZ::Internal::SymbolTableTestAccess::SplitHash(Hash ^ (AZ::u64{1} << 62));
         EXPECT_EQ(changedShard.m_h2, parts.m_h2);
         EXPECT_EQ(changedShard.m_placement, parts.m_placement);
         EXPECT_NE(changedShard.m_shardIndex, parts.m_shardIndex);
@@ -601,14 +827,14 @@ namespace UnitTest
         for (size_t index = 0; index < ValueCount; ++index)
         {
             values[index] = AZStd::string::format("CollisionValue%zu", index);
-            entries[index] = AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, values[index], hash);
+            entries[index] = AZ::Internal::SymbolTableTestAccess::InternWithHash(table, values[index], hash);
             ASSERT_NE(entries[index], nullptr);
         }
 
         for (size_t index = 0; index < ValueCount; ++index)
         {
-            EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, values[index], hash), entries[index]);
-            EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::FindWithTableHash(table, values[index], hash), entries[index]);
+            EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::InternWithHash(table, values[index], hash), entries[index]);
+            EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::FindWithHash(table, values[index], hash), entries[index]);
         }
     }
 
@@ -617,9 +843,9 @@ namespace UnitTest
         constexpr char InvalidValue[] = {'a', '\0', 'b'};
         const AZStd::string_view invalidView{InvalidValue, sizeof(InvalidValue)};
         AZ::Internal::SymbolTable table;
-        const AZ::u64 tableHash = AZ::Internal::SymbolTableTestAccess::HashValue(table, invalidView);
+        const AZ::u64 hash = AZ::Internal::SymbolTableTestAccess::HashValue(table, invalidView);
         const AZ::Internal::SymbolEntry* inserted =
-            AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, invalidView, tableHash);
+            AZ::Internal::SymbolTableTestAccess::InternWithHash(table, invalidView, hash);
         ASSERT_NE(inserted, nullptr);
 
         EXPECT_EQ(table.TryIntern(invalidView), inserted);
@@ -630,9 +856,9 @@ namespace UnitTest
         FailingSymbolAllocator allocator{(std::numeric_limits<size_t>::max)()};
         {
             AZ::Internal::SymbolTable table{allocator};
-            constexpr AZ::u64 TableHash = 0;
+            constexpr AZ::u64 Hash = 0;
             ASSERT_NE(
-                AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, "CombinedAllocation", TableHash),
+                AZ::Internal::SymbolTableTestAccess::InternWithHash(table, "CombinedAllocation", Hash),
                 nullptr);
 
             ASSERT_EQ(allocator.GetAllocations().size(), 2);
@@ -660,7 +886,7 @@ namespace UnitTest
             }
 
             EXPECT_EQ(
-                AZ::Internal::SymbolTableTestAccess::FindWithTableHash(table, "EmptySlotProbe", 1),
+                AZ::Internal::SymbolTableTestAccess::FindWithHash(table, "EmptySlotProbe", 1),
                 nullptr);
         }
 
@@ -682,9 +908,9 @@ namespace UnitTest
         EXPECT_EQ(emptyStats.m_tableByteCount, 0);
         EXPECT_EQ(emptyStats.m_entryCount, 0);
 
-        constexpr AZ::u64 TableHash = 0x42;
+        constexpr AZ::u64 Hash = 0x42;
         const AZ::Internal::SymbolEntry* entry =
-            AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, "StatsValue", TableHash);
+            AZ::Internal::SymbolTableTestAccess::InternWithHash(table, "StatsValue", Hash);
         ASSERT_NE(entry, nullptr);
         const AZ::Internal::SymbolStorageStats insertedStats = table.GetStorageStats();
         EXPECT_EQ(insertedStats.m_usedByteCount, insertedStats.m_arenaByteCount + insertedStats.m_tableByteCount);
@@ -692,7 +918,7 @@ namespace UnitTest
         EXPECT_EQ(insertedStats.m_entryCount, 1);
 
         EXPECT_EQ(
-            AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, "StatsValue", TableHash),
+            AZ::Internal::SymbolTableTestAccess::InternWithHash(table, "StatsValue", Hash),
             entry);
         const AZ::Internal::SymbolStorageStats hitStats = table.GetStorageStats();
         EXPECT_EQ(hitStats.m_usedByteCount, insertedStats.m_usedByteCount);
@@ -734,24 +960,24 @@ namespace UnitTest
         {
             FailingSymbolAllocator allocator{2};
             AZ::Internal::SymbolTable table{allocator};
-            constexpr AZ::u64 TableHash = 1;
+            constexpr AZ::u64 Hash = 1;
             for (size_t index = 0; index < 14; ++index)
             {
                 const AZStd::string value = AZStd::string::format("ResizeFailure%zu", index);
-                ASSERT_NE(AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, value, TableHash), nullptr);
+                ASSERT_NE(AZ::Internal::SymbolTableTestAccess::InternWithHash(table, value, Hash), nullptr);
             }
             const size_t storageBytes = table.GetStorageBytes();
             EXPECT_EQ(
-                AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, "ResizeFailureFinal", TableHash),
+                AZ::Internal::SymbolTableTestAccess::InternWithHash(table, "ResizeFailureFinal", Hash),
                 nullptr);
             EXPECT_EQ(table.GetStorageBytes(), storageBytes);
             EXPECT_EQ(
-                AZ::Internal::SymbolTableTestAccess::FindWithTableHash(table, "ResizeFailureFinal", TableHash),
+                AZ::Internal::SymbolTableTestAccess::FindWithHash(table, "ResizeFailureFinal", Hash),
                 nullptr);
             for (size_t index = 0; index < 14; ++index)
             {
                 const AZStd::string value = AZStd::string::format("ResizeFailure%zu", index);
-                EXPECT_NE(AZ::Internal::SymbolTableTestAccess::FindWithTableHash(table, value, TableHash), nullptr);
+                EXPECT_NE(AZ::Internal::SymbolTableTestAccess::FindWithHash(table, value, Hash), nullptr);
             }
         }
     }
@@ -774,22 +1000,22 @@ namespace UnitTest
         AZStd::array<AZStd::string, 4> values;
         for (size_t index = 0; index < values.size(); ++index)
         {
-            values[index].assign(AZ::Symbol::MaxStringSize, static_cast<char>('a' + index));
+            values[index].assign(1023, static_cast<char>('a' + index));
         }
 
         for (size_t index = 0; index < 3; ++index)
         {
-            ASSERT_NE(AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, values[index], Hash), nullptr);
+            ASSERT_NE(AZ::Internal::SymbolTableTestAccess::InternWithHash(table, values[index], Hash), nullptr);
         }
         const size_t storageBytes = table.GetStorageBytes();
         allocator.FailNextAllocation();
 
-        EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, values.back(), Hash), nullptr);
+        EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::InternWithHash(table, values.back(), Hash), nullptr);
         EXPECT_EQ(table.GetStorageBytes(), storageBytes);
-        EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::FindWithTableHash(table, values.back(), Hash), nullptr);
+        EXPECT_EQ(AZ::Internal::SymbolTableTestAccess::FindWithHash(table, values.back(), Hash), nullptr);
         for (size_t index = 0; index < 3; ++index)
         {
-            EXPECT_NE(AZ::Internal::SymbolTableTestAccess::FindWithTableHash(table, values[index], Hash), nullptr);
+            EXPECT_NE(AZ::Internal::SymbolTableTestAccess::FindWithHash(table, values[index], Hash), nullptr);
         }
     }
 
@@ -800,20 +1026,20 @@ namespace UnitTest
         constexpr AZ::u64 ExistingHash = 0;
         constexpr AZ::u64 NewShardHash = AZ::u64{1} << 59;
         const AZ::Internal::SymbolEntry* existing =
-            AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, "BudgetKnown", ExistingHash);
+            AZ::Internal::SymbolTableTestAccess::InternWithHash(table, "BudgetKnown", ExistingHash);
         ASSERT_NE(existing, nullptr);
 
         EXPECT_EQ(
-            AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, "BudgetUnknown", NewShardHash),
+            AZ::Internal::SymbolTableTestAccess::InternWithHash(table, "BudgetUnknown", NewShardHash),
             nullptr);
         EXPECT_EQ(
-            AZ::Internal::SymbolTableTestAccess::FindWithTableHash(table, "BudgetUnknown", NewShardHash),
+            AZ::Internal::SymbolTableTestAccess::FindWithHash(table, "BudgetUnknown", NewShardHash),
             nullptr);
         EXPECT_EQ(
-            AZ::Internal::SymbolTableTestAccess::InternWithTableHash(table, "BudgetKnown", ExistingHash),
+            AZ::Internal::SymbolTableTestAccess::InternWithHash(table, "BudgetKnown", ExistingHash),
             existing);
         EXPECT_EQ(
-            AZ::Internal::SymbolTableTestAccess::FindWithTableHash(table, "BudgetKnown", ExistingHash),
+            AZ::Internal::SymbolTableTestAccess::FindWithHash(table, "BudgetKnown", ExistingHash),
             existing);
     }
 
@@ -938,10 +1164,10 @@ namespace UnitTest
         }
     }
 
-    TEST_F(SymbolTests, MaximumBinaryEncodingIsExactlyOneKiB)
+    TEST_F(SymbolTests, OneKiBBinaryEncodingRemainsCompatible)
     {
         AZ::SymbolSerializer serializer;
-        const AZStd::string value(AZ::Symbol::MaxStringSize, 'p');
+        const AZStd::string value(1023, 'p');
         const AZ::Symbol input{value};
         AZStd::vector<AZ::u8> buffer;
         AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> outputStream(&buffer);

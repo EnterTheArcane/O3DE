@@ -22,10 +22,9 @@ namespace AzNetworking
 #else
         __attribute__((noinline))
 #endif
-        bool DeserializeSymbol(ISerializer& serializer, AZ::Symbol& symbol)
+        bool DeserializeSymbol(ISerializer& serializer, AZ::Symbol& symbol, AZStd::string_view currentValue)
         {
-            AZStd::array<AZ::u8, AZ::Symbol::MaxStringSize> valueBuffer;
-            const AZStd::string_view currentValue = symbol.GetStringView();
+            AZStd::array<AZ::u8, SerializeObjectHelper<AZ::Symbol>::MaxStringSize> valueBuffer;
             AZ::u32 valueSize = static_cast<AZ::u32>(currentValue.size());
             if (!currentValue.empty())
             {
@@ -78,17 +77,22 @@ namespace AzNetworking
         ISerializer& serializer,
         AZ::Symbol& symbol)
     {
+        const AZStd::string_view currentValue = symbol.GetStringView();
+        if (currentValue.size() > MaxStringSize)
+        {
+            serializer.Invalidate();
+            return false;
+        }
         if (serializer.GetSerializerMode() != SerializerMode::ReadFromObject)
         {
-            return DeserializeSymbol(serializer, symbol);
+            return DeserializeSymbol(serializer, symbol, currentValue);
         }
 
-        const AZStd::string_view currentValue = symbol.GetStringView();
         AZ::u32 valueSize = static_cast<AZ::u32>(currentValue.size());
         AZ::u8* valueData = const_cast<AZ::u8*>(reinterpret_cast<const AZ::u8*>(symbol.GetCStr()));
         return serializer.SerializeBytes(
             valueData,
-            static_cast<AZ::u32>(AZ::Symbol::MaxStringSize),
+            MaxStringSize,
             true,
             valueSize,
             "Value");

@@ -75,7 +75,7 @@ namespace UnitTest
 
         AZStd::vector<AZ::u8> EncodeSymbol(AZ::Symbol symbol)
         {
-            AZStd::vector<AZ::u8> buffer(AZ::Symbol::MaxStringSize + sizeof(AZ::u16));
+            AZStd::vector<AZ::u8> buffer(AzNetworking::SerializeObjectHelper<AZ::Symbol>::MaxStringSize + sizeof(AZ::u16));
             AzNetworking::NetworkInputSerializer serializer(
                 buffer.data(),
                 aznumeric_cast<AZ::u32>(buffer.size()));
@@ -123,9 +123,9 @@ namespace UnitTest
         const AZStd::vector<AZ::u8> empty = EncodeSymbol(AZ::Symbol{});
         EXPECT_EQ(empty, (AZStd::vector<AZ::u8>{0x00, 0x00}));
 
-        const AZStd::string maximumValue(AZ::Symbol::MaxStringSize, 'm');
+        const AZStd::string maximumValue(AzNetworking::SerializeObjectHelper<AZ::Symbol>::MaxStringSize, 'm');
         const AZStd::vector<AZ::u8> maximum = EncodeSymbol(AZ::Symbol{maximumValue});
-        EXPECT_EQ(maximum.size(), AZ::Symbol::MaxStringSize + sizeof(AZ::u16));
+        EXPECT_EQ(maximum.size(), AzNetworking::SerializeObjectHelper<AZ::Symbol>::MaxStringSize + sizeof(AZ::u16));
     }
 
     TEST_F(SymbolSerializerTests, EveryBoundedLengthTransitionUsesExactRawBytes)
@@ -146,6 +146,56 @@ namespace UnitTest
             ASSERT_TRUE(DecodeSymbol(encoded, destination));
             EXPECT_EQ(destination, source);
         }
+    }
+
+    TEST_F(SymbolSerializerTests, LongCoreValuesFailNetworkingWithoutTruncationOrAssignment)
+    {
+        constexpr size_t Lengths[] = {1024, 16384, 32768};
+        const AZStd::vector<AZ::u8> incoming = EncodeSymbol(AZ::Symbol{"short"});
+        for (const size_t length : Lengths)
+        {
+            SCOPED_TRACE(length);
+            const AZ::Symbol original{AZStd::string(length, 'n')};
+            AZ::Symbol value = original;
+            AZStd::array<AZ::u8, 2048> buffer;
+            buffer.fill(0xA5);
+            AzNetworking::NetworkInputSerializer encoder(buffer.data(), aznumeric_cast<AZ::u32>(buffer.size()));
+            EXPECT_FALSE(static_cast<AzNetworking::ISerializer&>(encoder).Serialize(value, "Symbol"));
+            EXPECT_FALSE(encoder.IsValid());
+            EXPECT_EQ(encoder.GetSize(), 0);
+            EXPECT_TRUE(AZStd::all_of(buffer.begin(), buffer.end(), [](AZ::u8 byte) { return byte == 0xA5; }));
+            EXPECT_EQ(value, original);
+
+            AzNetworking::TrackChangedSerializer<AzNetworking::NetworkOutputSerializer> decoder(
+                incoming.data(), aznumeric_cast<AZ::u32>(incoming.size()));
+            EXPECT_FALSE(decoder.Serialize(value, "Symbol"));
+            EXPECT_FALSE(decoder.IsValid());
+            EXPECT_FALSE(decoder.GetTrackedChangesFlag());
+            EXPECT_EQ(value, original);
+
+            SymbolValue shortValue{AZ::Symbol{"short"}};
+            SymbolValue longValue{original};
+            AzNetworking::SerializerDelta delta;
+            AzNetworking::DeltaSerializerCreate create(delta);
+            EXPECT_FALSE(create.CreateDelta(shortValue, longValue));
+            EXPECT_EQ(delta.GetNumDirtyBits(), 0);
+            EXPECT_EQ(delta.GetBufferSize(), 0);
+            AzNetworking::DeltaSerializerCreate reverse(delta);
+            EXPECT_FALSE(reverse.CreateDelta(longValue, shortValue));
+            EXPECT_EQ(delta.GetNumDirtyBits(), 0);
+            EXPECT_EQ(delta.GetBufferSize(), 0);
+            EXPECT_EQ(longValue.m_symbol, original);
+        }
+    }
+
+    TEST_F(SymbolSerializerTests, LongRawInputIsRejectedRatherThanTruncated)
+    {
+        const AZStd::string value(32768, 'r');
+        const AZStd::vector<AZ::u8> encoded = EncodeValue(value);
+        const AZ::Symbol original{"ShortOriginal"};
+        AZ::Symbol destination = original;
+        EXPECT_FALSE(DecodeSymbol(encoded, destination));
+        EXPECT_EQ(destination, original);
     }
 
     TEST_F(SymbolSerializerTests, NoOpAndOversizedCustomOutputPreserveDestination)
@@ -268,7 +318,7 @@ namespace UnitTest
     TEST_F(SymbolSerializerTests, DeltaSupportsOnlyValuesThatFitItsExistingPayload)
     {
         SymbolValue base;
-        SymbolValue current{AZ::Symbol{AZStd::string(AZ::Symbol::MaxStringSize - 1, 'd')}};
+        SymbolValue current{AZ::Symbol{AZStd::string(AzNetworking::SerializeObjectHelper<AZ::Symbol>::MaxStringSize - 1, 'd')}};
         AzNetworking::SerializerDelta fittingDelta;
         AzNetworking::DeltaSerializerCreate fittingSerializer(fittingDelta);
 
@@ -280,7 +330,7 @@ namespace UnitTest
         ASSERT_TRUE(applySerializer.ApplyDelta(output));
         EXPECT_EQ(output.m_symbol, current.m_symbol);
 
-        SymbolValue tooLarge{AZ::Symbol{AZStd::string(AZ::Symbol::MaxStringSize, 'x')}};
+        SymbolValue tooLarge{AZ::Symbol{AZStd::string(AzNetworking::SerializeObjectHelper<AZ::Symbol>::MaxStringSize, 'x')}};
         AzNetworking::SerializerDelta oversizedDelta;
         AzNetworking::DeltaSerializerCreate oversizedSerializer(oversizedDelta);
         EXPECT_FALSE(oversizedSerializer.CreateDelta(base, tooLarge));

@@ -18,7 +18,8 @@ namespace AZ::Internal
         size_t totalArguments = GetNumArguments();
         if (arguments.size() < totalArguments)
         {
-            // Default arguments are uncommon. Keep their owning storage off the normal call path and recurse once with a complete span.
+            // Default arguments are uncommon.
+            // Keep their owning storage off the normal call path and recurse once with a complete span.
             AZStd::vector<BehaviorArgument> newArguments;
             newArguments.reserve(totalArguments);
             for (const BehaviorArgument& argument : arguments)
@@ -80,7 +81,8 @@ namespace AZ::Internal
         size_t totalArguments = GetNumArguments();
         if (arguments.size() < totalArguments)
         {
-            // Default arguments are uncommon. Keep their owning storage off the normal validation path and recurse once with a complete span.
+            // Default arguments are uncommon.
+            // Keep their owning storage off the normal validation path and recurse once with a complete span.
             AZStd::vector<BehaviorArgument> newArguments;
             newArguments.reserve(totalArguments);
             for (const BehaviorArgument& argument : arguments)

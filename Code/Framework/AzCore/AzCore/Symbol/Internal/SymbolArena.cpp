@@ -29,7 +29,7 @@ namespace AZ::Internal
 
     SymbolEntry* SymbolArena::AllocateEntry(
         const AZStd::string_view value,
-        const u64 tableHash)
+        const u64 hash)
     {
         if (value.size() > (std::numeric_limits<size_t>::max)() - sizeof(SymbolEntry) - EntryAlignment)
         {
@@ -52,8 +52,8 @@ namespace AZ::Internal
         m_currentBlock->m_used += entrySize;
 
         SymbolEntry* entry = AZStd::construct_at(reinterpret_cast<SymbolEntry*>(entryMemory), SymbolEntry{
-            .m_tableHash = tableHash,
-            .m_size = static_cast<u32>(value.size()),
+            .m_hash = hash,
+            .m_size = value.size(),
         });
 
         char* entryData = reinterpret_cast<char*>(entry + 1);

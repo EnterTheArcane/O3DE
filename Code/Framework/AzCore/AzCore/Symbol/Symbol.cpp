@@ -14,8 +14,8 @@
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Symbol/Internal/SymbolEntry.h>
-#include <AzCore/Symbol/Internal/SymbolFailure.h>
 #include <AzCore/Symbol/Internal/SymbolStorage.h>
+#include <AzCore/Symbol/Internal/SymbolStorageBudget.h>
 #include <AzCore/Symbol/Internal/SymbolTable.h>
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
 #include <AzCore/Symbol/SymbolJsonSerializer.h>
@@ -24,6 +24,8 @@
 #include <AzCore/std/typetraits/is_destructible.h>
 #include <AzCore/std/typetraits/is_trivially_copyable.h>
 
+#include <cstdio>
+#include <cstdlib>
 #include <type_traits>
 
 namespace AZ
@@ -32,18 +34,50 @@ namespace AZ
     static_assert(std::is_standard_layout_v<Symbol>);
     static_assert(AZStd::is_trivially_copyable_v<Symbol>);
     static_assert(AZStd::is_trivially_destructible_v<Symbol>);
+    static_assert(sizeof(Internal::SymbolEntry) == 16);
+
+    namespace
+    {
+        [[noreturn]] void FailSymbolCreation(const AZStd::string_view value)
+        {
+            char reason[256];
+            if (!Internal::IsSymbolValueSizeAllowed(value.size()))
+            {
+                std::snprintf(
+                    reason,
+                    sizeof(reason),
+                    "AZ::Symbol value exceeds the configured limit: valueBytes=%zu limitBytes=%zu",
+                    value.size(),
+                    Internal::SymbolValueSizeLimit);
+            }
+            else if (const Internal::SymbolValidationError error = Internal::ValidateSymbolValue(value);
+                error != Internal::SymbolValidationError::None)
+            {
+                std::snprintf(reason, sizeof(reason), "%s", Internal::GetSymbolValidationErrorMessage(error));
+            }
+            else
+            {
+                const Internal::SymbolStorageStats stats = Internal::GetSymbolStorageStats();
+                std::snprintf(
+                    reason,
+                    sizeof(reason),
+                    "AZ::Symbol creation failed: valueBytes=%zu storageUsedBytes=%zu storageLimitBytes=%zu",
+                    value.size(),
+                    stats.m_usedByteCount,
+                    stats.m_limitByteCount);
+            }
+            std::fprintf(stderr, "%s\n", reason);
+            std::fflush(stderr);
+            AZ_Assert(false, "%s", reason);
+            std::abort();
+        }
+    }
 
     Symbol::Symbol(const AZStd::string_view value)
     {
         if (!Internal::TryCreateSymbol(*this, value))
         {
-            const Internal::SymbolValidationError error = Internal::ValidateSymbolValue(value, MaxStringSize);
-            if (error != Internal::SymbolValidationError::None)
-            {
-                Internal::FailSymbol(Internal::GetSymbolValidationErrorMessage(error));
-            }
-            const Internal::SymbolStorageStats stats = Internal::GetSymbolStorageStats();
-            Internal::FailSymbolStorage(value.size(), stats.m_usedByteCount, stats.m_limitByteCount);
+            FailSymbolCreation(value);
         }
     }
 
@@ -114,7 +148,7 @@ namespace AZ
         {
             return {};
         }
-        return AZStd::string_view{m_entry->GetData(), m_entry->m_size};
+        return AZStd::string_view{m_entry->GetData(), static_cast<size_t>(m_entry->m_size)};
     }
 
     const char* Symbol::GetCStr() const
@@ -124,11 +158,6 @@ namespace AZ
             return "";
         }
         return m_entry->GetData();
-    }
-
-    bool Symbol::IsEmpty() const
-    {
-        return !m_entry;
     }
 
     void Symbol::ScriptConstructor(
@@ -151,8 +180,19 @@ namespace AZ
             if (value)
             {
                 const AZStd::string_view valueView{value, valueLength};
+                if (!Internal::IsSymbolValueSizeAllowed(valueLength))
+                {
+                    dataContext.GetScriptContext()->Error(
+                        ScriptContext::ErrorType::Error,
+                        true,
+                        "Symbol constructor rejected the value: valueBytes=%zu configuredLimitBytes=%zu",
+                        valueLength,
+                        Internal::SymbolValueSizeLimit);
+                    AZStd::construct_at(thisPtr);
+                    return;
+                }
                 const Internal::SymbolValidationError validationError =
-                    Internal::ValidateSymbolValue(valueView, MaxStringSize);
+                    Internal::ValidateSymbolValue(valueView);
                 if (validationError == Internal::SymbolValidationError::None)
                 {
                     const AZStd::optional<Symbol> symbol = TryCreate(valueView);
@@ -188,8 +228,7 @@ namespace AZ
         dataContext.GetScriptContext()->Error(
             ScriptContext::ErrorType::Error,
             true,
-            "Symbol constructor expects valid UTF-8 text without U+0000 and no longer than %zu bytes",
-            MaxStringSize);
+            "Symbol constructor expects valid UTF-8 text without U+0000");
         AZStd::construct_at(thisPtr);
     }
 
@@ -214,8 +253,7 @@ namespace AZ
             const SymbolEntry* entry = SymbolTable::Instance().InternValidated(value);
             if (!entry)
             {
-                const SymbolStorageStats stats = GetSymbolStorageStats();
-                FailSymbolStorage(value.size(), stats.m_usedByteCount, stats.m_limitByteCount);
+                FailSymbolCreation(value);
             }
             return SymbolAccess::FromEntry(entry);
         }

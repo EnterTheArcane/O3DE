@@ -724,12 +724,11 @@ set(FILES
     Symbol/Internal/SymbolArena.h
     Symbol/Internal/SymbolArena.cpp
     Symbol/Internal/SymbolEntry.h
-    Symbol/Internal/SymbolFailure.h
-    Symbol/Internal/SymbolFailure.cpp
     Symbol/Internal/SymbolGroup.h
     Symbol/Internal/SymbolGroup.cpp
     Symbol/Internal/SymbolStorage.h
     Symbol/Internal/SymbolStorageBudget.h
+    Symbol/Internal/SymbolSerializerBuffer.h
     Symbol/Internal/SymbolTable.h
     Symbol/Internal/SymbolTable.cpp
     Symbol/Internal/SymbolValidation.h
