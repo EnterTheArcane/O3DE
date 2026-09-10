@@ -16,10 +16,8 @@
 
 namespace AZ::Internal
 {
-    //! Fallible, temporary persistence storage.
-    //! Short values do not allocate.
-    //! Only initialized bytes are copied on growth.
-    //! This storage is released after conversion and is not part of the permanent intern-table budget.
+    //! Temporary persistence buffer with 1 KiB inline storage and fallible heap growth.
+    //! Heap storage is released on destruction and is separate from the permanent intern-table budget.
     class SymbolSerializerBuffer final
     {
     public:
@@ -40,11 +38,11 @@ namespace AZ::Internal
             }
         }
 
+        //! The first preserveSize bytes must be initialized.
         [[nodiscard]]
         bool Reserve(size_t capacity, size_t preserveSize = 0)
         {
-            // No value larger than the entire permanent storage budget can ever be admitted.
-            // Bound scratch allocation before touching input data, including untrusted stream lengths.
+            // Reject untrusted lengths that cannot fit in permanent storage.
             if (capacity > SymbolStorageBudgetBytes)
             {
                 return false;

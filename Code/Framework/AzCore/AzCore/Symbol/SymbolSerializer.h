@@ -14,6 +14,7 @@
 namespace AZ
 {
     //! Serializes a Symbol as value bytes followed by one trailing NUL.
+    //! XML text conversion uses a private percent-escape format.
     class AZCORE_API SymbolSerializer final
         : public SerializeContext::IDataSerializer
     {

@@ -48,8 +48,6 @@ namespace AZ::Internal
             return Symbol{};
         }
 
-        // The first executed use interns the literal and can lock or allocate.
-        // Later uses return this cached pointer identity directly.
         static const Symbol symbol = InternValidatedSymbol(value);
         return symbol;
     }
@@ -57,6 +55,8 @@ namespace AZ::Internal
 
 namespace AZ::Literals
 {
+    //! Validates UTF-8 at compile time and caches the Symbol on first use.
+    //! First use can allocate and lock, and storage admission failure terminates.
     template<Internal::SymbolLiteral Literal>
     [[nodiscard]]
     AZ_FORCE_INLINE Symbol operator""_sym()

@@ -182,9 +182,7 @@ namespace AZ
         Internal::SymbolSerializerBuffer decodedValue;
         if (encodedSize >= decodedValue.GetCapacity())
         {
-            // Count encoded units before allocating.
-            // Escaped short values still fit inline, and the decode loop needs no growth checks.
-            // Every escape produces exactly one byte or fails.
+            // Size for decoded bytes so escaped values can still use inline storage.
             size_t capacity = encodedSize + 1;
             for (size_t textIndex = 0; textIndex < encodedSize; ++textIndex)
             {
@@ -204,7 +202,6 @@ namespace AZ
             }
         }
 
-        // Cache the data pointer so byte writes cannot make the compiler reload the buffer member on every iteration.
         char* decodedData = decodedValue.GetData();
         size_t decodedSize = 0;
         size_t index = 0;

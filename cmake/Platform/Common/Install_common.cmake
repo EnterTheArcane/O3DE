@@ -28,11 +28,10 @@ define_property(TARGET PROPERTY LY_INSTALL_GENERATE_RUN_TARGET
 )
 
 define_property(TARGET PROPERTY LY_INSTALL_INTERFACE_SOURCES
-    BRIEF_DOCS "Defines installed files to expose as target interface sources"
+    BRIEF_DOCS "Installed IDE metadata exposed through INTERFACE_SOURCES"
     FULL_DOCS [[
-        Engine-root-relative files which are installed at the same relative path and should be
-        exposed through INTERFACE_SOURCES on the reconstructed installed target. This property is
-        intended for explicitly reviewed IDE metadata such as Natvis files, not compiled sources.
+        Engine-root-relative paths to IDE metadata, such as Natvis files, exposed through INTERFACE_SOURCES.
+        Files must be installed separately at the same relative paths.
     ]]
 )
 

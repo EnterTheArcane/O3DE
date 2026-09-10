@@ -21,7 +21,6 @@ namespace AZ::Internal
     struct SymbolStorageStats;
 
     //! Process-local concurrent canonical string table.
-    //! Hashes and the hash secret are implementation details.
     class AZCORE_API SymbolTable final
     {
     public:
@@ -38,11 +37,11 @@ namespace AZ::Internal
         static SymbolTable& Instance();
 
         //! Interns a value already checked by ValidateSymbolValue.
-        //! Returns null for empty input, admission-policy rejection, or storage failure.
+        //! Returns null for an empty value, admission-policy rejection, or storage failure.
         [[nodiscard]]
         const SymbolEntry* InternValidated(AZStd::string_view value);
 
-        //! Returns an existing entry before validation, or validates and attempts to intern a miss.
+        //! Reuses existing entries without validation and validates new values before interning.
         [[nodiscard]]
         const SymbolEntry* TryIntern(AZStd::string_view value);
 

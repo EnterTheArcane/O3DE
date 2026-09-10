@@ -193,9 +193,8 @@ namespace UnitTest
                     &serializeContext,
                     strictFilter)) << "Truncated size " << truncatedSize;
 
-                // ObjectStream does not provide whole-object transactionality.
-                // The leaf has already committed when only the final structural end tag is missing.
-                // Every truncation within the leaf must preserve its destination.
+                // ObjectStream may commit a complete leaf before detecting a missing structural end tag.
+                // Truncation within the leaf must preserve its destination.
                 if (truncatedSize < buffer.size() - 2)
                 {
                     EXPECT_EQ(truncatedOutput, unchangedValue) << "Truncated size " << truncatedSize;

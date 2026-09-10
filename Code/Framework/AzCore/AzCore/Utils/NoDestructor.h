@@ -76,11 +76,9 @@ namespace AZ
         };
     } // namespace Internal
 
-    //! Owns an in-place value whose destructor is deliberately never invoked.
-    //! Trivially destructible values are stored directly.
-    //! Other values use aligned byte storage so this wrapper remains trivially destructible.
-    //! This suppresses destruction only.
-    //! It does not pin the containing module or extend the lifetime of allocators, services, vtables, or constructor arguments used by T.
+    //! Constructs T in place and suppresses its destructor.
+    //! The wrapper is trivially destructible.
+    //! It does not extend the lifetime of its storage, containing module, or resources used by T.
     template<class T>
     class NoDestructor final
     {

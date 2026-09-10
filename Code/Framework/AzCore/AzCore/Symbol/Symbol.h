@@ -27,21 +27,14 @@ namespace AZ
         struct SymbolAccess;
     } // namespace Internal
 
-    //! Process-local canonical string identity for exact UTF-8 bytes.
-    //! Comparison is case-sensitive and performs no Unicode normalization.
-    //! Non-empty values use permanent AzCore-owned storage charged to one global requested-byte budget.
-    //! Symbol is intended for low-cardinality identifiers, not unbounded external input.
-    //! Equality compares canonical entry pointers.
-    //! Pointers and randomized table hashes are process/module-instance details.
-    //! Do not persist, transmit, or compare them across module reloads.
-    //! Binary and JSON persistence preserve the value bytes.
-    //! XML escapes values its text format cannot represent.
-    //! Loading reconstructs identity.
-    //! AZ::Name remains a separate choice when reference-counted storage is needed.
-    //! A Symbol remains valid only while its owning AzCore module instance remains loaded.
-    //! Construction and first literal resolution can initialize entropy, allocate, and lock.
-    //! Do not intern Symbols from DllMain or global/static initialization in a dynamically loaded module.
-    //! Defer resolution until after load.
+    //! Process-local identity for exact UTF-8 bytes, with case-sensitive comparison and no normalization.
+    //! Empty is a valid value and the default.
+    //! Intended for low-cardinality identifiers because interned values occupy permanent, budgeted storage.
+    //! Equality and hashing use entry pointers, so persist and transmit value bytes.
+    //! Symbols and their views remain valid only while the owning AzCore module is loaded.
+    //! Interning and first literal resolution can acquire entropy, allocate, and lock.
+    //! Do not intern from DllMain or static initializers in a dynamically loaded module.
+    //! Use AZ::Name when reference-counted storage is needed.
     class AZCORE_API Symbol final
     {
     public:
@@ -51,9 +44,7 @@ namespace AZ
         Symbol(const Symbol&) = default;
         Symbol(Symbol&&) = default;
 
-        //! Invalid values terminate with a validation diagnostic.
-        //! Admission-policy rejection reports the requested length and configured limit.
-        //! Storage exhaustion terminates with requested/used/limit byte counts.
+        //! Terminates with a diagnostic if validation, admission policy, or storage allocation fails.
         explicit Symbol(AZStd::string_view value);
 
         Symbol& operator=(const Symbol&) = default;
@@ -63,20 +54,20 @@ namespace AZ
 
         static void Reflect(ReflectContext* context);
 
-        //! Validates UTF-8 and excludes U+0000.
-        //! Creation additionally requires that the value fits the build's admission policy and the global storage budget.
-        //! Integrations, including networking, impose their own smaller limits and reject unsupported values without truncation.
+        //! Checks UTF-8 validity and rejects embedded NUL.
+        //! Storage admission and integration-specific limits are checked separately.
         [[nodiscard]]
         static constexpr bool IsValid(AZStd::string_view value)
         {
             return Internal::ValidateSymbolValue(value) == Internal::SymbolValidationError::None;
         }
 
+        //! Equivalent to Symbol(value).
         [[nodiscard]]
         static Symbol Create(AZStd::string_view value);
 
         //! Returns an engaged empty Symbol for an empty value.
-        //! Returns no value for invalid input, admission-policy rejection, or unavailable storage without a diagnostic.
+        //! Returns no value on validation or storage admission failure, without a diagnostic.
         [[nodiscard]]
         static AZStd::optional<Symbol> TryCreate(AZStd::string_view value);
 
@@ -85,13 +76,11 @@ namespace AZ
         [[nodiscard]]
         static AZStd::optional<Symbol> Find(AZStd::string_view value);
 
-        //! Preferred length-aware access.
-        //! The returned view remains valid for the Symbol storage lifetime.
+        //! Returns a view of the value bytes.
         [[nodiscard]]
         AZStd::string_view GetStringView() const;
 
-        //! Returns a NUL-terminated pointer.
-        //! The empty Symbol returns a pointer to an empty string.
+        //! Returns a pointer to the NUL-terminated value, or an empty string for an empty Symbol.
         [[nodiscard]]
         const char* GetCStr() const;
 

@@ -166,9 +166,8 @@ namespace AZ::Internal
             }
         }
 
-        // Keep validation outside the shard lock so missing values do not stall unrelated hits during the UTF-8 scan.
-        // Another thread can insert during validation.
-        // The insertion path must probe again after reacquiring the lock.
+        // Validate outside the shard lock to avoid blocking lookups during the UTF-8 scan.
+        // TryInternWithHash probes again under the lock because another thread may have inserted the value.
         if (!Symbol::IsValid(value))
         {
             return nullptr;

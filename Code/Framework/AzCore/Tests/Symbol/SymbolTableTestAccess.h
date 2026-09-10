@@ -14,7 +14,7 @@
 
 namespace AZ::Internal
 {
-    //! Test-only access to deterministic hash-domain and storage-layout seams.
+    //! Access to hash placement and table storage for deterministic tests.
     class SymbolTableTestAccess final
     {
     public:

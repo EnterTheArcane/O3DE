@@ -20,7 +20,7 @@ namespace AZ::Internal
         u16 m_empty;
     };
 
-    //! Filters sixteen control bytes into candidate-match and empty-slot masks before the table inspects full entries.
+    //! Produces match and empty masks with bit i corresponding to control byte i.
     class AZCORE_API SymbolGroup final
     {
     public:

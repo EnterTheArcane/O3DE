@@ -164,9 +164,8 @@ namespace AZ::SymbolBenchmarks
     }
     BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, Validate)->Arg(8)->Arg(64)->Arg(1023);
 
-    BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, MaximumLengthDynamicHit)(::benchmark::State& state)
+    BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, DynamicHit1023Bytes)(::benchmark::State& state)
     {
-        // Preserve the original workload size for comparison with pre-length-limit-removal results.
         const AZStd::string value(1023, 'm');
         benchmark::DoNotOptimize(Symbol{value});
 
@@ -176,7 +175,7 @@ namespace AZ::SymbolBenchmarks
         }
         state.SetBytesProcessed(state.iterations() * value.size());
     }
-    BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, MaximumLengthDynamicHit);
+    BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, DynamicHit1023Bytes);
 
     BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, ColdTableInsertion)(::benchmark::State& state)
     {
