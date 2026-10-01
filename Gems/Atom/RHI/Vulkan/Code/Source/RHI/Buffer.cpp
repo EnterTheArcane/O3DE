@@ -187,7 +187,7 @@ namespace AZ
             addressInfo.buffer = GetBufferMemoryView()->GetNativeBuffer();
 
             auto& device = static_cast<Device&>(GetDevice());
-            return device.GetContext().GetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo) + GetBufferMemoryView()->GetOffset();
+            return device.GetContext().vkGetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo) + GetBufferMemoryView()->GetOffset();
         }
     }
 }

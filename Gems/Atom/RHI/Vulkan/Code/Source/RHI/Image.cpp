@@ -32,19 +32,19 @@ namespace AZ
         {
             // Get image memory requirements 
             VkMemoryRequirements memoryRequirements;
-            const GladVulkanContext& vulkanContext = device.GetContext();
+            const VolkDeviceTable& vulkanContext = device.GetContext();
             VkDevice vkDevice = device.GetNativeDevice();
-            vulkanContext.GetImageMemoryRequirements(vkDevice, vkImage, &memoryRequirements);
+            vulkanContext.vkGetImageMemoryRequirements(vkDevice, vkImage, &memoryRequirements);
             
             // get sparse memory requirement count;
             uint32_t sparseMemoryReqsCount = 0;
-            vulkanContext.GetImageSparseMemoryRequirements(vkDevice, vkImage, &sparseMemoryReqsCount, nullptr);
+            vulkanContext.vkGetImageSparseMemoryRequirements(vkDevice, vkImage, &sparseMemoryReqsCount, nullptr);
             AZ_Assert(sparseMemoryReqsCount, "Sparse memory requirements count shouldn't be 0");
 
             // Get actual requirements
             AZStd::vector<VkSparseImageMemoryRequirements> sparseImageMemoryRequirements;
             sparseImageMemoryRequirements.resize(sparseMemoryReqsCount);
-            vulkanContext.GetImageSparseMemoryRequirements(vkDevice, vkImage, &sparseMemoryReqsCount, sparseImageMemoryRequirements.data());
+            vulkanContext.vkGetImageSparseMemoryRequirements(vkDevice, vkImage, &sparseMemoryReqsCount, sparseImageMemoryRequirements.data());
 
             bool validSparseImage = false;
             for (const VkSparseImageMemoryRequirements& requirements : sparseImageMemoryRequirements)
@@ -399,7 +399,7 @@ namespace AZ
             {
                 auto& device = static_cast<Device&>(GetDevice());
                 device.QueueForRelease(
-                    new ReleaseContainer<VkImage>(device.GetNativeDevice(), m_vkImage, device.GetContext().DestroyImage));
+                    new ReleaseContainer<VkImage>(device.GetNativeDevice(), m_vkImage, device.GetContext().vkDestroyImage));
                 // ensure memory is released
                 AZ_Assert(!m_memoryView.IsValid(), "Memory should be released before Invalidate() is called");
             }
@@ -619,7 +619,7 @@ namespace AZ
         {
             // Get image memory requirements
             Device& device = static_cast<Device&>(GetDevice());
-            device.GetContext().GetImageMemoryRequirements(device.GetNativeDevice(), m_vkImage, &m_memoryRequirements);
+            device.GetContext().vkGetImageMemoryRequirements(device.GetNativeDevice(), m_vkImage, &m_memoryRequirements);
             SetName(GetName());
         }
 
@@ -790,7 +790,7 @@ namespace AZ
             createInfo.GetCreateInfo()->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
             const VkResult vkResult =
-                device.GetContext().CreateImage(device.GetNativeDevice(), createInfo.GetCreateInfo(), VkSystemAllocator::Get(), &m_vkImage);
+                device.GetContext().vkCreateImage(device.GetNativeDevice(), createInfo.GetCreateInfo(), VkSystemAllocator::Get(), &m_vkImage);
 
             VK_RESULT_ASSERT(vkResult);
             RHI::ResultCode result = ConvertResult(vkResult);

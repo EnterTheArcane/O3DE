@@ -27,7 +27,7 @@ namespace AZ
 
             static_cast<Device&>(GetDevice())
                 .GetContext()
-                .CmdBeginQuery(
+                .vkCmdBeginQuery(
                     commandList.GetNativeCommandBuffer(),
                     queryPool->GetNativeQueryPool(),
                     GetHandle().GetIndex(),
@@ -42,7 +42,7 @@ namespace AZ
             auto& commandList = static_cast<CommandList&>(commandListBase);
             static_cast<Device&>(GetDevice())
                 .GetContext()
-                .CmdEndQuery(commandList.GetNativeCommandBuffer(), queryPool->GetNativeQueryPool(), GetHandle().GetIndex());
+                .vkCmdEndQuery(commandList.GetNativeCommandBuffer(), queryPool->GetNativeQueryPool(), GetHandle().GetIndex());
 
             return RHI::ResultCode::Success;
         }
@@ -54,7 +54,7 @@ namespace AZ
 
             static_cast<Device&>(GetDevice())
                 .GetContext()
-                .CmdWriteTimestamp(
+                .vkCmdWriteTimestamp(
                     commandList.GetNativeCommandBuffer(),
                     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                     queryPool->GetNativeQueryPool(),

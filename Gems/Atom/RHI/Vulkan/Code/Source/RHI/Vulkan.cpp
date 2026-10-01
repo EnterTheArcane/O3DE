@@ -24,7 +24,8 @@
 
 #define VMA_IMPLEMENTATION
 
-#include <vma/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
+
 AZ_CVAR(
     uint32_t,
     r_vkBarrierOptimizationFlags,
@@ -358,9 +359,9 @@ namespace AZ
                 return VK_FALSE;
             }
 
-            void InitDebugMessages(const GladVulkanContext& context, VkInstance instance, DebugMessageTypeFlag messageTypeMask)
+            void InitDebugMessages(VkInstance instance, DebugMessageTypeFlag messageTypeMask)
             {
-                if (VK_INSTANCE_EXTENSION_SUPPORTED(context, EXT_debug_utils))
+                if (Instance::GetInstance().IsExtensionEnabled(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
                 {
                     VkDebugUtilsMessengerCreateInfoEXT createInfo{};
                     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -393,17 +394,17 @@ namespace AZ
                     }
 
                     [[maybe_unused]] VkResult result =
-                        context.CreateDebugUtilsMessengerEXT(instance, &createInfo, VkSystemAllocator::Get(), &s_messageCallback);
+                        vkCreateDebugUtilsMessengerEXT(instance, &createInfo, VkSystemAllocator::Get(), &s_messageCallback);
 
                     AZ_Error("Vulkan", !result, "Failed to initialize the debug messaging system");
                 }
             }
 
-            void ShutdownDebugMessages(const GladVulkanContext& context, VkInstance instance)
+            void ShutdownDebugMessages(VkInstance instance)
             {
                 if (s_messageCallback != VK_NULL_HANDLE)
                 {
-                    context.DestroyDebugUtilsMessengerEXT(instance, s_messageCallback, VkSystemAllocator::Get());
+                    vkDestroyDebugUtilsMessengerEXT(instance, s_messageCallback, VkSystemAllocator::Get());
                 }
             }
 
@@ -447,65 +448,65 @@ namespace AZ
             {
 #if defined(AZ_VULKAN_USE_DEBUG_LABELS)
                 AZ_Assert(objectHandle != reinterpret_cast<uint64_t>(VK_NULL_HANDLE), "objectHandle is null.");
-                if (VK_DEVICE_EXTENSION_SUPPORTED(device.GetContext(), EXT_debug_utils))
+                if (device.IsExtensionEnabled(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
                 {
                     VkDebugUtilsObjectNameInfoEXT info{};
                     info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
                     info.objectType = objectType;
                     info.objectHandle = objectHandle;
                     info.pObjectName = name;
-                    [[maybe_unused]] VkResult vkResult = device.GetContext().SetDebugUtilsObjectNameEXT(device.GetNativeDevice(), &info);
+                    [[maybe_unused]] VkResult vkResult = vkSetDebugUtilsObjectNameEXT(device.GetNativeDevice(), &info);
                     VK_RESULT_ASSERT(vkResult);
                 }
 #endif
             }
 
             void BeginCmdDebugLabel(
-                [[maybe_unused]] const GladVulkanContext& context,
+                [[maybe_unused]] const VolkDeviceTable& context,
                 [[maybe_unused]] VkCommandBuffer commandBuffer,
                 [[maybe_unused]] const char* label,
                 [[maybe_unused]] const AZ::Color color)
             {
 #if defined(AZ_VULKAN_USE_DEBUG_LABELS)
-                if (VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_debug_utils))
+                if (vkCmdBeginDebugUtilsLabelEXT)
                 {
                     VkDebugUtilsLabelEXT info = CreateVkDebugUtilLabel(label, color);
-                    context.CmdBeginDebugUtilsLabelEXT(commandBuffer, &info);
+                    vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &info);
                 }
 #endif
             }
 
-            void EndCmdDebugLabel([[maybe_unused]] const GladVulkanContext& context, [[maybe_unused]] VkCommandBuffer commandBuffer)
+            void EndCmdDebugLabel([[maybe_unused]] const VolkDeviceTable& context, [[maybe_unused]] VkCommandBuffer commandBuffer)
             {
 #if defined(AZ_VULKAN_USE_DEBUG_LABELS)
-                if (VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_debug_utils))
+                if (vkCmdEndDebugUtilsLabelEXT)
                 {
-                    context.CmdEndDebugUtilsLabelEXT(commandBuffer);
+                    vkCmdEndDebugUtilsLabelEXT(commandBuffer);
                 }
 #endif
             }
 
             void BeginQueueDebugLabel(
-                [[maybe_unused]] const GladVulkanContext& context,
+                [[maybe_unused]] const VolkDeviceTable& context,
                 [[maybe_unused]] VkQueue queue,
                 [[maybe_unused]] const char* label,
                 [[maybe_unused]] const AZ::Color color)
             {
 #if defined(AZ_VULKAN_USE_DEBUG_LABELS)
-                if (VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_debug_utils))
+                if (vkQueueBeginDebugUtilsLabelEXT)
                 {
                     VkDebugUtilsLabelEXT info = CreateVkDebugUtilLabel(label, color);
-                    context.QueueBeginDebugUtilsLabelEXT(queue, &info);
+                    vkQueueBeginDebugUtilsLabelEXT(queue, &info);
                 }
 #endif
             }
 
-            void EndQueueDebugLabel([[maybe_unused]] const GladVulkanContext& context, [[maybe_unused]] VkQueue queue)
+            void EndQueueDebugLabel([[maybe_unused]] const VolkDeviceTable& context, [[maybe_unused]] VkQueue queue)
             {
 #if defined(AZ_VULKAN_USE_DEBUG_LABELS)
-                if (VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_debug_utils))
+                if (vkQueueEndDebugUtilsLabelEXT)
                 {
-                    context.QueueEndDebugUtilsLabelEXT(queue);
+                    vkQueueEndDebugUtilsLabelEXT(queue);
                 }
 #endif
             }

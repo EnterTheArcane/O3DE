@@ -67,7 +67,7 @@ namespace AZ
 
             // Query buffer size for building CLASes with implicit destination
             VkAccelerationStructureBuildSizesInfoKHR clasBuildSizesInfo = {};
-            device.GetContext().GetClusterAccelerationStructureBuildSizesNV(device.GetNativeDevice(), &clasInputInfo, &clasBuildSizesInfo);
+            device.GetContext().vkGetClusterAccelerationStructureBuildSizesNV(device.GetNativeDevice(), &clasInputInfo, &clasBuildSizesInfo);
 
             {
                 // Create CLAS destination implicit data buffer
@@ -107,7 +107,7 @@ namespace AZ
 
             // Query buffer size for building cluster BLAS with implicit destination
             VkAccelerationStructureBuildSizesInfoKHR clusterBlasBuildSizesInfo = {};
-            device.GetContext().GetClusterAccelerationStructureBuildSizesNV(
+            device.GetContext().vkGetClusterAccelerationStructureBuildSizesNV(
                 device.GetNativeDevice(), &clusterBlasInputInfo, &clusterBlasBuildSizesInfo);
 
             {

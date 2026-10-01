@@ -81,7 +81,7 @@ namespace AZ::Vulkan
             memoryBarrier.dstAccessMask = aznumeric_caster(collectedMemoryBarrier.dstAccessMask);
             static_cast<Device&>(commandList.GetDevice())
                 .GetContext()
-                .CmdPipelineBarrier(
+                .vkCmdPipelineBarrier(
                     commandList.GetNativeCommandBuffer(),
                     aznumeric_caster(collectedMemoryBarrier.srcStageMask),
                     aznumeric_caster(collectedMemoryBarrier.dstStageMask),

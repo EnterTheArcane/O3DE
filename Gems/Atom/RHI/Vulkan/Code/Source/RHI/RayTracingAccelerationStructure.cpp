@@ -20,7 +20,7 @@ namespace AZ::Vulkan
 
     void RayTracingAccelerationStructure::Init(Device& device, const VkAccelerationStructureCreateInfoKHR& createInfo)
     {
-        [[maybe_unused]] VkResult vkResult = device.GetContext().CreateAccelerationStructureKHR(
+        [[maybe_unused]] VkResult vkResult = device.GetContext().vkCreateAccelerationStructureKHR(
             device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_accelerationStructure);
         VK_RESULT_ASSERT(vkResult);
         DeviceObject::Init(device);
@@ -30,7 +30,7 @@ namespace AZ::Vulkan
     {
         m_blasBuffers.clear();
         auto& device = static_cast<Device&>(GetDevice());
-        device.GetContext().DestroyAccelerationStructureKHR(device.GetNativeDevice(), m_accelerationStructure, VkSystemAllocator::Get());
+        device.GetContext().vkDestroyAccelerationStructureKHR(device.GetNativeDevice(), m_accelerationStructure, VkSystemAllocator::Get());
         m_accelerationStructure = VK_NULL_HANDLE;
         RHI::DeviceObject::Shutdown();
     }

@@ -42,7 +42,7 @@ namespace AZ
                 createInfo.flags = 0;
                 createInfo.display = display;
                 createInfo.surface = (wl_surface*)m_descriptor.m_windowHandle.GetIndex();
-                const VkResult result = instance.GetContext().CreateWaylandSurfaceKHR(instance.GetNativeInstance(), &createInfo, VkSystemAllocator::Get(), &m_nativeSurface);
+                const VkResult result = vkCreateWaylandSurfaceKHR(instance.GetNativeInstance(), &createInfo, VkSystemAllocator::Get(), &m_nativeSurface);
                 AssertSuccess(result);
 
                 return ConvertResult(result);
@@ -63,7 +63,7 @@ namespace AZ
             createInfo.flags = 0;
             createInfo.connection = xcb_connection;
             createInfo.window = static_cast<xcb_window_t>(m_descriptor.m_windowHandle.GetIndex());
-            const VkResult result = instance.GetContext().CreateXcbSurfaceKHR(instance.GetNativeInstance(), &createInfo, VkSystemAllocator::Get(), &m_nativeSurface);
+            const VkResult result = vkCreateXcbSurfaceKHR(instance.GetNativeInstance(), &createInfo, VkSystemAllocator::Get(), &m_nativeSurface);
             VK_RESULT_ASSERT(result);
 
             return ConvertResult(result);

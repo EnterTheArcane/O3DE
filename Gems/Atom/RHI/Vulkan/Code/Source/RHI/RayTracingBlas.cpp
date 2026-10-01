@@ -88,7 +88,7 @@ namespace AZ
                 geometryDesc.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
                 geometryDesc.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
                 geometryDesc.geometry.aabbs.pNext = nullptr;
-                geometryDesc.geometry.aabbs.data.deviceAddress = device.GetContext().GetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
+                geometryDesc.geometry.aabbs.data.deviceAddress = device.GetContext().vkGetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
                 geometryDesc.geometry.aabbs.stride = RHI::AlignUp(sizeof(VkAabbPositionsKHR), 8);
                 geometryDesc.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
 
@@ -124,7 +124,7 @@ namespace AZ
                     addressInfo.pNext = nullptr;
                     addressInfo.buffer = static_cast<const Vulkan::Buffer* > (geometry.m_vertexBuffer.GetBuffer())->GetBufferMemoryView()->GetNativeBuffer();
                     geometryDesc.geometry.triangles.vertexData.deviceAddress =
-                        device.GetContext().GetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo) +
+                        device.GetContext().vkGetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo) +
                         geometry.m_vertexBuffer.GetByteOffset();
                     geometryDesc.geometry.triangles.vertexStride = geometry.m_vertexBuffer.GetByteStride();
                     geometryDesc.geometry.triangles.maxVertex = geometry.m_vertexBuffer.GetByteCount() / aznumeric_cast<uint32_t>(geometryDesc.geometry.triangles.vertexStride);
@@ -134,7 +134,7 @@ namespace AZ
                     addressInfo.pNext = nullptr;
                     addressInfo.buffer = static_cast<const Vulkan::Buffer*>(geometry.m_indexBuffer.GetBuffer())->GetBufferMemoryView()->GetNativeBuffer();
                     geometryDesc.geometry.triangles.indexData.deviceAddress =
-                        device.GetContext().GetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo) +
+                        device.GetContext().vkGetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo) +
                         geometry.m_indexBuffer.GetByteOffset();
                     geometryDesc.geometry.triangles.indexType = (geometry.m_indexBuffer.GetIndexFormat() == RHI::IndexFormat::Uint16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
                     geometryDesc.geometry.triangles.transformData = {}; // [GFX-TODO][ATOM-4989] Add BLAS Transform Buffer
@@ -168,7 +168,7 @@ namespace AZ
             VkAccelerationStructureBuildSizesInfoKHR buildSizesInfo = {};
             buildSizesInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
 
-            device.GetContext().GetAccelerationStructureBuildSizesKHR(
+            device.GetContext().vkGetAccelerationStructureBuildSizesKHR(
                 device.GetNativeDevice(),
                 VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
                 &buffers.m_buildInfo,
@@ -230,7 +230,7 @@ namespace AZ
             addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
             addressInfo.buffer = scratchMemoryView->GetNativeBuffer();
             buffers.m_buildInfo.scratchData.deviceAddress =
-                device.GetContext().GetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
+                device.GetContext().vkGetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
 
             // store the VkAccelerationStructureKHR in the BLAS Buffer, this is necessary since we need it to
             // stay alive as long as it is used

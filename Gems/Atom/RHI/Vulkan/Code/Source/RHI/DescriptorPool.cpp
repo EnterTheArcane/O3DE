@@ -66,7 +66,7 @@ namespace AZ
             if (m_nativeDescriptorPool != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyDescriptorPool(device.GetNativeDevice(), m_nativeDescriptorPool, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyDescriptorPool(device.GetNativeDevice(), m_nativeDescriptorPool, VkSystemAllocator::Get());
                 m_nativeDescriptorPool = VK_NULL_HANDLE;
             }
             Base::Shutdown();
@@ -77,7 +77,7 @@ namespace AZ
             if (m_nativeDescriptorPool != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().ResetDescriptorPool(device.GetNativeDevice(), m_nativeDescriptorPool, 0);
+                device.GetContext().vkResetDescriptorPool(device.GetNativeDevice(), m_nativeDescriptorPool, 0);
             }
         }
 
@@ -98,7 +98,7 @@ namespace AZ
             }
 
             auto& device = static_cast<Device&>(GetDevice());
-            const VkResult result = device.GetContext().CreateDescriptorPool(
+            const VkResult result = device.GetContext().vkCreateDescriptorPool(
                 device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeDescriptorPool);
             VK_RESULT_ASSERT(result);
 

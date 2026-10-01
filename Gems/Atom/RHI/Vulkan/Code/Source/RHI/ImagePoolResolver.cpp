@@ -205,7 +205,7 @@ namespace AZ
                     continue;
                 }
 
-                m_device.GetContext().CmdPipelineBarrier(
+                m_device.GetContext().vkCmdPipelineBarrier(
                     commandList.GetNativeCommandBuffer(),
                     barrierInfo.m_srcStageMask,
                     barrierInfo.m_dstStageMask,

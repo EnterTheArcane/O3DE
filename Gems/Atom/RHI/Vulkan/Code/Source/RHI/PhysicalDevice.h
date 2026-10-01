@@ -21,6 +21,8 @@ namespace AZ
 
     namespace Vulkan
     {
+        class LoaderContext;
+
         enum class DeviceFeature : uint32_t
         {
             Compatible2dArrayTexture = 0,
@@ -124,13 +126,13 @@ namespace AZ
             StringList GetDeviceLayerNames() const;
             StringList GetDeviceExtensionNames(const char* layerName = nullptr) const;
             bool IsFormatSupported(RHI::Format format, VkImageTiling tiling, VkFormatFeatureFlags features) const;
-            void LoadSupportedFeatures(const GladVulkanContext& context);
+            void LoadSupportedFeatures(const LoaderContext& loaderContext);
             //! Filter optional extensions based on what the physics device support.
             RawStringList GetEnabledOptionalExtensions();
             //! Returns the supported vulkan version of the physical device.
             uint32_t GetVulkanVersion() const;
             //! Query the set of available time domains for timestamp calibration
-            AZStd::vector<VkTimeDomainEXT> GetCalibratedTimeDomains(const GladVulkanContext& context) const;
+            AZStd::vector<VkTimeDomainEXT> GetCalibratedTimeDomains() const;
 
         private:
             

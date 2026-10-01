@@ -53,7 +53,7 @@ namespace AZ
 
             for (auto it = barriers.begin(); it != barriers.end(); ++it)
             {
-                device.GetContext().CmdPipelineBarrier(
+                device.GetContext().vkCmdPipelineBarrier(
                     commandList.GetNativeCommandBuffer(),
                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                     it->first,

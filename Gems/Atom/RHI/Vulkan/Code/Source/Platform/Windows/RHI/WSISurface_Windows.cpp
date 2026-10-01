@@ -26,7 +26,7 @@ namespace AZ
             createInfo.flags = 0;
             createInfo.hinstance = hinstance;
             createInfo.hwnd = reinterpret_cast<HWND>(m_descriptor.m_windowHandle.GetIndex());
-            const VkResult vkResult = instance.GetContext().CreateWin32SurfaceKHR(
+            const VkResult vkResult = vkCreateWin32SurfaceKHR(
                 instance.GetNativeInstance(), &createInfo, VkSystemAllocator::Get(), &m_nativeSurface);
             VK_RESULT_ASSERT(vkResult);
 

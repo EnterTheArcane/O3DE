@@ -41,7 +41,7 @@ namespace AZ
             const VkResult result =
                 static_cast<Device&>(GetDevice())
                     .GetContext()
-                    .CreateShaderModule(
+                    .vkCreateShaderModule(
                         descriptor.m_device->GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeShaderModule);
             VK_RESULT_ASSERT(result);
 
@@ -74,7 +74,7 @@ namespace AZ
             if (m_nativeShaderModule != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyShaderModule(device.GetNativeDevice(), m_nativeShaderModule, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyShaderModule(device.GetNativeDevice(), m_nativeShaderModule, VkSystemAllocator::Get());
                 m_nativeShaderModule = VK_NULL_HANDLE;
             }
 

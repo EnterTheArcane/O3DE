@@ -103,7 +103,7 @@ namespace AZ
                         addressInfo.pNext = nullptr;
                         addressInfo.accelerationStructure = blas->GetBuffers().m_accelerationStructure->GetNativeAccelerationStructure();
                         mappedData[i].accelerationStructureReference =
-                            device.GetContext().GetAccelerationStructureDeviceAddressKHR(device.GetNativeDevice(), &addressInfo);
+                            device.GetContext().vkGetAccelerationStructureDeviceAddressKHR(device.GetNativeDevice(), &addressInfo);
                         
                         blasBuffers.emplace_back(blas->GetBuffers().m_blasBuffer);
                     }
@@ -123,7 +123,7 @@ namespace AZ
                 addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
                 addressInfo.pNext = nullptr;
                 addressInfo.buffer = tlasInstancesMemoryView->GetNativeBuffer();
-                tlasInstancesGpuAddress = device.GetContext().GetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
+                tlasInstancesGpuAddress = device.GetContext().vkGetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
             }
             else
             {
@@ -133,7 +133,7 @@ namespace AZ
                 addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
                 addressInfo.pNext = nullptr;
                 addressInfo.buffer = static_cast<Buffer*>(descriptor->m_instancesBuffer.get())->GetBufferMemoryView()->GetNativeBuffer();
-                tlasInstancesGpuAddress = device.GetContext().GetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
+                tlasInstancesGpuAddress = device.GetContext().vkGetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
                 buffers.m_instanceCount = descriptor->m_numInstancesInBuffer;
             }
             
@@ -157,7 +157,7 @@ namespace AZ
             VkAccelerationStructureBuildSizesInfoKHR buildSizesInfo = {};
             buildSizesInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
 
-            device.GetContext().GetAccelerationStructureBuildSizesKHR(
+            device.GetContext().vkGetAccelerationStructureBuildSizesKHR(
                 device.GetNativeDevice(),
                 VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
                 &buffers.m_buildInfo,
@@ -218,7 +218,7 @@ namespace AZ
             addressInfo.pNext = nullptr;
             addressInfo.buffer = scratchMemoryView->GetNativeBuffer();
             buffers.m_buildInfo.scratchData.deviceAddress =
-                device.GetContext().GetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
+                device.GetContext().vkGetBufferDeviceAddress(device.GetNativeDevice(), &addressInfo);
 
             buffers.m_offsetInfo = {};
             buffers.m_offsetInfo.primitiveCount = buffers.m_instanceCount;

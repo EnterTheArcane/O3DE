@@ -14,7 +14,7 @@
 #include <Atom/RHI.Reflect/Bits.h>
 #include <Atom/RHI.Reflect/AttachmentEnums.h>
 
-#include <vma/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 
 #if !defined(_RELEASE)
     #define AZ_VULKAN_USE_DEBUG_LABELS
@@ -99,10 +99,10 @@ namespace AZ
             AZ_DEFINE_ENUM_BITWISE_OPERATORS(AZ::Vulkan::Debug::DebugMessageTypeFlag);
 
             /// Initializes the debug callback system.
-            void InitDebugMessages(const GladVulkanContext& context, VkInstance instance, DebugMessageTypeFlag messageTypeMask);
+            void InitDebugMessages(VkInstance instance, DebugMessageTypeFlag messageTypeMask);
 
             /// Shuts down the debug callback system.
-            void ShutdownDebugMessages(const GladVulkanContext& context, VkInstance instance);
+            void ShutdownDebugMessages(VkInstance instance);
 
             /// Returns the instance layers used for Vulkan validation.
             RawStringList GetValidationLayers();
@@ -115,16 +115,16 @@ namespace AZ
 
             /// Begins a command buffer debug label
             void BeginCmdDebugLabel(
-                const GladVulkanContext& context, VkCommandBuffer commandBuffer, const char* label, const AZ::Color color);
+                const VolkDeviceTable& context, VkCommandBuffer commandBuffer, const char* label, const AZ::Color color);
 
             /// Ends an open command buffer debug label.
-            void EndCmdDebugLabel(const GladVulkanContext& context, VkCommandBuffer commandBuffer);
+            void EndCmdDebugLabel(const VolkDeviceTable& context, VkCommandBuffer commandBuffer);
 
             /// Begins a queue debug label.
-            void BeginQueueDebugLabel(const GladVulkanContext& context, VkQueue queue, const char* label, const AZ::Color color);
+            void BeginQueueDebugLabel(const VolkDeviceTable& context, VkQueue queue, const char* label, const AZ::Color color);
 
             /// Ends an open queue debug label.
-            void EndQueueDebugLabel(const GladVulkanContext& context, VkQueue queue);
+            void EndQueueDebugLabel(const VolkDeviceTable& context, VkQueue queue);
         }
 
         const char* GetResultString(const VkResult result);

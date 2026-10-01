@@ -111,7 +111,10 @@ namespace AZ
 
             VkDevice GetNativeDevice() const;
 
-            const GladVulkanContext& GetContext() const;
+            const VolkDeviceTable& GetContext() const;
+
+            //! Returns whether the given device extension was enabled when the device was created.
+            bool IsExtensionEnabled(const char* extensionName) const;
 
             uint32_t FindMemoryTypeIndex(VkMemoryPropertyFlags memoryPropertyFlags, uint32_t memoryTypeBits) const;
 

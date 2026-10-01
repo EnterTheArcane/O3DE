@@ -232,7 +232,7 @@ namespace AZ
                 allocInfo.descriptorSetCount = 1;
                 allocInfo.pSetLayouts = &nativeLayout;
 
-                VkResult result = descriptor.m_device->GetContext().AllocateDescriptorSets(
+                VkResult result = descriptor.m_device->GetContext().vkAllocateDescriptorSets(
                     descriptor.m_device->GetNativeDevice(), &allocInfo, &m_nativeDescriptorSet);
                 if (result == VK_ERROR_FRAGMENTED_POOL)
                 {
@@ -292,7 +292,7 @@ namespace AZ
             {
                 AZ_Assert(m_descriptor.m_descriptorPool, "Descriptor pool is null.");
                 auto& device = static_cast<Device&>(GetDevice());
-                [[maybe_unused]] VkResult result = device.GetContext().FreeDescriptorSets(
+                [[maybe_unused]] VkResult result = device.GetContext().vkFreeDescriptorSets(
                     device.GetNativeDevice(), m_descriptor.m_descriptorPool->GetNativeDescriptorPool(), 1, &m_nativeDescriptorSet);
                 VK_RESULT_ASSERT(result);
                 m_nativeDescriptorSet = VK_NULL_HANDLE;
@@ -420,7 +420,7 @@ namespace AZ
             if (!writeDescSetDescs.empty())
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().UpdateDescriptorSets(
+                device.GetContext().vkUpdateDescriptorSets(
                     device.GetNativeDevice(), static_cast<uint32_t>(writeDescSetDescs.size()), writeDescSetDescs.span().data(), 0, nullptr);
             }
 
@@ -463,7 +463,7 @@ namespace AZ
                         if (m_nativeDescriptorSet)
                         {
 
-                            [[maybe_unused]] VkResult vkResult = m_descriptor.m_device->GetContext().FreeDescriptorSets(
+                            [[maybe_unused]] VkResult vkResult = m_descriptor.m_device->GetContext().vkFreeDescriptorSets(
                                 m_descriptor.m_device->GetNativeDevice(),
                                 m_descriptor.m_descriptorPool->GetNativeDescriptorPool(),
                                 1,
@@ -491,7 +491,7 @@ namespace AZ
                 allocInfo.descriptorPool = m_descriptor.m_descriptorPool->GetNativeDescriptorPool();
                 allocInfo.descriptorSetCount = 1;
                 allocInfo.pSetLayouts = &nativeLayout;
-                [[maybe_unused]] VkResult vkResult = m_descriptor.m_device->GetContext().AllocateDescriptorSets(
+                [[maybe_unused]] VkResult vkResult = m_descriptor.m_device->GetContext().vkAllocateDescriptorSets(
                     m_descriptor.m_device->GetNativeDevice(), &allocInfo, &m_nativeDescriptorSet);
                 VK_RESULT_ASSERT(vkResult);
 

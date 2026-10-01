@@ -189,14 +189,14 @@ namespace AZ
                     if constexpr (AZStd::is_same_v<vkCreateRenderPassType, VkRenderPassCreateInfo>)
                     {
                         VkRenderPass renderPass = VK_NULL_HANDLE;
-                        VkResult result = m_device.GetContext().CreateRenderPass(
+                        VkResult result = m_device.GetContext().vkCreateRenderPass(
                             m_device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &renderPass);
                         return AZStd::make_tuple(result, renderPass);
                     }
                     else if constexpr (AZStd::is_same_v<vkCreateRenderPassType, VkRenderPassCreateInfo2>)
                     {
                         VkRenderPass renderPass = VK_NULL_HANDLE;
-                        VkResult result = m_device.GetContext().CreateRenderPass2KHR(
+                        VkResult result = m_device.GetContext().vkCreateRenderPass2KHR(
                             m_device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &renderPass);
                         return AZStd::make_tuple(result, renderPass);
                     }
@@ -996,7 +996,7 @@ namespace AZ
             if (m_nativeRenderPass != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyRenderPass(device.GetNativeDevice(), m_nativeRenderPass, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyRenderPass(device.GetNativeDevice(), m_nativeRenderPass, VkSystemAllocator::Get());
                 m_nativeRenderPass = VK_NULL_HANDLE;
             }
             Base::Shutdown();

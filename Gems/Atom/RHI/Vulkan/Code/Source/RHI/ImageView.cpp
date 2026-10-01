@@ -118,7 +118,7 @@ namespace AZ
             createInfo.subresourceRange = vkRange;
 
             const VkResult result =
-                device.GetContext().CreateImageView(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_vkImageView);
+                device.GetContext().vkCreateImageView(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_vkImageView);
             VK_RESULT_ASSERT(result);
             RETURN_RESULT_IF_UNSUCCESSFUL(ConvertResult(result));
 
@@ -175,7 +175,7 @@ namespace AZ
             {
                 auto& device = static_cast<Device&>(GetDevice());
                 device.QueueForRelease(
-                    new ReleaseContainer<VkImageView>(device.GetNativeDevice(), m_vkImageView, device.GetContext().DestroyImageView));
+                    new ReleaseContainer<VkImageView>(device.GetNativeDevice(), m_vkImageView, device.GetContext().vkDestroyImageView));
                 m_vkImageView = VK_NULL_HANDLE;
             }
         }

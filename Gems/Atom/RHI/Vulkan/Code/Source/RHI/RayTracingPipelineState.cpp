@@ -52,7 +52,7 @@ namespace AZ
                 moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
                 moduleCreateInfo.codeSize = rayTracingFunction->GetByteCode(0).size();
                 moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(rayTracingFunction->GetByteCode(0).data());
-                device.GetContext().CreateShaderModule(
+                device.GetContext().vkCreateShaderModule(
                     device.GetNativeDevice(), &moduleCreateInfo, VkSystemAllocator::Get(), &shaderModule);
 
                 SpecializationConstantData& specializationData = specializationDataVector[i];
@@ -213,7 +213,7 @@ namespace AZ
                 createInfo.pNext = &clasCreateInfo;
             }
 
-            [[maybe_unused]] VkResult result = device.GetContext().CreateRayTracingPipelinesKHR(
+            [[maybe_unused]] VkResult result = device.GetContext().vkCreateRayTracingPipelinesKHR(
                 device.GetNativeDevice(), nullptr, nullptr, 1, &createInfo, VkSystemAllocator::Get(), &m_pipeline);
             AZ_Assert(result == VK_SUCCESS, "vkCreateRayTracingPipelinesKHR failed");
 
@@ -221,7 +221,7 @@ namespace AZ
             uint32_t shaderHandleSize = rayTracingPipelineProperties.shaderGroupHandleSize;
             m_shaderHandleData.resize(groups.size()* shaderHandleSize);
 
-            result = device.GetContext().GetRayTracingShaderGroupHandlesKHR(
+            result = device.GetContext().vkGetRayTracingShaderGroupHandlesKHR(
                 device.GetNativeDevice(),
                 m_pipeline,
                 0,
@@ -259,11 +259,11 @@ namespace AZ
             Device& device = static_cast<Device&>(GetDevice());
 
             device.QueueForRelease(
-                new ReleaseContainer<VkPipeline>(device.GetNativeDevice(), m_pipeline, device.GetContext().DestroyPipeline));
+                new ReleaseContainer<VkPipeline>(device.GetNativeDevice(), m_pipeline, device.GetContext().vkDestroyPipeline));
 
             for (auto& shaderModule : m_shaderModules)
             {
-                device.GetContext().DestroyShaderModule(device.GetNativeDevice(), shaderModule, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyShaderModule(device.GetNativeDevice(), shaderModule, VkSystemAllocator::Get());
             }
         }
     }

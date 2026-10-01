@@ -139,7 +139,7 @@ namespace AZ
             auto& memProps = static_cast<const PhysicalDevice&>(device.GetPhysicalDevice()).GetMemoryProperties();
             VkMemoryHostPointerPropertiesEXT hostMemoryProps{};
             hostMemoryProps.sType = VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT;
-            auto vkResult = device.GetContext().GetMemoryHostPointerPropertiesEXT(
+            auto vkResult = device.GetContext().vkGetMemoryHostPointerPropertiesEXT(
                 device.GetNativeDevice(), VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT, allocatedHostMemory, &hostMemoryProps);
             RHI::ResultCode result = ConvertResult(vkResult);
             RETURN_RESULT_IF_UNSUCCESSFUL(result);
@@ -176,7 +176,7 @@ namespace AZ
             allocInfo.pNext = &importInfo;
 
             VkDeviceMemory memory;
-            vkResult = device.GetContext().AllocateMemory(device.GetNativeDevice(), &allocInfo, nullptr, &memory);
+            vkResult = device.GetContext().vkAllocateMemory(device.GetNativeDevice(), &allocInfo, nullptr, &memory);
             result = ConvertResult(vkResult);
             RETURN_RESULT_IF_UNSUCCESSFUL(result);
 
@@ -193,11 +193,11 @@ namespace AZ
             }
             createInfo.GetCreateInfo()->pNext = &externalMemoryBufferCreateInfo;
 
-            vkResult = device.GetContext().CreateBuffer(device.GetNativeDevice(), createInfo.GetCreateInfo(), nullptr, &m_vkBuffer);
+            vkResult = device.GetContext().vkCreateBuffer(device.GetNativeDevice(), createInfo.GetCreateInfo(), nullptr, &m_vkBuffer);
             result = ConvertResult(vkResult);
             RETURN_RESULT_IF_UNSUCCESSFUL(result);
 
-            vkResult = device.GetContext().BindBufferMemory(device.GetNativeDevice(), m_vkBuffer, memory, 0);
+            vkResult = device.GetContext().vkBindBufferMemory(device.GetNativeDevice(), m_vkBuffer, memory, 0);
             result = ConvertResult(vkResult);
             RETURN_RESULT_IF_UNSUCCESSFUL(result);
 
@@ -283,7 +283,7 @@ namespace AZ
             if (m_vkBuffer != VK_NULL_HANDLE)
             {
                 Device& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyBuffer(device.GetNativeDevice(), m_vkBuffer, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyBuffer(device.GetNativeDevice(), m_vkBuffer, VkSystemAllocator::Get());
                 m_vkBuffer = VK_NULL_HANDLE;
             }
 

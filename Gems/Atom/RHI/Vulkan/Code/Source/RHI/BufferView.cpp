@@ -112,7 +112,7 @@ namespace AZ
             {
                 auto& device = static_cast<Device&>(GetDevice());
                 device.QueueForRelease(new ReleaseContainer<VkBufferView>(
-                    device.GetNativeDevice(), m_nativeBufferView, device.GetContext().DestroyBufferView));
+                    device.GetNativeDevice(), m_nativeBufferView, device.GetContext().vkDestroyBufferView));
                 m_nativeBufferView = VK_NULL_HANDLE;
             }
         }
@@ -156,7 +156,7 @@ namespace AZ
             createInfo.range = descriptor.m_elementCount * descriptor.m_elementSize;
 
             const VkResult result =
-                device.GetContext().CreateBufferView(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeBufferView);
+                device.GetContext().vkCreateBufferView(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeBufferView);
             VK_RESULT_ASSERT(result);
 
             RETURN_RESULT_IF_UNSUCCESSFUL(ConvertResult(result));

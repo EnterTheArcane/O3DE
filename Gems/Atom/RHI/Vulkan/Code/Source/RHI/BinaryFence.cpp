@@ -55,7 +55,7 @@ namespace AZ
             }
 
             const VkResult result =
-                device.GetContext().CreateFence(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeFence);
+                device.GetContext().vkCreateFence(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeFence);
             VK_RESULT_ASSERT(result);
 
             RETURN_RESULT_IF_UNSUCCESSFUL(ConvertResult(result));
@@ -76,7 +76,7 @@ namespace AZ
             if (m_nativeFence != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyFence(device.GetNativeDevice(), m_nativeFence, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyFence(device.GetNativeDevice(), m_nativeFence, VkSystemAllocator::Get());
                 m_nativeFence = VK_NULL_HANDLE;
             }
         }
@@ -97,14 +97,14 @@ namespace AZ
                 m_signalEvent->Wait(m_waitDependencies);
             }
             auto& device = static_cast<Device&>(GetDevice());
-            [[maybe_unused]] VkResult vkResult = device.GetContext().WaitForFences(device.GetNativeDevice(), 1, &m_nativeFence, VK_FALSE, UINT64_MAX);
+            [[maybe_unused]] VkResult vkResult = device.GetContext().vkWaitForFences(device.GetNativeDevice(), 1, &m_nativeFence, VK_FALSE, UINT64_MAX);
             VK_RESULT_ASSERT(vkResult);
         }
 
         void BinaryFence::ResetInternal()
         {
             auto& device = static_cast<Device&>(GetDevice());
-            [[maybe_unused]] VkResult vkResult = device.GetContext().ResetFences(device.GetNativeDevice(), 1, &m_nativeFence);
+            [[maybe_unused]] VkResult vkResult = device.GetContext().vkResetFences(device.GetNativeDevice(), 1, &m_nativeFence);
             VK_RESULT_ASSERT(vkResult);
             m_inSignalledState = false;
         }
@@ -112,7 +112,7 @@ namespace AZ
         RHI::FenceState BinaryFence::GetFenceStateInternal() const
         {
             auto& device = static_cast<Device&>(GetDevice());
-            VkResult result = device.GetContext().GetFenceStatus(device.GetNativeDevice(), m_nativeFence);
+            VkResult result = device.GetContext().vkGetFenceStatus(device.GetNativeDevice(), m_nativeFence);
             switch (result)
             {
             case VK_SUCCESS:

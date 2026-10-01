@@ -89,7 +89,7 @@ namespace AZ::Vulkan
             layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
             layoutInfo.pBindings = bindings;
 
-            VkResult result = m_device->GetContext().CreateDescriptorSetLayout(
+            VkResult result = m_device->GetContext().vkCreateDescriptorSetLayout(
                 m_device->GetNativeDevice(), &layoutInfo, VkSystemAllocator::Get(), &m_descriptorSetLayout);
             if (result != VK_SUCCESS)
             {
@@ -103,7 +103,7 @@ namespace AZ::Vulkan
             allocInfo.descriptorSetCount = 1;
             allocInfo.pSetLayouts = &m_descriptorSetLayout;
 
-            result = m_device->GetContext().AllocateDescriptorSets(m_device->GetNativeDevice(), &allocInfo, &m_set);
+            result = m_device->GetContext().vkAllocateDescriptorSets(m_device->GetNativeDevice(), &allocInfo, &m_set);
             if (result != VK_SUCCESS)
             {
                 VK_RESULT_ASSERT(result);
@@ -126,8 +126,8 @@ namespace AZ::Vulkan
 
     void BindlessDescriptorPool::Shutdown()
     {
-        m_device->GetContext().FreeDescriptorSets(m_device->GetNativeDevice(), m_pool->GetNativeDescriptorPool(), 1, &m_set);
-        m_device->GetContext().DestroyDescriptorSetLayout(m_device->GetNativeDevice(), m_descriptorSetLayout, VkSystemAllocator::Get());
+        m_device->GetContext().vkFreeDescriptorSets(m_device->GetNativeDevice(), m_pool->GetNativeDescriptorPool(), 1, &m_set);
+        m_device->GetContext().vkDestroyDescriptorSetLayout(m_device->GetNativeDevice(), m_descriptorSetLayout, VkSystemAllocator::Get());
 
         m_pool.reset();
     }
@@ -166,7 +166,7 @@ namespace AZ::Vulkan
 
         imageInfo.imageView = view->GetNativeImageView();
         write.pImageInfo = &imageInfo;
-        m_device->GetContext().UpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
+        m_device->GetContext().vkUpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
         return heapIndex;
     }
 
@@ -191,7 +191,7 @@ namespace AZ::Vulkan
 
         imageInfo.imageView = view->GetNativeImageView();
         write.pImageInfo = &imageInfo;
-        m_device->GetContext().UpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
+        m_device->GetContext().vkUpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
 
         return heapIndex;
     }
@@ -217,7 +217,7 @@ namespace AZ::Vulkan
         bufferInfo.offset = bufferMemoryView.GetOffset() + viewDesc.m_elementSize * viewDesc.m_elementOffset;
         bufferInfo.range = viewDesc.m_elementSize * viewDesc.m_elementCount;
         write.pBufferInfo = &bufferInfo;
-        m_device->GetContext().UpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
+        m_device->GetContext().vkUpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
 
         return heapIndex;
     }
@@ -243,7 +243,7 @@ namespace AZ::Vulkan
         bufferInfo.offset = bufferMemoryView.GetOffset() + viewDesc.m_elementSize * viewDesc.m_elementOffset;
         bufferInfo.range = viewDesc.m_elementSize * viewDesc.m_elementCount;
         write.pBufferInfo = &bufferInfo;
-        m_device->GetContext().UpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
+        m_device->GetContext().vkUpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
         
         return heapIndex;
     }
@@ -267,7 +267,7 @@ namespace AZ::Vulkan
         imageInfo.imageView = view->GetNativeImageView();
 
         write.pImageInfo = &imageInfo;
-        m_device->GetContext().UpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
+        m_device->GetContext().vkUpdateDescriptorSets(m_device->GetNativeDevice(), 1, &write, 0, nullptr);
         return heapIndex;
     }
 

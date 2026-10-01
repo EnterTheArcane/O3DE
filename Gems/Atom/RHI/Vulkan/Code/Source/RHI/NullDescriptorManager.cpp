@@ -286,7 +286,7 @@ namespace AZ
 
             auto commandList = device.AcquireCommandList(RHI::HardwareQueueClass::Graphics);
             commandList->BeginCommandBuffer();
-            device.GetContext().CmdPipelineBarrier(
+            device.GetContext().vkCmdPipelineBarrier(
                 commandList->GetNativeCommandBuffer(),
                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,

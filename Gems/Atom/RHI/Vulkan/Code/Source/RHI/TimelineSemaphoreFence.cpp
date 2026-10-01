@@ -77,7 +77,7 @@ namespace AZ
             createInfo.flags = 0;
 
             const VkResult result =
-                device.GetContext().CreateSemaphore(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeSemaphore);
+                device.GetContext().vkCreateSemaphore(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeSemaphore);
             VK_RESULT_ASSERT(result);
 
             RETURN_RESULT_IF_UNSUCCESSFUL(ConvertResult(result));
@@ -121,7 +121,7 @@ namespace AZ
             if (m_nativeSemaphore != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroySemaphore(device.GetNativeDevice(), m_nativeSemaphore, VkSystemAllocator::Get());
+                device.GetContext().vkDestroySemaphore(device.GetNativeDevice(), m_nativeSemaphore, VkSystemAllocator::Get());
                 m_nativeSemaphore = VK_NULL_HANDLE;
             }
         }
@@ -135,7 +135,7 @@ namespace AZ
             signalInfo.value = GetPendingValue();
 
             auto& device = static_cast<Device&>(GetDevice());
-            device.GetContext().SignalSemaphore(device.GetNativeDevice(), &signalInfo);
+            device.GetContext().vkSignalSemaphore(device.GetNativeDevice(), &signalInfo);
             SignalEvent();
         }
 
@@ -155,7 +155,7 @@ namespace AZ
             waitInfo.pValues = &pendingValue;
 
             auto& device = static_cast<Device&>(GetDevice());
-            device.GetContext().WaitSemaphores(device.GetNativeDevice(), &waitInfo, AZStd::numeric_limits<uint64_t>::max());
+            device.GetContext().vkWaitSemaphores(device.GetNativeDevice(), &waitInfo, AZStd::numeric_limits<uint64_t>::max());
         }
 
         void TimelineSemaphoreFence::ResetInternal()
@@ -174,7 +174,7 @@ namespace AZ
             {
                 auto& device = static_cast<Device&>(GetDevice());
                 uint64_t completedValue = 0;
-                device.GetContext().GetSemaphoreCounterValue(device.GetNativeDevice(), m_nativeSemaphore, &completedValue);
+                device.GetContext().vkGetSemaphoreCounterValue(device.GetNativeDevice(), m_nativeSemaphore, &completedValue);
                 return (m_pendingValue <= completedValue) ? RHI::FenceState::Signaled : RHI::FenceState::Reset;
             }
         }

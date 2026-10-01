@@ -47,9 +47,10 @@ namespace AZ
             {
                 return m_instance;
             }
-            GladVulkanContext& GetContext()
+            //! Returns whether the given instance extension was enabled when the instance was created.
+            bool IsExtensionEnabled(const char* extensionName) const
             {
-                return m_loaderContext->GetContext();
+                return m_loaderContext->IsExtensionEnabled(extensionName);
             }
             const Descriptor& GetDescriptor() const;
             RHI::PhysicalDeviceList GetSupportedDevices() const;

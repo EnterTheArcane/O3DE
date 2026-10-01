@@ -123,7 +123,7 @@ namespace AZ
             if (m_nativeDescriptorSetLayout != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyDescriptorSetLayout(
+                device.GetContext().vkDestroyDescriptorSetLayout(
                     device.GetNativeDevice(), m_nativeDescriptorSetLayout, VkSystemAllocator::Get());
                 m_nativeDescriptorSetLayout = VK_NULL_HANDLE;
             }
@@ -154,7 +154,7 @@ namespace AZ
             createInfo.pBindings = GetNativeLayoutBindings().size() ? GetNativeLayoutBindings().data() : nullptr;
 
             auto& device = static_cast<Device&>(GetDevice());
-            const VkResult result = device.GetContext().CreateDescriptorSetLayout(
+            const VkResult result = device.GetContext().vkCreateDescriptorSetLayout(
                 device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeDescriptorSetLayout);
 
             return ConvertResult(result);

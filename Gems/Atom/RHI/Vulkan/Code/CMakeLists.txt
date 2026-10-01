@@ -31,22 +31,23 @@ if(ANDROID_USE_OCULUS_OPENXR)
 endif()
 
 ly_add_target(
-    NAME ${gem_name}.Glad.Static STATIC
+    NAME ${gem_name}.Loader.Static STATIC
     NAMESPACE Gem
     FILES_CMAKE
-        atom_rhi_vulkan_glad_files.cmake
-        ${pal_include_dir}/platform_glad_${PAL_PLATFORM_NAME_LOWERCASE}_files.cmake
-        ${pal_source_dir}/platform_glad_${PAL_PLATFORM_NAME_LOWERCASE}_files.cmake
+        atom_rhi_vulkan_loader_files.cmake
+        ${pal_include_dir}/platform_loader_${PAL_PLATFORM_NAME_LOWERCASE}_files.cmake
+        ${pal_source_dir}/platform_loader_${PAL_PLATFORM_NAME_LOWERCASE}_files.cmake
     INCLUDE_DIRECTORIES
         PUBLIC
             Include
-            Include/Atom/RHI.Loader/Glad
+            Include/Atom/RHI.Loader/Volk
             ${pal_include_dir}
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore
         PUBLIC
-            3rdParty::glad_vulkan
+            3rdParty::volk
+            3rdParty::vulkan-headers
 )
 
 ly_add_target(
@@ -67,7 +68,7 @@ ly_add_target(
             AZ::AzCore
             AZ::AzFramework
             Gem::Atom_RHI.Reflect
-            Gem::${gem_name}.Glad.Static
+            Gem::${gem_name}.Loader.Static
 )
 
 if(PAL_TRAIT_BUILD_HOST_TOOLS)
@@ -148,8 +149,8 @@ ly_add_target(
             AZ::AzFramework.NativeUI
             Gem::Atom_RHI.Reflect
             Gem::${gem_name}.Reflect
-            Gem::${gem_name}.Glad.Static
-            3rdParty::amd_vma
+            Gem::${gem_name}.Loader.Static
+            3rdParty::vulkan-memory-allocator
             ${AFTERMATH_BUILD_DEPENDENCY}
     COMPILE_DEFINITIONS 
         PRIVATE

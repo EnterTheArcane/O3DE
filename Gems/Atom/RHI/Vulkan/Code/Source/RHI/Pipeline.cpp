@@ -89,7 +89,7 @@ namespace AZ
             if (m_nativePipeline != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyPipeline(device.GetNativeDevice(), m_nativePipeline, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyPipeline(device.GetNativeDevice(), m_nativePipeline, VkSystemAllocator::Get());
                 m_nativePipeline = VK_NULL_HANDLE;
             }
             m_specializationConstantData.Shutdown();

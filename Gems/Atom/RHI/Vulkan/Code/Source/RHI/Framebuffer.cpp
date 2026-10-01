@@ -194,7 +194,7 @@ namespace AZ
             createInfo.layers = maxLayers;
 
             auto& device = static_cast<Device&>(GetDevice());
-            const VkResult result = device.GetContext().CreateFramebuffer(
+            const VkResult result = device.GetContext().vkCreateFramebuffer(
                 device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeFramebuffer);
 
             return ConvertResult(result);
@@ -218,7 +218,7 @@ namespace AZ
             if (m_nativeFramebuffer != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyFramebuffer(device.GetNativeDevice(), m_nativeFramebuffer, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyFramebuffer(device.GetNativeDevice(), m_nativeFramebuffer, VkSystemAllocator::Get());
                 m_nativeFramebuffer = VK_NULL_HANDLE;
             }
         }

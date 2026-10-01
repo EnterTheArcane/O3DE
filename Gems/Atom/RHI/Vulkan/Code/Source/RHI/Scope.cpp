@@ -307,7 +307,7 @@ namespace AZ
                         {
                             static_cast<Device&>(commandList.GetDevice())
                                 .GetContext()
-                                .CmdClearAttachments(
+                                .vkCmdClearAttachments(
                                     commandList.GetNativeCommandBuffer(),
                                     aznumeric_caster(clearAttachments.size()),
                                     clearAttachments.data(),
@@ -388,7 +388,7 @@ namespace AZ
 
                 static_cast<Device&>(commandList.GetDevice())
                     .GetContext()
-                    .CmdPipelineBarrier(
+                    .vkCmdPipelineBarrier(
                         commandList.GetNativeCommandBuffer(),
                         barrier.m_srcStageMask,
                         barrier.m_dstStageMask,
@@ -891,7 +891,7 @@ namespace AZ
 
                             static_cast<Device&>(commandList.GetDevice())
                                 .GetContext()
-                                .CmdResolveImage(
+                                .vkCmdResolveImage(
                                     commandList.GetNativeCommandBuffer(),
                                     srcImage.GetNativeImage(),
                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

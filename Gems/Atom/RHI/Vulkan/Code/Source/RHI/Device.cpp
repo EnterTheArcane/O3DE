@@ -571,7 +571,7 @@ namespace AZ
             deviceInfo.pEnabledFeatures = &m_enabledDeviceFeatures;
 
             Instance& instance = Instance::GetInstance();
-            const VkResult vkResult = instance.GetContext().CreateDevice(
+            const VkResult vkResult = vkCreateDevice(
                 physicalDevice.GetNativePhysicalDevice(),
                 &deviceInfo,
                 VkSystemAllocator::Get(),
@@ -597,7 +597,7 @@ namespace AZ
             }
 
             //Load device features now that we have loaded all extension info
-            physicalDevice.LoadSupportedFeatures(GetContext());
+            physicalDevice.LoadSupportedFeatures(*m_loaderContext);
 
             if (!physicalDevice.IsOptionalDeviceExtensionSupported(OptionalDeviceExtension::FragmentShadingRate))
             {
@@ -693,9 +693,14 @@ namespace AZ
             return m_nativeDevice;
         }
 
-        const GladVulkanContext& Device::GetContext() const
+        const VolkDeviceTable& Device::GetContext() const
         {
             return m_loaderContext->GetContext();
+        }
+
+        bool Device::IsExtensionEnabled(const char* extensionName) const
+        {
+            return m_loaderContext->IsExtensionEnabled(extensionName);
         }
 
         uint32_t Device::FindMemoryTypeIndex(VkMemoryPropertyFlags memoryPropertyFlags, uint32_t memoryTypeBits) const
@@ -731,13 +736,13 @@ namespace AZ
                 ImageCreateInfo createInfo = BuildImageCreateInfo(descriptor);
                 VkImage vkImage = VK_NULL_HANDLE;
                 [[maybe_unused]] VkResult vkResult =
-                    GetContext().CreateImage(GetNativeDevice(), createInfo.GetCreateInfo(), VkSystemAllocator::Get(), &vkImage);
+                    GetContext().vkCreateImage(GetNativeDevice(), createInfo.GetCreateInfo(), VkSystemAllocator::Get(), &vkImage);
                 VK_RESULT_ASSERT(vkResult);
 
                 VkMemoryRequirements memoryRequirements = {};
-                GetContext().GetImageMemoryRequirements(GetNativeDevice(), vkImage, &memoryRequirements);
+                GetContext().vkGetImageMemoryRequirements(GetNativeDevice(), vkImage, &memoryRequirements);
                 auto it2 = cache.insert(hash, memoryRequirements);
-                GetContext().DestroyImage(GetNativeDevice(), vkImage, VkSystemAllocator::Get());
+                GetContext().vkDestroyImage(GetNativeDevice(), vkImage, VkSystemAllocator::Get());
                 return it2.first->second;
             }
         }
@@ -759,13 +764,13 @@ namespace AZ
                 BufferCreateInfo createInfo = BuildBufferCreateInfo(descriptor);
                 VkBuffer vkBuffer = VK_NULL_HANDLE;
                 [[maybe_unused]] VkResult vkResult =
-                    GetContext().CreateBuffer(GetNativeDevice(), createInfo.GetCreateInfo(), VkSystemAllocator::Get(), &vkBuffer);
+                    GetContext().vkCreateBuffer(GetNativeDevice(), createInfo.GetCreateInfo(), VkSystemAllocator::Get(), &vkBuffer);
                 VK_RESULT_ASSERT(vkResult);
 
                 VkMemoryRequirements memoryRequirements = {};
-                GetContext().GetBufferMemoryRequirements(GetNativeDevice(), vkBuffer, &memoryRequirements);
+                GetContext().vkGetBufferMemoryRequirements(GetNativeDevice(), vkBuffer, &memoryRequirements);
                 auto it2 = cache.insert(hash, memoryRequirements);
-                GetContext().DestroyBuffer(GetNativeDevice(), vkBuffer, VkSystemAllocator::Get());
+                GetContext().vkDestroyBuffer(GetNativeDevice(), vkBuffer, VkSystemAllocator::Get());
                 return it2.first->second;
             }
         }
@@ -943,7 +948,7 @@ namespace AZ
 
             if (m_nativeDevice != VK_NULL_HANDLE)
             {
-                GetContext().DestroyDevice(m_nativeDevice, VkSystemAllocator::Get());
+                GetContext().vkDestroyDevice(m_nativeDevice, VkSystemAllocator::Get());
                 m_nativeDevice = VK_NULL_HANDLE;
             }
 
@@ -1083,7 +1088,7 @@ namespace AZ
 
             const auto& physicalDevice = static_cast<const PhysicalDevice&>(GetPhysicalDevice());
             uint32_t surfaceFormatCount = 0;
-            [[maybe_unused]] VkResult vkResult = GetContext().GetPhysicalDeviceSurfaceFormatsKHR(
+            [[maybe_unused]] VkResult vkResult = vkGetPhysicalDeviceSurfaceFormatsKHR(
                 physicalDevice.GetNativePhysicalDevice(), vkSurface, &surfaceFormatCount, nullptr);
             VK_RESULT_ASSERT(vkResult);
             if (surfaceFormatCount == 0)
@@ -1093,7 +1098,7 @@ namespace AZ
             }
 
             AZStd::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
-            vkResult = GetContext().GetPhysicalDeviceSurfaceFormatsKHR(
+            vkResult = vkGetPhysicalDeviceSurfaceFormatsKHR(
                 physicalDevice.GetNativePhysicalDevice(), vkSurface, &surfaceFormatCount, surfaceFormats.data());
             VK_RESULT_ASSERT(vkResult);
 
@@ -1116,7 +1121,7 @@ namespace AZ
                 // Don't expose formats for HDR output when the extension is missing
                 // This can happen on Linux with Wayland.
                 if (surfaceFormat.format == VK_FORMAT_A2R10G10B10_UNORM_PACK32 &&
-                    (m_loaderContext->GetContext().SetHdrMetadataEXT == nullptr || colorSpaceExt == false))
+                    (m_loaderContext->GetContext().vkSetHdrMetadataEXT == nullptr || colorSpaceExt == false))
                 {
                     continue;
                 }
@@ -1232,7 +1237,7 @@ namespace AZ
                 VkCalibratedTimestampInfoEXT{ VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT, 0, m_hostTimeDomain }
             };
 
-            GetContext().GetCalibratedTimestampsEXT(
+            GetContext().vkGetCalibratedTimestampsEXT(
                 m_nativeDevice, static_cast<uint32_t>(timestampsInfos.size()), timestampsInfos.data(), &result.first, &maxDeviation);
             return result;
         }
@@ -1240,7 +1245,7 @@ namespace AZ
         void Device::InitializeTimeDomains()
         {
             auto timeDomains{
-                static_cast<const PhysicalDevice&>(GetPhysicalDevice()).GetCalibratedTimeDomains(m_loaderContext->GetContext())
+                static_cast<const PhysicalDevice&>(GetPhysicalDevice()).GetCalibratedTimeDomains()
             };
 
             bool deviceTimeDomainFound{ false };
@@ -1506,7 +1511,7 @@ namespace AZ
                 auto nativeDevice = physicalDevice.GetNativePhysicalDevice();
                 AZStd::vector<VkPhysicalDeviceFragmentShadingRateKHR> rates{};
                 uint32_t rateCount = 0;
-                GetContext().GetPhysicalDeviceFragmentShadingRatesKHR(nativeDevice, &rateCount, nullptr);
+                vkGetPhysicalDeviceFragmentShadingRatesKHR(nativeDevice, &rateCount, nullptr);
                 if (rateCount > 0)
                 {
                     rates.resize(rateCount);
@@ -1515,7 +1520,7 @@ namespace AZ
                         // As per spec, the sType member of each shading rate array entry must be set
                         fragment_shading_rate.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR;
                     }
-                    GetContext().GetPhysicalDeviceFragmentShadingRatesKHR(nativeDevice, &rateCount, rates.data());
+                    vkGetPhysicalDeviceFragmentShadingRatesKHR(nativeDevice, &rateCount, rates.data());
                     for (const auto& vkRate : rates)
                     {
                         m_features.m_shadingRateMask |= static_cast<RHI::ShadingRateFlags>(
@@ -1564,7 +1569,7 @@ namespace AZ
                     semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
                     semaphoreCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
                     externalSemaphoreInfo.pNext = &semaphoreCreateInfo;
-                    GetContext().GetPhysicalDeviceExternalSemaphoreProperties(
+                    vkGetPhysicalDeviceExternalSemaphoreProperties(
                         physicalDevice.GetNativePhysicalDevice(), &externalSemaphoreInfo, &externalSemaphoreProperties);
 
                     m_features.m_crossDeviceFences = RHI::CheckBitsAll<VkExternalSemaphoreFeatureFlags>(
@@ -1611,17 +1616,15 @@ namespace AZ
 
         void Device::BuildDeviceQueueInfo(const PhysicalDevice& physicalDevice)
         {
-            Instance& instance = Instance::GetInstance();
-
             m_queueFamilyProperties.clear();
             VkPhysicalDevice nativePhysicalDevice = physicalDevice.GetNativePhysicalDevice();
 
             uint32_t queueFamilyCount = 0;
-            instance.GetContext().GetPhysicalDeviceQueueFamilyProperties(nativePhysicalDevice, &queueFamilyCount, nullptr);
+            vkGetPhysicalDeviceQueueFamilyProperties(nativePhysicalDevice, &queueFamilyCount, nullptr);
             AZ_Assert(queueFamilyCount, "No queue families were found for physical device %s", physicalDevice.GetName().GetCStr());
 
             m_queueFamilyProperties.resize(queueFamilyCount);
-            instance.GetContext().GetPhysicalDeviceQueueFamilyProperties(
+            vkGetPhysicalDeviceQueueFamilyProperties(
                 nativePhysicalDevice, &queueFamilyCount, m_queueFamilyProperties.data());
         }
 
@@ -1656,37 +1659,10 @@ namespace AZ
         {
             auto& physicalDevice = static_cast<Vulkan::PhysicalDevice&>(physicalDeviceBase);
 
-            auto& context = GetContext();
-            // We pass the function pointers from the Glad context since we already loaded them.
-            VmaVulkanFunctions vulkanFunctions =
-            {
-                context.GetInstanceProcAddr,
-                context.GetDeviceProcAddr,
-                context.GetPhysicalDeviceProperties,
-                context.GetPhysicalDeviceMemoryProperties,
-                context.AllocateMemory,
-                context.FreeMemory,
-                context.MapMemory,
-                context.UnmapMemory,
-                context.FlushMappedMemoryRanges,
-                context.InvalidateMappedMemoryRanges,
-                context.BindBufferMemory,
-                context.BindImageMemory,
-                context.GetBufferMemoryRequirements,
-                context.GetImageMemoryRequirements,
-                context.CreateBuffer,
-                context.DestroyBuffer,
-                context.CreateImage,
-                context.DestroyImage,
-                context.CmdCopyBuffer,
-                context.GetBufferMemoryRequirements2,
-                context.GetImageMemoryRequirements2,
-                context.BindBufferMemory2,
-                context.BindImageMemory2,
-                context.GetPhysicalDeviceMemoryProperties2,
-                context.GetDeviceBufferMemoryRequirements,
-                context.GetDeviceImageMemoryRequirements
-            };
+            // VMA loads the functions it needs through volk's Vulkan entry points.
+            VmaVulkanFunctions vulkanFunctions = {};
+            vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+            vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 
             auto& instance = Instance::GetInstance();
 
@@ -1709,12 +1685,12 @@ namespace AZ
                 allocatorInfo.pTypeExternalMemoryHandleTypes = externalTypes.data();
             }
 
-            if (GetContext().GetBufferMemoryRequirements2 && GetContext().GetImageMemoryRequirements2)
+            if (GetContext().vkGetBufferMemoryRequirements2 && GetContext().vkGetImageMemoryRequirements2)
             {
                 allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
             }
 
-            if (GetContext().BindBufferMemory2 && GetContext().BindImageMemory2)
+            if (GetContext().vkBindBufferMemory2 && GetContext().vkBindImageMemory2)
             {
                 allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
             }
@@ -1903,7 +1879,7 @@ namespace AZ
             vkCreateInfo.usage = CalculateImageUsageFlags(descriptor);
 
             VkImageFormatProperties formatProps{};
-            [[maybe_unused]] VkResult vkResult = GetContext().GetPhysicalDeviceImageFormatProperties(
+            [[maybe_unused]] VkResult vkResult = vkGetPhysicalDeviceImageFormatProperties(
                 physicalDevice.GetNativePhysicalDevice(),
                 vkCreateInfo.format,
                 vkCreateInfo.imageType,

@@ -29,7 +29,7 @@ namespace AZ
             Base::Init(deviceBase);
             m_descriptor = descriptor;
 
-            device.GetContext().GetDeviceQueue(
+            device.GetContext().vkGetDeviceQueue(
                 device.GetNativeDevice(), m_descriptor.m_familyIndex, descriptor.m_queueIndex, &m_nativeQueue);
             SetName(GetName());
             return RHI::ResultCode::Success;
@@ -157,7 +157,7 @@ namespace AZ
             }
             const VkResult result = static_cast<Device&>(GetDevice())
                                         .GetContext()
-                                        .QueueSubmit(m_nativeQueue, submitCount, submitCount ? &submitInfo : nullptr, nativeFence);
+                                        .vkQueueSubmit(m_nativeQueue, submitCount, submitCount ? &submitInfo : nullptr, nativeFence);
             VK_RESULT_ASSERT(result);
             RETURN_RESULT_IF_UNSUCCESSFUL(ConvertResult(result));
 
@@ -178,7 +178,7 @@ namespace AZ
         {
             if (m_nativeQueue != VK_NULL_HANDLE)
             {
-                VkResult result = static_cast<Device&>(GetDevice()).GetContext().QueueWaitIdle(m_nativeQueue);
+                VkResult result = static_cast<Device&>(GetDevice()).GetContext().vkQueueWaitIdle(m_nativeQueue);
 
                 if constexpr (RHI::ForceCpuGpuInSync)
                 {

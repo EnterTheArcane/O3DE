@@ -56,7 +56,7 @@ namespace AZ
             if (m_nativeSampler != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroySampler(device.GetNativeDevice(), m_nativeSampler, VkSystemAllocator::Get());
+                device.GetContext().vkDestroySampler(device.GetNativeDevice(), m_nativeSampler, VkSystemAllocator::Get());
                 m_nativeSampler = VK_NULL_HANDLE;
             }
             Base::Shutdown();
@@ -130,7 +130,7 @@ namespace AZ
             createInfo.unnormalizedCoordinates = VK_FALSE;
 
             const VkResult result =
-                device.GetContext().CreateSampler(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeSampler);
+                device.GetContext().vkCreateSampler(device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativeSampler);
             VK_RESULT_ASSERT(result);
 
             return ConvertResult(result);

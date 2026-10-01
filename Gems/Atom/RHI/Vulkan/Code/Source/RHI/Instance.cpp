@@ -87,9 +87,9 @@ namespace AZ
             m_instanceVersion = VK_API_VERSION_1_0;
             // vkEnumerateInstanceVersion is a Vulkan 1.1 function
             // so if it's not available we assume Vulkan 1.0
-            if (GetContext().EnumerateInstanceVersion)
+            if (vkEnumerateInstanceVersion)
             {
-                if (GetContext().EnumerateInstanceVersion(&m_instanceVersion) != VK_SUCCESS)
+                if (vkEnumerateInstanceVersion(&m_instanceVersion) != VK_SUCCESS)
                 {
                     AZ_Warning("Vulkan", false, "Failed to get instance version.");
                     return false;
@@ -172,7 +172,7 @@ namespace AZ
             m_instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(m_descriptor.m_requiredExtensions.size());
             m_instanceCreateInfo.ppEnabledExtensionNames = m_descriptor.m_requiredExtensions.data();
 
-            VkResult result = GetContext().CreateInstance( &m_instanceCreateInfo, VkSystemAllocator::Get(), &m_instance);
+            VkResult result = vkCreateInstance(&m_instanceCreateInfo, VkSystemAllocator::Get(), &m_instance);
 
             if (validation != RHI::ValidationMode::Disabled &&
                 (result == VK_ERROR_LAYER_NOT_PRESENT || result == VK_ERROR_EXTENSION_NOT_PRESENT))
@@ -191,7 +191,7 @@ namespace AZ
                 m_instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(m_descriptor.m_requiredExtensions.size());
                 m_instanceCreateInfo.ppEnabledExtensionNames = m_descriptor.m_requiredExtensions.data();
 
-                result = GetContext().CreateInstance(&m_instanceCreateInfo, nullptr, &m_instance);
+                result = vkCreateInstance(&m_instanceCreateInfo, nullptr, &m_instance);
             }
 
             if (result != VK_SUCCESS)
@@ -236,13 +236,13 @@ namespace AZ
             {
                 if (GetValidationMode() != RHI::ValidationMode::Disabled)
                 {
-                    Debug::ShutdownDebugMessages(GetContext(), m_instance);
+                    Debug::ShutdownDebugMessages(m_instance);
                 }
                 m_supportedDevices.clear();
                 InstanceNotificationBus::Broadcast(&InstanceNotificationBus::Events::OnInstanceDestroyed);
 
                 //Using use nullptr for VkAllocationCallbacks*. Please see comments above related to Instance creation
-                GetContext().DestroyInstance(m_instance, VkSystemAllocator::Get());
+                vkDestroyInstance(m_instance, VkSystemAllocator::Get());
                 m_instance = VK_NULL_HANDLE;
             }
         }
@@ -355,7 +355,7 @@ namespace AZ
                     messagesTypeMask |= Debug::DebugMessageTypeFlag::Debug | Debug::DebugMessageTypeFlag::Info;
                 }
 
-                Debug::InitDebugMessages(GetContext(), m_instance, messagesTypeMask);
+                Debug::InitDebugMessages(m_instance, messagesTypeMask);
             }
         }
 

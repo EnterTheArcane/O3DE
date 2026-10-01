@@ -35,7 +35,7 @@ namespace AZ
             {
                 WindowSurfaceRequestsBus::Handler::BusDisconnect(m_descriptor.m_windowHandle);
                 Instance& instance = Instance::GetInstance();
-                instance.GetContext().DestroySurfaceKHR(instance.GetNativeInstance(), m_nativeSurface, VkSystemAllocator::Get());
+                vkDestroySurfaceKHR(instance.GetNativeInstance(), m_nativeSurface, VkSystemAllocator::Get());
                 m_nativeSurface = VK_NULL_HANDLE;
             }
         }

@@ -86,7 +86,7 @@ namespace AZ
             if (m_nativeSemaphore != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroySemaphore(device.GetNativeDevice(), m_nativeSemaphore, VkSystemAllocator::Get());
+                device.GetContext().vkDestroySemaphore(device.GetNativeDevice(), m_nativeSemaphore, VkSystemAllocator::Get());
                 m_nativeSemaphore = VK_NULL_HANDLE;
             }
             Base::Shutdown();

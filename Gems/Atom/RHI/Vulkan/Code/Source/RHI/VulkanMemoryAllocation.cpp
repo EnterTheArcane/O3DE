@@ -96,7 +96,7 @@ namespace AZ
             {
                 void* mappedPtr;
                 auto& device = static_cast<Device&>(GetDevice());
-                auto vkResult = device.GetContext().MapMemory(device.GetNativeDevice(), m_memory, offset, size, 0, &mappedPtr);
+                auto vkResult = device.GetContext().vkMapMemory(device.GetNativeDevice(), m_memory, offset, size, 0, &mappedPtr);
                 if (vkResult != VK_SUCCESS)
                 {
                     AZ_Error("RHI", false, "Failed to map vulkan memory, error = %s", GetResultString(vkResult));
@@ -122,7 +122,7 @@ namespace AZ
             else
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().UnmapMemory(device.GetNativeDevice(), m_memory);
+                device.GetContext().vkUnmapMemory(device.GetNativeDevice(), m_memory);
             }
         }
 
@@ -161,7 +161,7 @@ namespace AZ
             }
             else
             {
-                device.GetContext().FreeMemory(device.GetNativeDevice(), m_memory, nullptr);
+                device.GetContext().vkFreeMemory(device.GetNativeDevice(), m_memory, nullptr);
             }
         }
 

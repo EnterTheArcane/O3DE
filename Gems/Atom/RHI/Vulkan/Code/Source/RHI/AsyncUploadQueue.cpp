@@ -467,7 +467,7 @@ namespace AZ
             CommandQueue::Command command = [=, &device](void* queue)
             {            
                 Queue* vulkanQueue = static_cast<Queue*>(queue);
-                device.GetContext().QueueBindSparse(vulkanQueue->GetNativeQueue(), 1, &bindInfoCache, VK_NULL_HANDLE);
+                device.GetContext().vkQueueBindSparse(vulkanQueue->GetNativeQueue(), 1, &bindInfoCache, VK_NULL_HANDLE);
             };
             
             m_queue->QueueCommand(AZStd::move(command));
@@ -554,7 +554,7 @@ namespace AZ
 
             auto& device = static_cast<Device&>(GetDevice());
 
-            device.GetContext().CmdPipelineBarrier(
+            device.GetContext().vkCmdPipelineBarrier(
                 m_commandList->GetNativeCommandBuffer(),
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -591,7 +591,7 @@ namespace AZ
 
             auto& device = static_cast<Device&>(GetDevice());
 
-            device.GetContext().CmdPipelineBarrier(
+            device.GetContext().vkCmdPipelineBarrier(
                 m_commandList->GetNativeCommandBuffer(),
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -625,7 +625,7 @@ namespace AZ
 
             auto& device = static_cast<Device&>(GetDevice());
 
-            device.GetContext().CmdPipelineBarrier(
+            device.GetContext().vkCmdPipelineBarrier(
                 m_commandList->GetNativeCommandBuffer(),
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -666,7 +666,7 @@ namespace AZ
 
             auto& device = static_cast<Device&>(GetDevice());
 
-            device.GetContext().CmdPipelineBarrier(
+            device.GetContext().vkCmdPipelineBarrier(
                 commandList.GetNativeCommandBuffer(),
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,

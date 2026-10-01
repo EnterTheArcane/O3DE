@@ -31,7 +31,7 @@ namespace AZ
             auto& instance = Instance::GetInstance();
 
             uint32_t physicalDeviceCount = 0;
-            result = instance.GetContext().EnumeratePhysicalDevices(instance.GetNativeInstance(), &physicalDeviceCount, nullptr);
+            result = vkEnumeratePhysicalDevices(instance.GetNativeInstance(), &physicalDeviceCount, nullptr);
             VK_RESULT_ASSERT(result);
             if (physicalDeviceCount == 0)
             {
@@ -43,7 +43,7 @@ namespace AZ
             physicalDevices.resize(physicalDeviceCount);
 
             result =
-                instance.GetContext().EnumeratePhysicalDevices(instance.GetNativeInstance(), &physicalDeviceCount, physicalDevices.data());
+                vkEnumeratePhysicalDevices(instance.GetNativeInstance(), &physicalDeviceCount, physicalDevices.data());
             VK_RESULT_ASSERT(result);
 
             if (ConvertResult(result) != RHI::ResultCode::Success)
@@ -219,25 +219,23 @@ namespace AZ
             VkFormat vkFormat = ConvertFormat(format, raiseAsserts);
             if (vkFormat != VK_FORMAT_UNDEFINED)
             {
-                auto& instance = Instance::GetInstance();
-                instance.GetContext().GetPhysicalDeviceFormatProperties(GetNativePhysicalDevice(), vkFormat, &formatProperties);
+                vkGetPhysicalDeviceFormatProperties(GetNativePhysicalDevice(), vkFormat, &formatProperties);
             }
             return formatProperties;
         }
 
         StringList PhysicalDevice::GetDeviceLayerNames() const
         {
-            auto& instance = Instance::GetInstance();
             StringList layerNames;
             uint32_t layerPropertyCount = 0;
-            VkResult result = instance.GetContext().EnumerateDeviceLayerProperties(m_vkPhysicalDevice, &layerPropertyCount, nullptr);
+            VkResult result = vkEnumerateDeviceLayerProperties(m_vkPhysicalDevice, &layerPropertyCount, nullptr);
             if (IsError(result) || layerPropertyCount == 0)
             {
                 return layerNames;
             }
 
             AZStd::vector<VkLayerProperties> layerProperties(layerPropertyCount);
-            result = instance.GetContext().EnumerateDeviceLayerProperties(m_vkPhysicalDevice, &layerPropertyCount, layerProperties.data());
+            result = vkEnumerateDeviceLayerProperties(m_vkPhysicalDevice, &layerPropertyCount, layerProperties.data());
             if (IsError(result))
             {
                 return layerNames;
@@ -256,9 +254,8 @@ namespace AZ
         {
             StringList extensionNames;
             uint32_t extPropertyCount = 0;
-            auto& instance = Instance::GetInstance();
             VkResult result =
-                instance.GetContext().EnumerateDeviceExtensionProperties(m_vkPhysicalDevice, layerName, &extPropertyCount, nullptr);
+                vkEnumerateDeviceExtensionProperties(m_vkPhysicalDevice, layerName, &extPropertyCount, nullptr);
             if (IsError(result) || extPropertyCount == 0)
             {
                 return extensionNames;
@@ -267,7 +264,7 @@ namespace AZ
             AZStd::vector<VkExtensionProperties> extProperties;
             extProperties.resize(extPropertyCount);
 
-            result = instance.GetContext().EnumerateDeviceExtensionProperties(
+            result = vkEnumerateDeviceExtensionProperties(
                 m_vkPhysicalDevice, layerName, &extPropertyCount, extProperties.data());
             if (IsError(result))
             {
@@ -297,7 +294,7 @@ namespace AZ
             }
         }
 
-        void PhysicalDevice::LoadSupportedFeatures(const GladVulkanContext& context)
+        void PhysicalDevice::LoadSupportedFeatures(const LoaderContext& loaderContext)
         {
             uint32_t majorVersion = VK_VERSION_MAJOR(GetVulkanVersion());
             uint32_t minorVersion = VK_VERSION_MINOR(GetVulkanVersion());
@@ -305,44 +302,48 @@ namespace AZ
             m_features.reset();
             m_features.set(
                 static_cast<size_t>(DeviceFeature::Compatible2dArrayTexture),
-                (majorVersion >= 1 && minorVersion >= 1) || VK_DEVICE_EXTENSION_SUPPORTED(context, KHR_maintenance1));
+                (majorVersion >= 1 && minorVersion >= 1) || loaderContext.IsExtensionEnabled(VK_KHR_MAINTENANCE_1_EXTENSION_NAME));
             m_features.set(
-                static_cast<size_t>(DeviceFeature::CustomSampleLocation), VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_sample_locations));
+                static_cast<size_t>(DeviceFeature::CustomSampleLocation),
+                loaderContext.IsExtensionEnabled(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME));
             m_features.set(
-                static_cast<size_t>(DeviceFeature::Predication), VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_conditional_rendering));
+                static_cast<size_t>(DeviceFeature::Predication),
+                loaderContext.IsExtensionEnabled(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME));
             m_features.set(
                 static_cast<size_t>(DeviceFeature::ConservativeRaster),
-                VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_conservative_rasterization));
+                loaderContext.IsExtensionEnabled(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME));
             m_features.set(
                 static_cast<size_t>(DeviceFeature::DepthClipEnable),
-                VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_depth_clip_enable) && m_depthClipEnableFeatures.depthClipEnable);
+                loaderContext.IsExtensionEnabled(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME) && m_depthClipEnableFeatures.depthClipEnable);
             m_features.set(
                 static_cast<size_t>(DeviceFeature::DrawIndirectCount),
                 (majorVersion >= 1 && minorVersion >= 2 && m_vulkan12Features.drawIndirectCount) ||
-                    VK_DEVICE_EXTENSION_SUPPORTED(context, KHR_draw_indirect_count));
+                    loaderContext.IsExtensionEnabled(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME));
             m_features.set(
                 static_cast<size_t>(DeviceFeature::NullDescriptor),
-                m_robustness2Features.nullDescriptor && VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_robustness2));
+                m_robustness2Features.nullDescriptor && loaderContext.IsExtensionEnabled(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME));
             m_features.set(
                 static_cast<size_t>(DeviceFeature::SeparateDepthStencil),
                 (m_separateDepthStencilLayoutsFeatures.separateDepthStencilLayouts &&
-                 VK_DEVICE_EXTENSION_SUPPORTED(context, KHR_separate_depth_stencil_layouts)) ||
+                 loaderContext.IsExtensionEnabled(VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME)) ||
                     (m_vulkan12Features.separateDepthStencilLayouts));
             m_features.set(
-                static_cast<size_t>(DeviceFeature::DescriptorIndexing), VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_descriptor_indexing));
+                static_cast<size_t>(DeviceFeature::DescriptorIndexing),
+                loaderContext.IsExtensionEnabled(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME));
             m_features.set(
                 static_cast<size_t>(DeviceFeature::BufferDeviceAddress),
-                VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_buffer_device_address) && m_bufferDeviceAddressFeatures.bufferDeviceAddress);
+                loaderContext.IsExtensionEnabled(VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) && m_bufferDeviceAddressFeatures.bufferDeviceAddress);
             // Disable memory budget extension for now since it's crashing the driver when the VkPhysicalDeviceMemoryBudgetPropertiesEXT
             // structure is included in the pNext chain of VkPhysicalDeviceMemoryProperties2
             m_features.set(
                 static_cast<size_t>(DeviceFeature::MemoryBudget),
-                VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_memory_budget) && m_deviceProperties.vendorID != VendorID_Intel);
+                loaderContext.IsExtensionEnabled(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) && m_deviceProperties.vendorID != VendorID_Intel);
             m_features.set(static_cast<size_t>(DeviceFeature::SubgroupOperation), (majorVersion >= 1 && minorVersion >= 1));
-            m_features.set(static_cast<size_t>(DeviceFeature::LoadNoneOp), VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_load_store_op_none));
+            m_features.set(
+                static_cast<size_t>(DeviceFeature::LoadNoneOp), loaderContext.IsExtensionEnabled(VK_EXT_LOAD_STORE_OP_NONE_EXTENSION_NAME));
             m_features.set(
                 static_cast<size_t>(DeviceFeature::StoreNoneOp),
-                VK_DEVICE_EXTENSION_SUPPORTED(context, EXT_load_store_op_none) || (majorVersion >= 1 && minorVersion >= 3));
+                loaderContext.IsExtensionEnabled(VK_EXT_LOAD_STORE_OP_NONE_EXTENSION_NAME) || (majorVersion >= 1 && minorVersion >= 3));
         }
 
         // The order must match the enum OptionalDeviceExtensions
@@ -417,21 +418,21 @@ namespace AZ
             }
         }
 
-        AZStd::vector<VkTimeDomainEXT> PhysicalDevice::GetCalibratedTimeDomains(const GladVulkanContext& context) const
+        AZStd::vector<VkTimeDomainEXT> PhysicalDevice::GetCalibratedTimeDomains() const
         {
             AZStd::vector<VkTimeDomainEXT> time_domains;
 
             // Initialize time domain count:
             auto time_domain_count{ 0u };
             // Update time domain count:
-            auto result = context.GetPhysicalDeviceCalibrateableTimeDomainsEXT(m_vkPhysicalDevice, &time_domain_count, nullptr);
+            auto result = vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(m_vkPhysicalDevice, &time_domain_count, nullptr);
 
             if (result == VK_SUCCESS)
             {
                 // Resize time domains vector:
                 time_domains.resize(time_domain_count);
                 // Update time_domain vector:
-                result = context.GetPhysicalDeviceCalibrateableTimeDomainsEXT(m_vkPhysicalDevice, &time_domain_count, time_domains.data());
+                result = vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(m_vkPhysicalDevice, &time_domain_count, time_domains.data());
             }
 
             return time_domains;
@@ -445,17 +446,16 @@ namespace AZ
         void PhysicalDevice::Init(VkPhysicalDevice vkPhysicalDevice)
         {
             m_vkPhysicalDevice = vkPhysicalDevice;
-            const auto& context = Instance::GetInstance().GetContext();
 
             // getting the device properties preliminarily to get the Vulkan version
-            context.GetPhysicalDeviceProperties(vkPhysicalDevice, &m_deviceProperties);
+            vkGetPhysicalDeviceProperties(vkPhysicalDevice, &m_deviceProperties);
             // We need to consider the application's vulkan version, since we cannot use a higher version than that, even though
             // the physical device might support a higher one.
             m_vulkanVersion = AZStd::min(Instance::GetInstance().GetVkAppInfo().apiVersion, m_deviceProperties.apiVersion);
 
             EnableSupportedOptionalExtensions();
 
-            if (VK_INSTANCE_EXTENSION_SUPPORTED(context, KHR_get_physical_device_properties2))
+            if (Instance::GetInstance().IsExtensionEnabled(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
             {
                 uint32_t majorVersion = VK_VERSION_MAJOR(m_vulkanVersion);
                 uint32_t minorVersion = VK_VERSION_MINOR(m_vulkanVersion);
@@ -606,17 +606,17 @@ namespace AZ
                 }
 
                 deviceFeaturesAppender.finish();
-                context.GetPhysicalDeviceFeatures2KHR(vkPhysicalDevice, &deviceFeatures2);
+                vkGetPhysicalDeviceFeatures2KHR(vkPhysicalDevice, &deviceFeatures2);
                 m_deviceFeatures = deviceFeatures2.features;
 
                 devicePropsAppender.finish();
-                context.GetPhysicalDeviceProperties2KHR(vkPhysicalDevice, &deviceProps2);
+                vkGetPhysicalDeviceProperties2KHR(vkPhysicalDevice, &deviceProps2);
                 m_deviceProperties = deviceProps2.properties;
             }
             else
             {
-                context.GetPhysicalDeviceFeatures(vkPhysicalDevice, &m_deviceFeatures);
-                context.GetPhysicalDeviceProperties(vkPhysicalDevice, &m_deviceProperties);
+                vkGetPhysicalDeviceFeatures(vkPhysicalDevice, &m_deviceFeatures);
+                vkGetPhysicalDeviceProperties(vkPhysicalDevice, &m_deviceProperties);
             }
 
             m_descriptor.m_description = m_deviceProperties.deviceName;
@@ -644,7 +644,7 @@ namespace AZ
             m_descriptor.m_deviceId = m_deviceProperties.deviceID;
             m_descriptor.m_driverVersion = m_deviceProperties.driverVersion;
 
-            context.GetPhysicalDeviceMemoryProperties(vkPhysicalDevice, &m_memoryProperty);
+            vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice, &m_memoryProperty);
 
             AZStd::set<uint32_t> heapIndicesDevice;
             AZStd::set<uint32_t> heapIndicesHost;

@@ -197,7 +197,7 @@ namespace AZ
             if (m_nativePipelineLayout != VK_NULL_HANDLE)
             {
                 auto& device = static_cast<Device&>(GetDevice());
-                device.GetContext().DestroyPipelineLayout(device.GetNativeDevice(), m_nativePipelineLayout, VkSystemAllocator::Get());
+                device.GetContext().vkDestroyPipelineLayout(device.GetNativeDevice(), m_nativePipelineLayout, VkSystemAllocator::Get());
                 m_nativePipelineLayout = VK_NULL_HANDLE;
             }
             m_layoutDescriptor = nullptr;
@@ -258,7 +258,7 @@ namespace AZ
             createInfo.pPushConstantRanges = m_pushConstantRanges.empty() ? nullptr : m_pushConstantRanges.data();
 
             auto& device = static_cast<Device&>(GetDevice());
-            const VkResult result = device.GetContext().CreatePipelineLayout(
+            const VkResult result = device.GetContext().vkCreatePipelineLayout(
                 device.GetNativeDevice(), &createInfo, VkSystemAllocator::Get(), &m_nativePipelineLayout);
 
             return ConvertResult(result);
