@@ -166,6 +166,33 @@ namespace UnitTest
         AZ_TEST_ASSERT((myalloc2 != myalloc));
     }
 
+    TEST(Allocator, StaticBufferExhaustionPreservesAllocationState)
+    {
+        static_buffer_allocator<64, 64> allocator;
+        void* first = allocator.allocate(1, 1);
+        ASSERT_NE(nullptr, first);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_EQ(nullptr, allocator.allocate(64, 1));
+        EXPECT_EQ(nullptr, allocator.allocate(1, 64));
+        EXPECT_EQ(nullptr, allocator.allocate(static_cast<size_t>(-1), 1));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(3);
+        EXPECT_EQ(1, allocator.get_allocated_size());
+
+        // Failed allocations must not replace the last successful allocation.
+        allocator.deallocate(first);
+        EXPECT_EQ(0, allocator.get_allocated_size());
+        EXPECT_EQ(first, allocator.allocate(64, 64));
+        EXPECT_EQ(64, allocator.get_allocated_size());
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_EQ(nullptr, allocator.allocate(1, 1));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(64, allocator.get_allocated_size());
+        allocator.deallocate(first);
+        EXPECT_EQ(0, allocator.get_allocated_size());
+    }
+
     /// Static pool allocator.
     TEST(Allocator, StaticPool)
     {

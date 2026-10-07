@@ -56,6 +56,10 @@ namespace O3DE::ProjectManager
     void GemItemDelegate::AddPlatformIcon(GemInfo::Platform platform, const QString& iconPath)
     {
         QPixmap pixmap(iconPath);
+        if (pixmap.isNull())
+        {
+            return;
+        }
         qreal aspectRatio = static_cast<qreal>(pixmap.width()) / pixmap.height();
         m_platformIcons.insert(platform, QIcon(iconPath).pixmap(static_cast<int>(static_cast<qreal>(s_platformIconSize) * aspectRatio), s_platformIconSize));
     }

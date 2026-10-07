@@ -902,7 +902,7 @@ namespace AZ
             if (elementData->m_nameCrc == nameCrc)
             {
                 ElementDataResult result;
-                result.m_data = reinterpret_cast<void*>(reinterpret_cast<char*>(object) + elementData->m_offset);
+                result.m_data = elementData->GetAddress(object);
                 result.m_info = &*elementData;
                 result.m_found = true;
                 return result;
@@ -913,7 +913,7 @@ namespace AZ
                 const SerializeContext::ClassData* baseClassData = serializeContext.FindClassData(elementData->m_typeId);
                 if (baseClassData)
                 {
-                    void* subclassOffset = reinterpret_cast<char*>(object) + elementData->m_offset;
+                    void* subclassOffset = elementData->GetAddress(object);
                     ElementDataResult foundElementData = FindElementByNameCrc(
                         serializeContext, subclassOffset, *baseClassData, nameCrc);
                     if (foundElementData.m_found)

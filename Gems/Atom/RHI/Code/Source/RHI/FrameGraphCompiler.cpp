@@ -119,7 +119,7 @@ namespace AZ::RHI
         /// [Phase 2] Compile transient attachments across all scopes.
         CompileTransientAttachments(
             frameGraph,
-            *request.m_transientAttachmentPool,
+            request.m_transientAttachmentPool,
             request.m_compileFlags,
             request.m_statisticsFlags);
 
@@ -541,7 +541,7 @@ namespace AZ::RHI
 
     void FrameGraphCompiler::CompileTransientAttachments(
         FrameGraph& frameGraph,
-        TransientAttachmentPool& transientAttachmentPool,
+        TransientAttachmentPool* transientAttachmentPoolPtr,
         FrameSchedulerCompileFlags compileFlags,
         FrameSchedulerStatisticsFlags statisticsFlags)
     {
@@ -550,6 +550,7 @@ namespace AZ::RHI
         {
             return;
         }
+        TransientAttachmentPool& transientAttachmentPool = *transientAttachmentPoolPtr;
 
         AZ_PROFILE_SCOPE(RHI, "FrameGraphCompiler: CompileTransientAttachments");
 

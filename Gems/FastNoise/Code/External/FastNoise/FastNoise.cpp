@@ -34,6 +34,7 @@
 #include <assert.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <random>
 
 const FN_DECIMAL GRAD_X[] =
@@ -275,30 +276,30 @@ unsigned char FastNoise::Index4D_256(unsigned char offset, int x, int y, int z, 
 
 static FN_DECIMAL ValCoord2D(int seed, int x, int y)
 {
-    int n = seed;
-    n ^= X_PRIME * x;
-    n ^= Y_PRIME * y;
+    std::uint32_t n = static_cast<std::uint32_t>(seed);
+    n ^= X_PRIME * static_cast<std::uint32_t>(x);
+    n ^= Y_PRIME * static_cast<std::uint32_t>(y);
 
-    return (n * n * n * 60493) / FN_DECIMAL(2147483648);
+    return static_cast<std::int32_t>(n * n * n * 60493U) / FN_DECIMAL(2147483648);
 }
 static FN_DECIMAL ValCoord3D(int seed, int x, int y, int z)
 {
-    int n = seed;
-    n ^= X_PRIME * x;
-    n ^= Y_PRIME * y;
-    n ^= Z_PRIME * z;
+    std::uint32_t n = static_cast<std::uint32_t>(seed);
+    n ^= X_PRIME * static_cast<std::uint32_t>(x);
+    n ^= Y_PRIME * static_cast<std::uint32_t>(y);
+    n ^= Z_PRIME * static_cast<std::uint32_t>(z);
 
-    return (n * n * n * 60493) / FN_DECIMAL(2147483648);
+    return static_cast<std::int32_t>(n * n * n * 60493U) / FN_DECIMAL(2147483648);
 }
 static FN_DECIMAL ValCoord4D(int seed, int x, int y, int z, int w)
 {
-    int n = seed;
-    n ^= X_PRIME * x;
-    n ^= Y_PRIME * y;
-    n ^= Z_PRIME * z;
-    n ^= W_PRIME * w;
+    std::uint32_t n = static_cast<std::uint32_t>(seed);
+    n ^= X_PRIME * static_cast<std::uint32_t>(x);
+    n ^= Y_PRIME * static_cast<std::uint32_t>(y);
+    n ^= Z_PRIME * static_cast<std::uint32_t>(z);
+    n ^= W_PRIME * static_cast<std::uint32_t>(w);
 
-    return (n * n * n * 60493) / FN_DECIMAL(2147483648);
+    return static_cast<std::int32_t>(n * n * n * 60493U) / FN_DECIMAL(2147483648);
 }
 
 FN_DECIMAL FastNoise::ValCoord2DFast(unsigned char offset, int x, int y) const

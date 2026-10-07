@@ -833,8 +833,22 @@ namespace AZStd
             }
             --p;
         }
-        AZ_FORCE_INLINE pointer add(pointer p, difference_type n) const { return p + (n < (m_end - p) ? n : n - capacity()); }
-        AZ_FORCE_INLINE pointer sub(pointer p, difference_type n) const { return p - (n > (p - m_buff) ? n - capacity() : n); }
+        AZ_FORCE_INLINE pointer add(pointer p, difference_type n) const
+        {
+            if (n >= (m_end - p))
+            {
+                n -= static_cast<difference_type>(capacity());
+            }
+            return p + n;
+        }
+        AZ_FORCE_INLINE pointer sub(pointer p, difference_type n) const
+        {
+            if (n > (p - m_buff))
+            {
+                n -= static_cast<difference_type>(capacity());
+            }
+            return p - n;
+        }
         /// Map the null pointer to virtual end of circular buffer.
         AZ_FORCE_INLINE pointer map_pointer(pointer p) const { return p == 0 ? m_last : p; }
         /// Does the pointer point to the uninitialized memory?

@@ -1891,7 +1891,8 @@ namespace {{ Component.attrib['Namespace'] }}
         {
             m_currentRecord = {{ RecordName }}::AllocateRecord(currentEntityRecord);
         }
-        m_controller.get()->NetworkAttach(netBindComponent, predictableEntityRecord);
+        // Predictable records must be initialized before controllers are constructed.
+        {{ ControllerBaseName }}::NetworkAttach(netBindComponent, predictableEntityRecord);
     }
 
     {{ DeclareNetworkPropertySetSerializer(Component, 'Authority', 'Server', ComponentBaseName, RecordName)|indent(4) }}

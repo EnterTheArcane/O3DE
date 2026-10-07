@@ -124,6 +124,7 @@ namespace LmbrCentral
         m_editorPolygonPrismShapeComponentDescriptor->Reflect(serializeContext);
 
         UnitTest::CreateDefaultEditorEntity("PolygonPrismShapeComponentEntity", &m_entity);
+        ASSERT_NE(m_entity, nullptr);
         m_entity->Deactivate();
         m_entity->CreateComponent(AzToolsFramework::Components::EditorNonUniformScaleComponent::RTTI_Type());
         m_entity->CreateComponent(EditorPolygonPrismShapeComponentTypeId);
@@ -132,8 +133,11 @@ namespace LmbrCentral
 
     void EditorPolygonPrismShapeComponentFixture::TearDownEditorFixtureImpl()
     {
-        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity, m_entity->GetId());
+        if (m_entity)
+        {
+            AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
+                &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity, m_entity->GetId());
+        }
         m_entity = nullptr;
 
         m_editorPolygonPrismShapeComponentDescriptor.reset();

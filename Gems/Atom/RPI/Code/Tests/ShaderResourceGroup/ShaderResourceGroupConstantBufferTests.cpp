@@ -247,15 +247,20 @@ namespace UnitTest
     {
         using namespace AZ;
 
-        uint32_t falsePackedInGarbage = 0xab00cdef;
-        bool* asBools = reinterpret_cast<bool*>(&falsePackedInGarbage);
+        struct PackedBool
+        {
+            uint8_t m_prefix[2];
+            bool m_value;
+            uint8_t m_suffix;
+        };
+        const PackedBool falsePackedInGarbage{ { 0xef, 0xcd }, false, 0xab };
 
         {
             const RHI::ShaderInputConstantIndex inputIndex(0);
 
             // Check using inputIndex
 
-            EXPECT_TRUE(m_srg->SetConstant<bool>(inputIndex, asBools[2]));
+            EXPECT_TRUE(m_srg->SetConstant<bool>(inputIndex, falsePackedInGarbage.m_value));
             EXPECT_EQ(false, m_srg->GetConstant<bool>(inputIndex));
         }
 
@@ -263,7 +268,7 @@ namespace UnitTest
             // Check using inputIndex
 
             const RHI::ShaderInputConstantIndex inputIndex(1);
-            EXPECT_TRUE(m_srg->SetConstantArray<bool>(inputIndex, AZStd::array<bool, 2>({ asBools[1], asBools[2] })));
+            EXPECT_TRUE(m_srg->SetConstantArray<bool>(inputIndex, AZStd::array<bool, 2>({ true, falsePackedInGarbage.m_value })));
             AZStd::span<const uint8_t> result = m_srg->GetConstantRaw(inputIndex);
             AZStd::span<const uint32_t> resultInUint = AZStd::span<const uint32_t>(reinterpret_cast<const uint32_t*>(result.data()), 2);
             EXPECT_THAT(resultInUint, testing::ElementsAre(testing::IsTrue(), testing::IsFalse()));

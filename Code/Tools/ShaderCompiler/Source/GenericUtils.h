@@ -469,17 +469,17 @@ namespace AZ
 
         friend Flag operator & (Flag f, EnumType e)
         {
-            return EnumType(f.m_value & static_cast<UnderlyingT>(e));
+            return f &= e;
         }
 
         friend Flag operator & (Flag lhs, Flag rhs)
         {
-            return Flag(EnumType(lhs.m_value & rhs.m_value));
+            return lhs &= rhs;
         }
 
         friend Flag operator | (Flag f, EnumType e)
         {
-            return EnumType(f.m_value | static_cast<UnderlyingT>(e));
+            return f |= e;
         }
 
         friend Flag& operator &= (Flag& f, EnumType e)
@@ -508,7 +508,9 @@ namespace AZ
 
         friend Flag operator ~ (const Flag& a_f)
         {
-            return Flag(EnumType(~a_f.m_value));
+            Flag result = a_f;
+            result.m_value = ~result.m_value;
+            return result;
         }
 
         bool operator == (const Flag& rhs) const

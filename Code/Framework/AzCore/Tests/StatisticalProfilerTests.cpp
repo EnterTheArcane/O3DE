@@ -250,6 +250,16 @@ namespace UnitTest
         }
     };
 
+    TEST_F(StatisticalProfilerProxyFixture, DestroyProxy_UnregistersInterface)
+    {
+        {
+            ProxyType profilerProxy;
+            EXPECT_EQ(AZ::Interface<ProxyType>::Get(), &profilerProxy);
+        }
+
+        EXPECT_EQ(AZ::Interface<ProxyType>::Get(), nullptr);
+    }
+
     TEST_F(StatisticalProfilerProxyFixture, ProfileCode_SingleThread_ValidateStatistics)
     {
         ProxyType profilerProxy;

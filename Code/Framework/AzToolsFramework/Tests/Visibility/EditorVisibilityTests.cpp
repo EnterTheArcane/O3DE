@@ -250,6 +250,7 @@ namespace UnitTest
 
         AZ::Entity* entity = nullptr;
         const auto entityId = CreateDefaultEditorEntity("Entity", &entity);
+        ASSERT_NE(entity, nullptr);
 
         entity->Deactivate();
         auto testBoundComponent = static_cast<TestBoundComponent*>(entity->CreateComponent<TestBoundComponent>());

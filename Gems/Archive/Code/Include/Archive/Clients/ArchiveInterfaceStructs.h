@@ -241,7 +241,7 @@ namespace Archive
         " the ArchiveDefaultBlockAlignment");
 
     //! Represents an entry of a single file within the Archive
-    struct alignas(32) ArchiveTocFileMetadata
+    struct ArchiveTocFileMetadata
     {
         ArchiveTocFileMetadata();
 
@@ -295,7 +295,7 @@ namespace Archive
         AZStd::byte m_unused[12]{};
     };
 
-    static_assert(sizeof(ArchiveTocFileMetadata) == 32, "File Metadata size should be 16 bytes");
+    static_assert(sizeof(ArchiveTocFileMetadata) == 32, "File Metadata size should be 32 bytes");
 
     //! Stores the size of a file path and an offset into the file path blob table for a single file
     //! in the archive

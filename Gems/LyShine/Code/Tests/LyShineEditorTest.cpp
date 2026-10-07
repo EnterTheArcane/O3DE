@@ -17,6 +17,8 @@
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 #include <LyShineSystemComponent.h>
+#include <Animation/AnimSequence.h>
+#include <Animation/AzEntityNode.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <World/UiCanvasAssetRefComponent.h>
 #include <World/UiCanvasProxyRefComponent.h>
@@ -186,8 +188,11 @@ protected:
     {
         m_componentDescriptors = {};
 
-        m_sysComponent->Deactivate();
-        m_sysComponent = nullptr;
+        if (m_sysComponent)
+        {
+            m_sysComponent->Deactivate();
+            m_sysComponent = nullptr;
+        }
         m_app.Stop();
 
         m_data.reset();
@@ -227,6 +232,28 @@ bool OpenTestFile(AZStd::string_view fileName, AZ::IO::FileIOStream& fileStream)
 {
     AZStd::string aliasedPath = GetTestFileAliasedPath(fileName);
     return fileStream.Open(aliasedPath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary);
+}
+
+TEST_F(LyShineEditorTest, AnimationDropsTrackForMissingComponent)
+{
+    class TestAnimNode final : public CUiAnimAzEntityNode
+    {
+    public:
+        using CUiAnimAzEntityNode::ComputeOffsetsFromElementNames;
+    };
+
+    AZ::Entity entity;
+    entity.Init();
+    CUiAnimSequence sequence;
+    TestAnimNode node;
+    node.SetAzEntity(&entity);
+    node.SetSequence(&sequence);
+    const UiAnimParamData param(AZ::InvalidComponentId, "missing", AZ::SerializeTypeInfo<float>::GetUuid(), 0);
+    ASSERT_NE(nullptr, node.CreateTrackForAzField(param));
+
+    node.ComputeOffsetsFromElementNames();
+
+    EXPECT_EQ(nullptr, node.GetTrackForAzField(param));
 }
 
 TEST_F(LyShineEditorTest, ProcessUiCanvas_ReturnsDependencyOnSpriteAndTexture)

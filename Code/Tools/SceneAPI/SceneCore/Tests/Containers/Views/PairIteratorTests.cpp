@@ -230,6 +230,23 @@ namespace AZ::SceneAPI::Containers::Views
     INSTANTIATE_TYPED_TEST_SUITE_P(CommonTests, PairIteratorTests, BasicCollectionTypes);
 
     // The following tests are done as standalone tests as not all iterators support this functionality
+    TEST(PairIteratorTest, NegativeOffsets_MoveBothIteratorsWithinTheirRanges)
+    {
+        int first[] = { 1, 2, 3 };
+        int second[] = { 4, 5, 6 };
+        auto begin = MakePairIterator(first, second);
+        auto middle = begin + 1;
+
+        EXPECT_EQ(middle + -1, begin);
+        EXPECT_EQ(begin - -1, middle);
+        EXPECT_EQ(AZStd::get<0>(middle[-1]), first[0]);
+        EXPECT_EQ(AZStd::get<1>(middle[-1]), second[0]);
+        middle += -1;
+        EXPECT_EQ(middle, begin);
+        middle -= -1;
+        EXPECT_EQ(middle, begin + 1);
+    }
+
     TEST(PairIteratorTest, PreDecrementIterator_DecrementingMovesBothIterators_BothStoredIteratorsMoved)
     {
         AZStd::vector<int> firstContainer = { 42, 142 };

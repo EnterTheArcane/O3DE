@@ -604,8 +604,7 @@ namespace AZ::Reflection
                                 {
                                     // groups with a serialize class element are toggle groups, make an entry for their bool value
                                     const AZ::Serialize::ClassElement* serializeClassElement = currElement.m_serializeClassElement;
-                                    void* boolAddress = reinterpret_cast<void*>(
-                                        reinterpret_cast<size_t>(nodeData.GetRawInstance()) + serializeClassElement->m_offset);
+                                    void* boolAddress = serializeClassElement->GetAddress(nodeData.GetRawInstance());
                                     boolAddress = AZ::Utils::ResolvePointer(boolAddress, *serializeClassElement, *m_serializeContext);
 
                                     constexpr AZ::u32 pointerLevel = 0;

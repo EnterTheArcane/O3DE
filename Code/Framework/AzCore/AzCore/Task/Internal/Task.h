@@ -40,7 +40,7 @@ namespace AZ::Internal
     public:
         constexpr TaskInvoke_t ErasedInvoker()
         {
-            return reinterpret_cast<TaskInvoke_t>(Invoker);
+            return Invoker;
         }
 
         constexpr TaskRelocate_t ErasedRelocator()
@@ -51,11 +51,11 @@ namespace AZ::Internal
             }
             else if constexpr (AZStd::is_move_constructible_v<Lambda>)
             {
-                return reinterpret_cast<TaskRelocate_t>(Mover);
+                return Mover;
             }
             else if constexpr (AZStd::is_copy_constructible_v<Lambda>)
             {
-                return reinterpret_cast<TaskRelocate_t>(Copier);
+                return Copier;
             }
             else
             {
@@ -74,29 +74,29 @@ namespace AZ::Internal
             }
             else
             {
-                return reinterpret_cast<TaskDestroy_t>(Destroyer);
+                return Destroyer;
             }
         }
 
     private:
-        constexpr static void Invoker(Lambda* lambda)
+        constexpr static void Invoker(void* lambda)
         {
-            lambda->operator()();
+            static_cast<Lambda*>(lambda)->operator()();
         }
 
-        constexpr static void Mover(Lambda* dst, Lambda* src)
+        constexpr static void Mover(void* dst, void* src)
         {
-            new (dst) Lambda{ AZStd::move(*src) };
+            new (dst) Lambda{ AZStd::move(*static_cast<Lambda*>(src)) };
         }
 
-        constexpr static void Copier(Lambda* dst, Lambda* src)
+        constexpr static void Copier(void* dst, void* src)
         {
-            new (dst) Lambda{ *src };
+            new (dst) Lambda{ *static_cast<Lambda*>(src) };
         }
 
-        constexpr static void Destroyer(Lambda* lambda)
+        constexpr static void Destroyer(void* lambda)
         {
-            lambda->~Lambda();
+            static_cast<Lambda*>(lambda)->~Lambda();
         }
     };
 

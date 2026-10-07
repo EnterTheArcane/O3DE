@@ -38,6 +38,7 @@ namespace EMStudio
         , m_autoSaveNumberOfFiles(5)
         , m_enableAutoSave(true)
         , m_importerLogDetailsEnabled(false)
+        , m_autoLoadLastWorkspace(false)
         , m_applicationMode("AnimGraph")
     {}
 

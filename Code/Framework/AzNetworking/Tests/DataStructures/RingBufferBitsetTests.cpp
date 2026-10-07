@@ -13,6 +13,19 @@ namespace UnitTest
 {
     AzNetworking::RingbufferBitset<128> test;
 
+    TEST(RingbufferBitset, PushWholeChunksFromEmptyHead)
+    {
+        AzNetworking::RingbufferBitset<128> bits;
+        bits.PushBackBits(32);
+        bits.SetBit(0, true);
+        bits.PushBackBits(32);
+        EXPECT_FALSE(bits.GetBit(0));
+        EXPECT_TRUE(bits.GetBit(32));
+        bits.PushBackBits(32);
+        EXPECT_FALSE(bits.GetBit(32));
+        EXPECT_TRUE(bits.GetBit(64));
+    }
+
     TEST(RingbufferBitset, Push2Bits)
     {
         test.PushBackBits(2);

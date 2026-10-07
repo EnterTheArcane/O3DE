@@ -538,7 +538,7 @@ namespace AzToolsFramework
         ComponentEditorVector GetComponentEditorsFromIndices(const AZStd::vector<AZ::s32>& indices) const;
         ComponentEditor* GetComponentEditorsFromIndex(const AZ::s32 index) const;
         QPoint m_dragStartPosition;
-        bool m_dragStarted;
+        bool m_dragStarted = false;
 
         void ResetAutoScroll();
         void QueueAutoScroll();

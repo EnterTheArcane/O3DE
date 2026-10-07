@@ -199,12 +199,16 @@ namespace UnitTest
         // in the unit tests.
         AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::DisableSaveOnFinalize);
 
+        ASSERT_TRUE(AZ::Data::AssetManager::IsReady());
         AZ::Data::AssetManager::Instance().RegisterHandler(&m_assetHandler, azrtti_typeid<TestAsset>());
     }
 
     void PrefabBuilderTests::TearDown()
     {
-        AZ::Data::AssetManager::Instance().UnregisterHandler(&m_assetHandler);
+        if (AZ::Data::AssetManager::IsReady())
+        {
+            AZ::Data::AssetManager::Instance().UnregisterHandler(&m_assetHandler);
+        }
         m_testComponentDescriptor = nullptr;
 
         m_app.Stop();

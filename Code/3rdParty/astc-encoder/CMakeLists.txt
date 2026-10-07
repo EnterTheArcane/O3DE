@@ -12,6 +12,7 @@ o3de_fetch_content(astc-encoder
     URL_HASH "ed24d600b3b18178df3c6375e2ba8f256ccfc1f20e57863f2f21a1c9e39f820e"
     GIT "https://github.com/ARM-software/astc-encoder.git"
     GIT_HASH "f32d8d4dd9e06f8986cd5e10f12e199fc023f150"
+    PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/astc-encoder.patch"
     NO_ADD_SUBDIR
 )
 FetchContent_MakeAvailable(astc-encoder)

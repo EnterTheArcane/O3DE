@@ -198,6 +198,26 @@ namespace UnitTest
             ;
     }
 
+    TEST_F(BehaviorContextConstTest, BehaviorContext_RemoveEBusReflection_Succeeds)
+    {
+        AZ::BehaviorContext context;
+        const auto reflect = [&context]()
+        {
+            context.EBus<EBusWithConstEventBus>("EBusWithConstEventBus")
+                ->Event("ConstEvent", &EBusWithConstEvent::ConstEvent)
+                ->Attribute(AZ_CRC_CE("TestAttribute"), true);
+        };
+
+        reflect();
+        ASSERT_EQ(1, context.m_ebuses.size());
+        context.EnableRemoveReflection();
+        reflect();
+        EXPECT_TRUE(context.m_ebuses.empty());
+        reflect();
+        EXPECT_TRUE(context.m_ebuses.empty());
+        context.DisableRemoveReflection();
+    }
+
     void MethodAcceptingTemplate(const AZStd::vector<int>&)
     { }
 

@@ -238,7 +238,7 @@ namespace AZ::RHI
 
         void CompileTransientAttachments(
             FrameGraph& frameGraph,
-            AZ::RHI::TransientAttachmentPool& transientAttachmentPool,
+            AZ::RHI::TransientAttachmentPool* transientAttachmentPool,
             FrameSchedulerCompileFlags compileFlags,
             FrameSchedulerStatisticsFlags statisticsFlags);
 

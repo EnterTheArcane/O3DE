@@ -617,7 +617,7 @@ namespace UnitTest
                 EXPECT_EQ(RHS::s_count, 1);
 
                 EXPECT_EQ(any_cast<const RHS&>(a1).val(), 2);
-                EXPECT_EQ(any_cast<const RHS&>(a2).val(), 1);
+                EXPECT_EQ(any_cast<const LHS&>(a2).val(), 1);
             }
 
             EXPECT_EQ(LHS::s_count, 0);

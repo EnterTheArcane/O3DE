@@ -319,15 +319,19 @@ namespace UnitTest
             auto actionManagerInterface = AZ::Interface<AzToolsFramework::ActionManagerInterface>::Get();
             auto hotKeyManagerInterface = AZ::Interface<AzToolsFramework::HotKeyManagerInterface>::Get();
 
-            AzToolsFramework::ActionContextProperties contextProperties;
-            contextProperties.m_name = "O3DE Editor";
+            if (actionManagerInterface && hotKeyManagerInterface)
+            {
+                AzToolsFramework::ActionContextProperties contextProperties;
+                contextProperties.m_name = "O3DE Editor";
 
-            actionManagerInterface->RegisterActionContext(
-                EditorIdentifiers::MainWindowActionContextIdentifier, contextProperties);
+                actionManagerInterface->RegisterActionContext(
+                    EditorIdentifiers::MainWindowActionContextIdentifier, contextProperties);
 
-            hotKeyManagerInterface->AssignWidgetToActionContext(EditorIdentifiers::MainWindowActionContextIdentifier, m_defaultMainWindow);
+                hotKeyManagerInterface->AssignWidgetToActionContext(
+                    EditorIdentifiers::MainWindowActionContextIdentifier, m_defaultMainWindow);
 
-            AzToolsFramework::ActionManagerSystemComponent::TriggerRegistrationNotifications();
+                AzToolsFramework::ActionManagerSystemComponent::TriggerRegistrationNotifications();
+            }
 
             InitializeRootPrefab();
 
@@ -370,10 +374,11 @@ namespace UnitTest
             using AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus;
             
             // Reset the Action Manager between test runs.
-            auto hotKeyManagerInterface = AZ::Interface<AzToolsFramework::HotKeyManagerInterface>::Get();
-
-            hotKeyManagerInterface->RemoveWidgetFromActionContext(
-                EditorIdentifiers::MainWindowActionContextIdentifier, m_defaultMainWindow);
+            if (auto hotKeyManagerInterface = AZ::Interface<AzToolsFramework::HotKeyManagerInterface>::Get())
+            {
+                hotKeyManagerInterface->RemoveWidgetFromActionContext(
+                    EditorIdentifiers::MainWindowActionContextIdentifier, m_defaultMainWindow);
+            }
 
             if (auto actionManagerInternalInterface = AZ::Interface<AzToolsFramework::ActionManagerInternalInterface>::Get())
             {

@@ -254,9 +254,12 @@ namespace AZ
             ResultCode result(Tasks::WriteValue);
             for (const SerializeContext::ClassElement& element : classData.m_elements)
             {
-                const void* elementPtr = reinterpret_cast<const uint8_t*>(object) + element.m_offset;
-                const void* elementDefaultPtr = defaultObject ?
-                    (reinterpret_cast<const uint8_t*>(defaultObject) + element.m_offset) : nullptr;
+                const void* elementPtr = element.GetAddress(object);
+                const void* elementDefaultPtr = nullptr;
+                if (defaultObject)
+                {
+                    elementDefaultPtr = element.GetAddress(defaultObject);
+                }
 
                 result.Combine(StoreWithClassElement(output, elementPtr, elementDefaultPtr, element, context));
             }

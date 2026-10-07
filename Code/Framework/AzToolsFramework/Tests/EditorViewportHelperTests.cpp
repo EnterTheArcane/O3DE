@@ -61,11 +61,6 @@ namespace UnitTest
             AzFramework::EntityDebugDisplayEventBus::MultiHandler::BusConnect(m_entityId);
             AzFramework::EntityDebugDisplayEventBus::MultiHandler::BusConnect(m_entityId2);
 
-            // DebugDisplay to use in DisplayHelpers
-            AzFramework::DebugDisplayRequestBus::BusPtr debugDisplayBus;
-            AzFramework::DebugDisplayRequestBus::Bind(debugDisplayBus, TestViewportId);
-            m_debugDisplay = AzFramework::DebugDisplayRequestBus::FindFirstHandler(debugDisplayBus);
-
             m_cameraState = AzFramework::CreateDefaultCamera(AZ::Transform::CreateIdentity(), AzFramework::ScreenSize(1024, 768));
 
             m_entityVisibleEntityDataCacheMock = AZStd::make_unique<::testing::NiceMock<MockEditorVisibleEntityDataCacheInterface>>();
@@ -109,7 +104,7 @@ namespace UnitTest
         AZ::EntityId m_entityId;
         AZ::EntityId m_entityId2;
         AzToolsFramework::EntityIdList m_drawnEntities;
-        AzFramework::DebugDisplayRequests* m_debugDisplay = nullptr;
+        NullDebugDisplayRequests m_debugDisplay;
         bool m_displayEntityViewportEvent = false;
         AZStd::unique_ptr<ViewportSettingsTestImpl> m_viewportSettings;
         AZStd::unique_ptr<AzToolsFramework::EditorHelpers> m_editorHelpers;
@@ -127,7 +122,7 @@ namespace UnitTest
         m_viewportSettings->m_onlyShowForSelectedEntities = false;
 
         // When the draw function is called
-        DisplayHelpers(*m_editorHelpers, m_cameraState, *m_debugDisplay);
+        DisplayHelpers(*m_editorHelpers, m_cameraState, m_debugDisplay);
 
         // Then the helper should be drawn
         EXPECT_TRUE(m_displayEntityViewportEvent);
@@ -140,7 +135,7 @@ namespace UnitTest
         m_viewportSettings->m_onlyShowForSelectedEntities = false;
 
         // When the draw function is called
-        DisplayHelpers(*m_editorHelpers, m_cameraState, *m_debugDisplay);
+        DisplayHelpers(*m_editorHelpers, m_cameraState, m_debugDisplay);
 
         // Then the helper should be drawn
         EXPECT_TRUE(m_displayEntityViewportEvent);
@@ -161,7 +156,7 @@ namespace UnitTest
             .WillOnce(Return(IsEntitySelected(m_entityId2)));
 
         // When the draw function is called
-        DisplayHelpers(*m_editorHelpers, m_cameraState, *m_debugDisplay);
+        DisplayHelpers(*m_editorHelpers, m_cameraState, m_debugDisplay);
 
         // Then the helper should not be drawn
         EXPECT_FALSE(m_displayEntityViewportEvent);
@@ -185,7 +180,7 @@ namespace UnitTest
         m_viewportSettings->m_onlyShowForSelectedEntities = true;
 
         // When the draw function is called
-        DisplayHelpers(*m_editorHelpers, m_cameraState, *m_debugDisplay);
+        DisplayHelpers(*m_editorHelpers, m_cameraState, m_debugDisplay);
 
         // Then the helper should be drawn
         EXPECT_TRUE(m_displayEntityViewportEvent);
@@ -210,7 +205,7 @@ namespace UnitTest
             .WillOnce(Return(IsEntitySelected(m_entityId2)));
 
         // When the draw function is called
-        DisplayHelpers(*m_editorHelpers, m_cameraState, *m_debugDisplay);
+        DisplayHelpers(*m_editorHelpers, m_cameraState, m_debugDisplay);
 
         // Then the helper should be drawn
         EXPECT_TRUE(m_displayEntityViewportEvent);

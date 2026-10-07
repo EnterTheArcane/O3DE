@@ -18,6 +18,8 @@
 #include <AzCore/std/ranges/transform_view.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/utils.h>
+#include <csignal>
+#include <cstdlib>
 
 /**
  * Make sure a vector is empty, and control all functions to return the proper values.
@@ -433,11 +435,7 @@ namespace UnitTest
         AZ_TEST_ASSERT(int_vector10.front() == 25);
 
         //////////////////////////////////////////////////////////////////////////////////////////
-        // Test asserts (which don't cause throw exceptions)
         int_vector10.clear();
-        AZ_TEST_START_TRACE_SUPPRESSION;
-        int_vector10.reserve(1000000);  // too many elements, 1 assert on too many, 1 assert on allocator returning NULL
-        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         int_vector.clear();
@@ -516,6 +514,25 @@ namespace UnitTest
         // VectorContainerTest-End
     }
 
+#if GTEST_HAS_DEATH_TEST
+    TEST_F(Arrays, VectorAllocationFailureTerminates)
+    {
+        using Buffer = AZStd::static_buffer_allocator<64, 16>;
+        using Allocator = AZStd::allocator_ref<Buffer>;
+        using Vector = AZStd::vector<int, Allocator>;
+        EXPECT_EXIT(
+            {
+                std::signal(SIGABRT, [](int) { std::_Exit(42); });
+                Buffer buffer;
+                Allocator allocator(buffer);
+                Vector vector(allocator);
+                AZ_TEST_START_TRACE_SUPPRESSION;
+                vector.reserve(1000000);
+                std::_Exit(1);
+            },
+            ::testing::ExitedWithCode(42), "");
+    }
+#endif
 
     TEST_F(Arrays, FixedVector)
     {

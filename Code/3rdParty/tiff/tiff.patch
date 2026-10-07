@@ -1,0 +1,18 @@
+--- a/libtiff/tif_lzw.c
++++ b/libtiff/tif_lzw.c
+@@ -330,4 +330,6 @@
+ #elif SIZEOF_WORDTYPE == 8
+ #if defined(_M_X64)
+-#define GetNextData(nextdata, bp) nextdata = _byteswap_uint64(*(uint64_t *)(bp))
++#define GetNextData(nextdata, bp)                                              \
++    memcpy(&nextdata, bp, sizeof(nextdata));                                   \
++    nextdata = _byteswap_uint64(nextdata)
+ #elif defined(__GNUC__)
+@@ -344,5 +346,6 @@
+ #elif SIZEOF_WORDTYPE == 4
+ #if defined(_M_X86)
+ #define GetNextData(nextdata, bp)                                              \
+-    nextdata = _byteswap_ulong(*(unsigned long *)(bp))
++    memcpy(&nextdata, bp, sizeof(nextdata));                                   \
++    nextdata = _byteswap_ulong(nextdata)
+ #elif defined(__GNUC__)

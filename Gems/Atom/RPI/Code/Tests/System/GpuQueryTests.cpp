@@ -19,6 +19,7 @@
 #include <AzTest/AzTest.h>
 
 #include <Common/RPITestFixture.h>
+#include <QueryCommandList.h>
 
 namespace UnitTest
 {
@@ -48,7 +49,9 @@ namespace UnitTest
         const RHI::PipelineStatisticsFlags StatisticsFlags = RHI::PipelineStatisticsFlags::None;
         const uint32_t OcclusionQueryResultSize = sizeof(uint64_t);
 
-        const RHI::FrameGraphExecuteContext::Descriptor desc = {};
+        RHI::FrameGraphExecuteContext::Descriptor desc = {};
+        QueryCommandList commandList;
+        desc.m_commandList = &commandList;
         RHI::FrameGraphExecuteContext context(desc);
 
         // Setup the FrameGraph
@@ -156,8 +159,8 @@ namespace UnitTest
 
         uint64_t mockData;
         RHI::FrameGraphExecuteContext::Descriptor desc = {};
-        uint64_t dummyCommandList;
-        desc.m_commandList = reinterpret_cast<RHI::CommandList*>(&dummyCommandList);
+        QueryCommandList commandList;
+        desc.m_commandList = &commandList;
         RHI::FrameGraphExecuteContext context(desc);
 
         RHI::Scope scope;
@@ -208,8 +211,8 @@ namespace UnitTest
 
         uint64_t mockData;
         RHI::FrameGraphExecuteContext::Descriptor desc = {};
-        uint64_t dummyCommandList;
-        desc.m_commandList = reinterpret_cast<RHI::CommandList*>(&dummyCommandList);
+        QueryCommandList commandList;
+        desc.m_commandList = &commandList;
         RHI::FrameGraphExecuteContext context(desc);
 
         RHI::Scope scope;
@@ -274,8 +277,8 @@ namespace UnitTest
 
         uint64_t mockData;
         RHI::FrameGraphExecuteContext::Descriptor desc = {};
-        uint64_t dummyCommandList;
-        desc.m_commandList = reinterpret_cast<RHI::CommandList*>(&dummyCommandList);
+        QueryCommandList commandList;
+        desc.m_commandList = &commandList;
         RHI::FrameGraphExecuteContext context(desc);
 
         RHI::Scope scope;

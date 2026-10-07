@@ -346,6 +346,7 @@ namespace Multiplayer
             ConnectionId{ 1 }, IpAddress("127.0.0.1", DefaultServerPort, ProtocolType::Udp), ConnectionRole::Connector);
 
         MultiplayerPackets::ReadyForEntityUpdates readyForEntityUpdates;
+        readyForEntityUpdates.SetReadyForEntityUpdates(true);
         EXPECT_FALSE(m_mpComponent->HandleRequest(&connection, UdpPacketHeader(), readyForEntityUpdates));
         ServerToClientConnectionData connectionUserData(&connection, *m_mpComponent);
         connection.SetUserData(&connectionUserData);

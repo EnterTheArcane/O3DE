@@ -116,11 +116,11 @@ namespace BusImplementation
         }
 
     private:
-        static int s_nextExecution;
+        static unsigned int s_nextExecution;
     };
 
     template <typename Bus>
-    int HandlerCommon<Bus>::s_nextExecution = 0;
+    unsigned int HandlerCommon<Bus>::s_nextExecution = 0;
 
     template <typename Bus>
     class MultiHandlerCommon

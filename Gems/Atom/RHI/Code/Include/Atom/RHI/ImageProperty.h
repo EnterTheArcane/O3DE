@@ -110,6 +110,11 @@ namespace AZ::RHI
     /// (i.e. there's no disabled bits between the first and last enabled bit).
     inline bool IsContinousRange(ImageAspectFlags aspectFlags)
     {
+        if (aspectFlags == ImageAspectFlags::None)
+        {
+            return false;
+        }
+
         ImageAspect minAspect = GetMinAspect(aspectFlags);
         ImageAspect maxAspect = GetMaxAspect(aspectFlags);
         for (uint32_t i = aznumeric_caster(minAspect); i < static_cast<uint32_t>(maxAspect); ++i)

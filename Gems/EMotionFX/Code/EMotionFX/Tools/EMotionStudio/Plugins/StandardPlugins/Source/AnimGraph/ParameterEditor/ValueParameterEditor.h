@@ -40,6 +40,7 @@ namespace EMStudio
             : m_animGraph(animGraph)
             , m_valueParameter(valueParameter)
             , m_attributes(attributes)
+            , m_isReadOnly(false)
         {}
 
         virtual ~ValueParameterEditor() = default;

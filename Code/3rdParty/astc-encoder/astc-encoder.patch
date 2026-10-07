@@ -1,0 +1,76 @@
+--- a/Source/astcenc_vecmathlib_sse_4.h
++++ b/Source/astcenc_vecmathlib_sse_4.h
+@@ -40,3 +40,4 @@
+ 
+ #include <cstdio>
++#include <cstring>
+ 
+@@ -215,6 +216,7 @@
+ 	ASTCENC_SIMD_INLINE explicit vint4(const uint8_t *p)
+ 	{
+-		// _mm_loadu_si32 would be nicer syntax, but missing on older GCC
+-		__m128i t = _mm_cvtsi32_si128(*(const int*)p);
++		int packed;
++		std::memcpy(&packed, p, sizeof(packed));
++		__m128i t = _mm_cvtsi32_si128(packed);
+ 
+ #if ASTCENC_SSE >= 41
+--- a/Source/astcenc_ideal_endpoints_and_weights.cpp
++++ b/Source/astcenc_ideal_endpoints_and_weights.cpp
+@@ -1177,7 +1177,11 @@
+ 
+-			float idx0 = dec_weight_quant_uvalue[tix];
++			float idx0;
+ 			if (is_decimated)
+ 			{
+ 				idx0 = bilinear_infill(di, dec_weight_quant_uvalue, tix);
+ 			}
++			else
++			{
++				idx0 = dec_weight_quant_uvalue[tix];
++			}
+ 
+@@ -1375,7 +1379,11 @@
+ 
+-		float idx0 = dec_weights_quant_uvalue_plane1[j];
++		float idx0;
+ 		if (is_decimated)
+ 		{
+ 			idx0 = bilinear_infill(di, dec_weights_quant_uvalue_plane1, j);
+ 		}
++		else
++		{
++			idx0 = dec_weights_quant_uvalue_plane1[j];
++		}
+ 
+@@ -1402,7 +1410,11 @@
+ 
+-		float idx1 = dec_weights_quant_uvalue_plane2[j];
++		float idx1;
+ 		if (is_decimated)
+ 		{
+ 			idx1 = bilinear_infill(di, dec_weights_quant_uvalue_plane2, j);
+ 		}
++		else
++		{
++			idx1 = dec_weights_quant_uvalue_plane2[j];
++		}
+ 
+--- a/Source/astcenc_color_quantize.cpp
++++ b/Source/astcenc_color_quantize.cpp
+@@ -1814,9 +1814,9 @@
+ 
+-	int upper0_diff = upper0_dec - ilum0;
+-	int upper1_diff = upper1_dec - ilum1;
+-	int lower0_diff = lower0_dec - ilum0;
+-	int lower1_diff = lower1_dec - ilum1;
++	int64_t upper0_diff = static_cast<int64_t>(upper0_dec) - ilum0;
++	int64_t upper1_diff = static_cast<int64_t>(upper1_dec) - ilum1;
++	int64_t lower0_diff = static_cast<int64_t>(lower0_dec) - ilum0;
++	int64_t lower1_diff = static_cast<int64_t>(lower1_dec) - ilum1;
+ 
+-	int upper_error = (upper0_diff * upper0_diff) + (upper1_diff * upper1_diff);
+-	int lower_error = (lower0_diff * lower0_diff) + (lower1_diff * lower1_diff);
++	uint64_t upper_error = static_cast<uint64_t>(upper0_diff * upper0_diff) + static_cast<uint64_t>(upper1_diff * upper1_diff);
++	uint64_t lower_error = static_cast<uint64_t>(lower0_diff * lower0_diff) + static_cast<uint64_t>(lower1_diff * lower1_diff);
+ 

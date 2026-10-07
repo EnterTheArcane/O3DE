@@ -85,6 +85,7 @@ set(FILES
     Tests/KeyTrackLinearTests.cpp
     Tests/LeaderFollowerVersionTests.cpp
     Tests/MCore/Array2DTests.cpp
+    Tests/MCore/MemoryFileTests.cpp
     Tests/MCoreSystemFixture.h
     Tests/MCoreSystemFixture.cpp
     Tests/MorphTargetRuntimeTests.cpp

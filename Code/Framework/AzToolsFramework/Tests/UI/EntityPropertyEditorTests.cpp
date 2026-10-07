@@ -113,9 +113,15 @@ namespace UnitTest
     class EntityPropertyEditorRequestTest
         : public ToolsApplicationFixture<>
     {
-        void SetUpEditorFixtureImpl() override
+    void SetUpEditorFixtureImpl() override
+    {
+        if (Prefab::IsInspectorOverrideManagementEnabled())
         {
-            m_editor = new EntityPropertyEditor();
+            ASSERT_NE(AZ::Interface<PropertyEditorToolsSystemInterface>::Get(), nullptr);
+        }
+        ASSERT_NE(AZ::Interface<Prefab::PrefabPublicInterface>::Get(), nullptr);
+
+        m_editor = new EntityPropertyEditor();
 
             m_entity1 = CreateDefaultEditorEntity("Entity1");
             m_entity2 = CreateDefaultEditorEntity("Entity2");
@@ -129,13 +135,21 @@ namespace UnitTest
         }
 
     public:
-        EntityPropertyEditor* m_editor;
+    EntityPropertyEditor* m_editor = nullptr;
         EntityIdList m_entityIds;
         AZ::EntityId m_entity1;
         AZ::EntityId m_entity2;
         AZ::EntityId m_entity3;
         AZ::EntityId m_entity4;
     };
+
+    TEST_F(EntityPropertyEditorRequestTest, ConstructionStartsWithNoSelection)
+    {
+        EntityIdList selectedEntityIds;
+        EntityPropertyEditorRequestBus::Broadcast(
+            &EntityPropertyEditorRequestBus::Events::GetSelectedEntities, selectedEntityIds);
+        EXPECT_TRUE(selectedEntityIds.empty());
+    }
 
     TEST_F(EntityPropertyEditorRequestTest, GetSelectedEntitiesReturnsEitherSelectedEntitiesOrPinnedEntities)
     {
@@ -209,10 +223,16 @@ namespace UnitTest
         : public ToolsApplicationFixture<>
         , public AzToolsFramework::EditorRequestBus::Handler
     {
-        void SetUpEditorFixtureImpl() override
+    void SetUpEditorFixtureImpl() override
+    {
+        if (Prefab::IsInspectorOverrideManagementEnabled())
         {
-            // Create an EntityPropertyEditor initialized to be a Level Inspector
-            m_levelEditor = new EntityPropertyEditor(nullptr, {}, true);
+            ASSERT_NE(AZ::Interface<PropertyEditorToolsSystemInterface>::Get(), nullptr);
+        }
+        ASSERT_NE(AZ::Interface<Prefab::PrefabPublicInterface>::Get(), nullptr);
+
+        // Create an EntityPropertyEditor initialized to be a Level Inspector
+        m_levelEditor = new EntityPropertyEditor(nullptr, {}, true);
             m_levelEntity = CreateDefaultEditorEntity("LevelEntity");
 
             // Level Inspector expects to have one override entity ID, which would normally be the root slice entity.
@@ -238,7 +258,7 @@ namespace UnitTest
         void BrowseForAssets(AssetBrowser::AssetSelectionModel& /*selection*/) override {}
 
     public:
-        EntityPropertyEditor* m_levelEditor;
+    EntityPropertyEditor* m_levelEditor = nullptr;
         AZ::EntityId m_levelEntity;
         bool m_levelOpen = false;
     };

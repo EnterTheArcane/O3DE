@@ -39,6 +39,7 @@ set(FILES
     Tests/PipelineState.h
     Tests/PipelineState.cpp
     Tests/Query.h
+    Tests/QueryCommandList.h
     Tests/Query.cpp
     Tests/Scope.h
     Tests/Scope.cpp

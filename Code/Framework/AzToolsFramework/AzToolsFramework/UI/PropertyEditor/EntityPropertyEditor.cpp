@@ -5711,4 +5711,3 @@ void StatusComboBox::wheelEvent(QWheelEvent* e)
         QComboBox::wheelEvent(e);
     }
 }
-

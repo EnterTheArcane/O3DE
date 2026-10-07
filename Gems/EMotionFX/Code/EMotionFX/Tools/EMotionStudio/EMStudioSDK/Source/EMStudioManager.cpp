@@ -67,6 +67,8 @@ namespace EMStudio
 
         m_app = app;
 
+        AZ::Interface<EMStudioManager>::Register(this);
+
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
         if (!serializeContext)
@@ -103,7 +105,6 @@ namespace EMStudio
         // log some information
         LogInfo();
 
-        AZ::Interface<EMStudioManager>::Register(this);
     }
 
     // destructor

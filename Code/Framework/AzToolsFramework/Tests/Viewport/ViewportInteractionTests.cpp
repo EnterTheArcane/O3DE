@@ -30,6 +30,7 @@ namespace UnitTest
 
             AZ::Entity* entityGround = nullptr;
             m_entityIdGround = CreateDefaultEditorEntity("EntityGround", &entityGround);
+            ASSERT_NE(entityGround, nullptr);
 
             entityGround->Deactivate();
             auto ground = entityGround->CreateComponent<RenderGeometryIntersectionTestComponent>();

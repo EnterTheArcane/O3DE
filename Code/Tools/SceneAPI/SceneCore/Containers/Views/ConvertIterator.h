@@ -179,18 +179,18 @@ namespace AZ
                     ConvertIterator(const ConvertIterator&) = default;
                     ConvertIterator();
 
-                    typename super::reference operator[](size_t index);
+                    typename super::reference operator[](typename super::difference_type index);
 
                     bool operator<(const typename super::RootIterator& rhs) const;
                     bool operator>(const typename super::RootIterator& rhs) const;
                     bool operator<=(const typename super::RootIterator& rhs) const;
                     bool operator>=(const typename super::RootIterator& rhs) const;
 
-                    typename super::RootIterator operator+(size_t n) const;
-                    typename super::RootIterator operator-(size_t n) const;
+                    typename super::RootIterator operator+(typename super::difference_type n) const;
+                    typename super::RootIterator operator-(typename super::difference_type n) const;
                     typename super::difference_type operator-(const typename super::RootIterator& rhs) const;
-                    typename super::RootIterator& operator+=(size_t n);
-                    typename super::RootIterator& operator-=(size_t n);
+                    typename super::RootIterator& operator+=(typename super::difference_type n);
+                    typename super::RootIterator& operator-=(typename super::difference_type n);
                 };
 
                 // contiguous_iterator_tag

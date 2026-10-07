@@ -153,7 +153,7 @@ namespace AZ
                 }
 
                 template<typename FirstIterator, typename SecondIterator>
-                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator[](size_t index)->typename super::reference
+                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator[](typename super::difference_type index)->typename super::reference
                 {
                     return typename super::reference(super::m_first[index], super::m_second[index]);
                 }
@@ -189,7 +189,7 @@ namespace AZ
                 }
 
                 template<typename FirstIterator, typename SecondIterator>
-                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator+(size_t n) const->typename super::RootIterator
+                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator+(typename super::difference_type n) const->typename super::RootIterator
                 {
                     typename super::RootIterator result = *static_cast<const typename super::RootIterator*>(this);
                     result.m_first += n;
@@ -198,7 +198,7 @@ namespace AZ
                 }
 
                 template<typename FirstIterator, typename SecondIterator>
-                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator-(size_t n) const->typename super::RootIterator
+                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator-(typename super::difference_type n) const->typename super::RootIterator
                 {
                     typename super::RootIterator result = *static_cast<const typename super::RootIterator*>(this);
                     result.m_first -= n;
@@ -215,7 +215,7 @@ namespace AZ
                 }
 
                 template<typename FirstIterator, typename SecondIterator>
-                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator+=(size_t n)->typename super::RootIterator &
+                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator+=(typename super::difference_type n)->typename super::RootIterator &
                 {
                     super::m_first += n;
                     super::m_second += n;
@@ -223,7 +223,7 @@ namespace AZ
                 }
 
                 template<typename FirstIterator, typename SecondIterator>
-                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator-=(size_t n)->typename super::RootIterator &
+                auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator-=(typename super::difference_type n)->typename super::RootIterator &
                 {
                     super::m_first -= n;
                     super::m_second -= n;

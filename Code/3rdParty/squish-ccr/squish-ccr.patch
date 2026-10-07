@@ -2583,3 +2583,315 @@ index f959e20..542fbba 100644
  {
  	Vec4 f;
  
+diff --git a/squish.cpp b/squish.cpp
+--- a/squish.cpp
++++ b/squish.cpp
+@@ -1674,7 +1674,19 @@ int GetStorageRequirements(int width, int height, int flags)
+ /* *****************************************************************************
+  */
++template<typename Pixel, void (*Encode)(Pixel const*, int, void*, int)>
++static void EncodePixels(void const* rgba, int mask, void* block, int flags)
++{
++  Encode(static_cast<Pixel const*>(rgba), mask, block, flags);
++}
++
++template<typename Pixel, void (*Decode)(Pixel*, void const*, int)>
++static void DecodePixels(void* rgba, void const* block, int flags)
++{
++  Decode(static_cast<Pixel*>(rgba), block, flags);
++}
++
+ struct sqio GetSquishIO(int width, int height, sqio::dtp datatype, int flags)
+ {
+-  struct sqio s;
++  struct sqio s{};
+   
+   s.datatype = datatype;
+@@ -1700,60 +1712,60 @@ struct sqio GetSquishIO(int width, int height, sqio::dtp datatype, int flags)
+     // 3Dc-type compression
+     /**/ if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc5 | kSignedExternal | kSignedInternal | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc5s<s8>,
+-      s.decoder = (sqio::dec)DecompressNormalBtc5s<s8>;
++      s.encoder = EncodePixels<s8, CompressMaskedNormalBtc5s<s8>>,
++      s.decoder = DecodePixels<s8, DecompressNormalBtc5s<s8>>;
+     // ATI-type compression
+     else if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc4 | kSignedExternal | kSignedInternal | kColourMetricUniform))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc4s<s8>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc4s<s8>;
++      s.encoder = EncodePixels<s8, CompressMaskedAlphaBtc4s<s8>>,
++      s.decoder = DecodePixels<s8, DecompressAlphaBtc4s<s8>>;
+     else if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc5 | kSignedExternal | kSignedInternal | kColourMetricUniform))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc5s<s8>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc5s<s8>;
++      s.encoder = EncodePixels<s8, CompressMaskedAlphaBtc5s<s8>>,
++      s.decoder = DecodePixels<s8, DecompressAlphaBtc5s<s8>>;
+ 
+     // DXT-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kCtx1 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalCtx1u<u8>,
+-      s.decoder = (sqio::dec)DecompressNormalCtx1u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedNormalCtx1u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressNormalCtx1u<u8>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc1 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc1u<u8>,
+-      s.decoder = (sqio::dec)DecompressColourBtc1u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedNormalBtc1u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressColourBtc1u<u8>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc2 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc2u<u8>,
+-      s.decoder = (sqio::dec)DecompressColourBtc2u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedNormalBtc2u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressColourBtc2u<u8>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc3 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc3u<u8>,
+-      s.decoder = (sqio::dec)DecompressColourBtc3u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedNormalBtc3u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressColourBtc3u<u8>>;
+     // 3Dc-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc5 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc5u<u8>,
+-      s.decoder = (sqio::dec)DecompressNormalBtc5u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedNormalBtc5u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressNormalBtc5u<u8>>;
+     // BTC-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc7 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc7u<u8>,
+-      s.decoder = (sqio::dec)DecompressColourBtc7u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedNormalBtc7u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressColourBtc7u<u8>>;
+     
+     // DXT-type compression
+     else if ((s.flags & kBtcp) == (kCtx1))
+-      s.encoder = (sqio::enc)CompressMaskedBitoneCtx1u<u8>,
+-      s.decoder = (sqio::dec)DecompressBitoneCtx1u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedBitoneCtx1u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressBitoneCtx1u<u8>>;
+     else if ((s.flags & kBtcp) == (kBtc1))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc1u<u8>,
+-      s.decoder = (sqio::dec)DecompressColourBtc1u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedColourBtc1u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressColourBtc1u<u8>>;
+     else if ((s.flags & kBtcp) == (kBtc2))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc2u<u8>,
+-      s.decoder = (sqio::dec)DecompressColourBtc2u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedColourBtc2u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressColourBtc2u<u8>>;
+     else if ((s.flags & kBtcp) == (kBtc3))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc3u<u8>,
+-      s.decoder = (sqio::dec)DecompressColourBtc3u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedColourBtc3u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressColourBtc3u<u8>>;
+     // ATI-type compression
+     else if ((s.flags & kBtcp) == (kBtc4))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc4u<u8>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc4u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedAlphaBtc4u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressAlphaBtc4u<u8>>;
+     else if ((s.flags & kBtcp) == (kBtc5))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc5u<u8>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc5u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedAlphaBtc5u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressAlphaBtc5u<u8>>;
+     // BTC-type compression
+     else if ((s.flags & kBtcp) == (kBtc7))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc7u<u8>,
+-      s.decoder = (sqio::dec)DecompressColourBtc7u<u8>;
++      s.encoder = EncodePixels<u8, CompressMaskedColourBtc7u<u8>>,
++      s.decoder = DecodePixels<u8, DecompressColourBtc7u<u8>>;
+     else if ((s.flags & kBtcp) == (kBtc6))
+       {}// while this is possible (down-cast), should we support it?
+@@ -1762,126 +1774,126 @@ struct sqio GetSquishIO(int width, int height, sqio::dtp datatype, int flags)
+     // 3Dc-type compression
+     /**/ if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc5 | kSignedExternal | kSignedInternal | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc5s<s16>,
+-      s.decoder = (sqio::dec)DecompressNormalBtc5s<s16>;
++      s.encoder = EncodePixels<s16, CompressMaskedNormalBtc5s<s16>>,
++      s.decoder = DecodePixels<s16, DecompressNormalBtc5s<s16>>;
+     // ATI-type compression
+     else if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc4 | kSignedExternal | kSignedInternal | kColourMetricUniform))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc4s<s16>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc4s<s16>;
++      s.encoder = EncodePixels<s16, CompressMaskedAlphaBtc4s<s16>>,
++      s.decoder = DecodePixels<s16, DecompressAlphaBtc4s<s16>>;
+     else if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc5 | kSignedExternal | kSignedInternal | kColourMetricUniform))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc5s<s16>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc5s<s16>;
++      s.encoder = EncodePixels<s16, CompressMaskedAlphaBtc5s<s16>>,
++      s.decoder = DecodePixels<s16, DecompressAlphaBtc5s<s16>>;
+ 
+     // DXT-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kCtx1 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalCtx1u<u16>,
+-      s.decoder = (sqio::dec)DecompressNormalCtx1u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedNormalCtx1u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressNormalCtx1u<u16>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc1 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc1u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc1u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedNormalBtc1u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc1u<u16>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc2 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc2u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc2u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedNormalBtc2u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc2u<u16>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc3 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc3u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc3u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedNormalBtc3u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc3u<u16>>;
+     // 3Dc-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc5 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc5u<u16>,
+-      s.decoder = (sqio::dec)DecompressNormalBtc5u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedNormalBtc5u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressNormalBtc5u<u16>>;
+     // BTC-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc7 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc7u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc7u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedNormalBtc7u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc7u<u16>>;
+ 
+     // DXT-type compression
+     else if ((s.flags & kBtcp) == (kCtx1))
+-      s.encoder = (sqio::enc)CompressMaskedBitoneCtx1u<u16>,
+-      s.decoder = (sqio::dec)DecompressBitoneCtx1u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedBitoneCtx1u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressBitoneCtx1u<u16>>;
+     else if ((s.flags & kBtcp) == (kBtc1))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc1u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc1u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedColourBtc1u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc1u<u16>>;
+     else if ((s.flags & kBtcp) == (kBtc2))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc2u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc2u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedColourBtc2u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc2u<u16>>;
+     else if ((s.flags & kBtcp) == (kBtc3))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc3u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc3u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedColourBtc3u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc3u<u16>>;
+     // ATI-type compression
+     else if ((s.flags & kBtcp) == (kBtc4))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc4u<u16>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc4u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedAlphaBtc4u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressAlphaBtc4u<u16>>;
+     else if ((s.flags & kBtcp) == (kBtc5))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc5u<u16>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc5u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedAlphaBtc5u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressAlphaBtc5u<u16>>;
+     // BTC-type compression
+     else if ((s.flags & kBtcp) == (kBtc7))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc7u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc7u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedColourBtc7u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc7u<u16>>;
+     else if ((s.flags & kBtcp) == (kBtc6))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc6u<u16>,
+-      s.decoder = (sqio::dec)DecompressColourBtc6u<u16>;
++      s.encoder = EncodePixels<u16, CompressMaskedColourBtc6u<u16>>,
++      s.decoder = DecodePixels<u16, DecompressColourBtc6u<u16>>;
+   }
+   else if (datatype == sqio::DT_F23) {
+     // 3Dc-type compression
+     /**/ if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc5 | kSignedExternal | kSignedInternal | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc5s<f23>,
+-      s.decoder = (sqio::dec)DecompressNormalBtc5s<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedNormalBtc5s<f23>>,
++      s.decoder = DecodePixels<f23, DecompressNormalBtc5s<f23>>;
+     // ATI-type compression
+     else if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc4 | kSignedExternal | kSignedInternal | kColourMetricUniform))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc4s<f23>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc4s<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedAlphaBtc4s<f23>>,
++      s.decoder = DecodePixels<f23, DecompressAlphaBtc4s<f23>>;
+     else if ((s.flags & (kBtcp | kSignedness | kColourMetrics)) == (kBtc5 | kSignedExternal | kSignedInternal | kColourMetricUniform))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc5s<f23>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc5s<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedAlphaBtc5s<f23>>,
++      s.decoder = DecodePixels<f23, DecompressAlphaBtc5s<f23>>;
+ 
+     // DXT-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kCtx1 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalCtx1u<f23>,
+-      s.decoder = (sqio::dec)DecompressNormalCtx1u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedNormalCtx1u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressNormalCtx1u<f23>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc1 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc1u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc1u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedNormalBtc1u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc1u<f23>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc2 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc2u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc2u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedNormalBtc2u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc2u<f23>>;
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc3 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc3u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc3u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedNormalBtc3u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc3u<f23>>;
+     // 3Dc-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc5 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc5u<f23>,
+-      s.decoder = (sqio::dec)DecompressNormalBtc5u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedNormalBtc5u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressNormalBtc5u<f23>>;
+     // BTC-type compression
+     else if ((s.flags & (kBtcp | kColourMetrics)) == (kBtc7 | kColourMetricUnit))
+-      s.encoder = (sqio::enc)CompressMaskedNormalBtc7u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc7u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedNormalBtc7u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc7u<f23>>;
+ 
+     // DXT-type compression
+     else if ((s.flags & kBtcp) == (kCtx1))
+-      s.encoder = (sqio::enc)CompressMaskedBitoneCtx1u<f23>,
+-      s.decoder = (sqio::dec)DecompressBitoneCtx1u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedBitoneCtx1u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressBitoneCtx1u<f23>>;
+     else if ((s.flags & kBtcp) == (kBtc1))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc1u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc1u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedColourBtc1u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc1u<f23>>;
+     else if ((s.flags & kBtcp) == (kBtc2))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc2u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc2u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedColourBtc2u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc2u<f23>>;
+     else if ((s.flags & kBtcp) == (kBtc3))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc3u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc3u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedColourBtc3u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc3u<f23>>;
+     // ATI-type compression
+     else if ((s.flags & kBtcp) == (kBtc4))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc4u<f23>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc4u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedAlphaBtc4u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressAlphaBtc4u<f23>>;
+     else if ((s.flags & kBtcp) == (kBtc5))
+-      s.encoder = (sqio::enc)CompressMaskedAlphaBtc5u<f23>,
+-      s.decoder = (sqio::dec)DecompressAlphaBtc5u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedAlphaBtc5u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressAlphaBtc5u<f23>>;
+     // BTC-type compression
+     else if ((s.flags & kBtcp) == (kBtc7))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc7u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc7u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedColourBtc7u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc7u<f23>>;
+     else if ((s.flags & kBtcp) == (kBtc6))
+-      s.encoder = (sqio::enc)CompressMaskedColourBtc6u<f23>,
+-      s.decoder = (sqio::dec)DecompressColourBtc6u<f23>;
++      s.encoder = EncodePixels<f23, CompressMaskedColourBtc6u<f23>>,
++      s.decoder = DecodePixels<f23, DecompressColourBtc6u<f23>>;
+   }
+ 

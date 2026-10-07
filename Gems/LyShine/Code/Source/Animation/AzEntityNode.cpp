@@ -192,6 +192,7 @@ bool CUiAnimAzEntityNode::GetParamInfoFromType(const CUiAnimParamType& paramId, 
 const AZ::SerializeContext::ClassElement* CUiAnimAzEntityNode::ComputeOffsetFromElementName(
     const AZ::SerializeContext::ClassData* classData,
     IUiAnimTrack* track,
+    const void* instance,
     size_t baseOffset)
 {
     const UiAnimParamData& paramData = track->GetParamData();
@@ -241,7 +242,7 @@ const AZ::SerializeContext::ClassElement* CUiAnimAzEntityNode::ComputeOffsetFrom
     }
 
     // Set the correct offset in the param data for the track
-    UiAnimParamData newParamData(paramData.GetComponentId(), paramData.GetName(), element->m_typeId, baseOffset + element->m_offset);
+    UiAnimParamData newParamData(paramData.GetComponentId(), paramData.GetName(), element->m_typeId, baseOffset + element->GetOffset(instance));
     track->SetParamData(newParamData);
 
     return element;
@@ -280,17 +281,31 @@ void CUiAnimAzEntityNode::ComputeOffsetsFromElementNames()
             // Get the class data for the component that this track is animating
             const UiAnimParamData& paramData = track->GetParamData();
             AZ::Component* component = paramData.GetComponent(entity);
+            if (!component)
+            {
+                m_tracks[i].reset();
+                continue;
+            }
             const AZ::Uuid& classId = AZ::SerializeTypeInfo<AZ::Component>::GetUuid(component);
             const AZ::SerializeContext::ClassData* classData = context->FindClassData(classId);
 
+            const void* instance = component->RTTI_AddressOf(classId);
+            if (!classData || !instance)
+            {
+                m_tracks[i].reset();
+                continue;
+            }
+            const size_t componentOffset = static_cast<const char*>(instance) - reinterpret_cast<const char*>(component);
+
             // update the offset for the field this track is animating
-            const AZ::SerializeContext::ClassElement* element = ComputeOffsetFromElementName(classData, track, 0);
+            const AZ::SerializeContext::ClassElement* element = ComputeOffsetFromElementName(classData, track, instance, componentOffset);
 
             bool deleteTrack = false;
             if (element)
             {
                 // the field is a valid field in the component, proceed with sub tracks if any
-                size_t baseOffset = element->m_offset;
+                const void* baseInstance = element->GetAddress(instance);
+                const size_t baseOffset = componentOffset + element->GetOffset(instance);
                 const AZ::SerializeContext::ClassData* baseElementClassData = context->FindClassData(element->m_typeId);
 
                 // Search the sub-tracks also if any.
@@ -303,7 +318,7 @@ void CUiAnimAzEntityNode::ComputeOffsetsFromElementNames()
                         if (pSubTrack->GetParameterType() == eUiAnimParamType_AzComponentField)
                         {
                             // update the offset for this subtrack
-                            if (!ComputeOffsetFromElementName(baseElementClassData, pSubTrack, baseOffset))
+                            if (!ComputeOffsetFromElementName(baseElementClassData, pSubTrack, baseInstance, baseOffset))
                             {
                                 deleteTrack = true; // animation data is no longer valid
                             }
@@ -426,7 +441,8 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
             continue;
         }
 
-        void* elementData = reinterpret_cast<char*>(component) + paramData.GetOffset();
+        // The reflected object can start before its AZ::Component base.
+        void* elementData = reinterpret_cast<char*>(component) + static_cast<ptrdiff_t>(paramData.GetOffset());
 
         if (paramData.GetTypeId() == AZ::SerializeTypeInfo<float>::GetUuid())
         {
@@ -493,7 +509,7 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
 
                 if (pSubTrack->GetParameterType() == eUiAnimParamType_AzComponentField)
                 {
-                    elementData = reinterpret_cast<char*>(component) + subTrackParamData.GetOffset();
+                    elementData = reinterpret_cast<char*>(component) + static_cast<ptrdiff_t>(subTrackParamData.GetOffset());
 
                     if (subTrackParamData.GetTypeId() == AZ::SerializeTypeInfo<float>::GetUuid())
                     {

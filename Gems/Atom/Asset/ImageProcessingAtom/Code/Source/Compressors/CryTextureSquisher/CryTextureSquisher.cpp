@@ -365,6 +365,11 @@ namespace ImageProcessingAtom
         }
 
         const struct squish::sqio sqio = squish::GetSquishIO(w, h, datatype, flags);
+        if (!sqio.encoder)
+        {
+            AZ_Error("ImageProcessing", false, "No Squish encoder for the requested pixel type and format");
+            return;
+        }
 
         if (compress.perceptual && (flags & squish::kColourMetricPerceptual))
         {
@@ -424,7 +429,7 @@ namespace ImageProcessingAtom
                 uint8 dstBlock[BLOCKSIZE_LIMIT];
 
                 uint8* const targetBlock = dstBlock;
-                const float* const sourceRgba = (const float*)srcBlock.colors() + offset;
+                const uint16* const sourceRgba = reinterpret_cast<const uint16*>(srcBlock.colors()) + offset;
 
                 for (unsigned int x = 0U; x < w; x += 4U)
                 {
@@ -524,6 +529,11 @@ namespace ImageProcessingAtom
         }
 
         const struct squish::sqio sqio = squish::GetSquishIO(w, h, datatype, flags);
+        if (!sqio.decoder)
+        {
+            AZ_Error("ImageProcessing", false, "No Squish decoder for the requested pixel type and format");
+            return;
+        }
 
         AZ_Assert(!(h & 3), "%s: Unexpected compress parameter of height", __FUNCTION__);
 

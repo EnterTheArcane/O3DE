@@ -394,7 +394,7 @@ namespace AZ
                         const SerializeContext::ClassElement* ed = element.m_serializeClassElement;
                         if (ed)
                         {
-                            void* dataAddress = (char*)(objectPtr) + ed->m_offset;
+                            void* dataAddress = ed->GetAddress(objectPtr);
                             if (dataAddress)
                             {
                                 const SerializeContext::ClassData* elemClassInfo = ed->m_genericClassInfo
@@ -432,7 +432,7 @@ namespace AZ
                     for (size_t i = 0, n = dataClassInfo->m_elements.size(); i < n; ++i)
                     {
                         const SerializeContext::ClassElement& ed = dataClassInfo->m_elements[i];
-                        void* dataAddress = (char*)(objectPtr) + ed.m_offset;
+                        void* dataAddress = ed.GetAddress(objectPtr);
                         if (dataAddress)
                         {
                             const SerializeContext::ClassData* elemClassInfo = ed.m_genericClassInfo

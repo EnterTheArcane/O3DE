@@ -167,6 +167,35 @@ namespace UnitTest
         }
     }
 
+    TEST_F(Tree_RedBlack, HeaderSentinel_LargeValue_IteratorBoundaries)
+    {
+        using Value = AZStd::array<int, 16>;
+        AZStd::set<Value> tree;
+        const auto& constTree = tree;
+        EXPECT_EQ(tree.begin(), tree.end());
+        EXPECT_EQ(constTree.begin(), constTree.end());
+        EXPECT_EQ(tree.validate_iterator(tree.end()), isf_valid);
+        EXPECT_EQ(tree.validate_iterator(constTree.end()), isf_valid);
+
+        Value first{ 1 };
+        Value last{ 2 };
+        tree.insert(first);
+        auto it = tree.begin();
+        EXPECT_EQ(*it, first);
+        EXPECT_EQ(++it, tree.end());
+        EXPECT_EQ(*--it, first);
+        EXPECT_EQ(tree.erase(it), tree.end());
+
+        tree.insert(first);
+        tree.insert(last);
+        auto constIt = constTree.end();
+        EXPECT_EQ(*--constIt, last);
+        EXPECT_EQ(*--constIt, first);
+        EXPECT_EQ(*++constIt, last);
+        EXPECT_EQ(++constIt, constTree.end());
+        EXPECT_EQ(tree.lower_bound(Value{ 3 }), tree.end());
+    }
+
     class Tree_IntrusiveMultiSet
         : public LeakDetectionFixture
     {

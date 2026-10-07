@@ -128,6 +128,21 @@ namespace AZ
 
                 INSTANTIATE_TYPED_TEST_SUITE_P(CommonTests, ConvertIteratorTests, BasicCollectionTypes);
 
+                TEST(ConvertIterator, NegativeOffsets_MoveIteratorWithinRange)
+                {
+                    int values[] = { 1, 2, 3 };
+                    auto begin = MakeConvertIterator(values, ConvertIntToFloat);
+                    auto middle = begin + 1;
+
+                    EXPECT_EQ(middle + -1, begin);
+                    EXPECT_EQ(begin - -1, middle);
+                    EXPECT_EQ(middle[-1], 1.0f);
+                    middle += -1;
+                    EXPECT_EQ(middle, begin);
+                    middle -= -1;
+                    EXPECT_EQ(middle, begin + 1);
+                }
+
                 // Casting
                 TEST(ConvertIterator, Casting_CanBetweenValueTypes_GetCastedValueAsInt)
                 {

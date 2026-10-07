@@ -725,6 +725,7 @@ namespace UnitTest
         AZ::Entity* systemEntity = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(
             systemEntity, &AZ::ComponentApplicationBus::Events::FindEntity, AZ::SystemEntityId);
+        ASSERT_NE(systemEntity, nullptr);
 
         systemEntity->Deactivate();
         systemEntity->AddComponent(m_editorWhiteBoxSystemComponentDescriptor->CreateComponent());

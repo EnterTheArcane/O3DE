@@ -68,6 +68,16 @@ namespace UnitTest
         EXPECT_EQ(resultRange.m_property, 1337);
     }
 
+    TEST_F(ImagePropertyTests, EmptyAspectMaskDoesNotSetImageProperties)
+    {
+        m_property.Init(m_imageDescriptor);
+        RHI::ImageSubresourceRange range(m_imageDescriptor);
+        range.m_aspectFlags = RHI::ImageAspectFlags::None;
+        m_property.Set(range, 1337);
+        EXPECT_TRUE(m_property.Get(range).empty());
+        EXPECT_TRUE(m_property.Get(RHI::ImageSubresourceRange(m_imageDescriptor)).empty());
+    }
+
     TEST_F(ImagePropertyTests, TestFullRangeOver)
     {
         auto range = RHI::ImageSubresourceRange(m_imageDescriptor);

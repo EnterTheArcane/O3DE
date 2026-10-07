@@ -740,7 +740,7 @@ namespace AZ
         for (size_t i = 0; i < m_classData->m_elements.size(); ++i)
         {
             SerializeContext::ClassElement* element = &m_classData->m_elements[i];
-            if (element->m_offset == offset)
+            if (!(element->m_flags & SerializeContext::ClassElement::FLG_BASE_CLASS) && element->m_offset == offset)
             {
                 classElement = element;
                 break;

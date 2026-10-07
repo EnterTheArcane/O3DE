@@ -3570,6 +3570,41 @@ TEST_F(SerializeBasicTest, BasicTypeTest_Succeed)
         AZ::Data::AssetManager::Instance().DispatchEvents();
     }
 
+    TEST_F(Serialization, ClassElementAddresses_PreserveBaseCastsWhenCopied)
+    {
+        using namespace SerializeTestClasses;
+        MyClassBase1::Reflect(*m_serializeContext);
+        MyClassBase2::Reflect(*m_serializeContext);
+        MyClassBase3::Reflect(*m_serializeContext);
+        MyClassMix::Reflect(*m_serializeContext);
+
+        const auto* classData = m_serializeContext->FindClassData(azrtti_typeid<MyClassMix>());
+        ASSERT_NE(nullptr, classData);
+        ASSERT_EQ(4, classData->m_elements.size());
+
+        MyClassMix instance;
+        const void* expected[] = {
+            static_cast<MyClassBase1*>(&instance),
+            static_cast<MyClassBase2*>(&instance),
+            static_cast<MyClassBase3*>(&instance),
+            &instance.m_dataMix
+        };
+
+        AZ::SerializeContext::ClassElement assignedElement;
+        for (size_t index = 0; index < classData->m_elements.size(); ++index)
+        {
+            const auto& element = classData->m_elements[index];
+            EXPECT_EQ(expected[index], element.GetAddress(&instance));
+            EXPECT_EQ(expected[index], element.GetAddress(static_cast<const void*>(&instance)));
+            EXPECT_EQ(expected[index], reinterpret_cast<char*>(&instance) + element.GetOffset(&instance));
+
+            AZ::SerializeContext::ClassElement copiedElement(element);
+            EXPECT_EQ(expected[index], copiedElement.GetAddress(&instance));
+            assignedElement = element;
+            EXPECT_EQ(expected[index], assignedElement.GetAddress(&instance));
+        }
+    }
+
     TEST_F(Serialization, CloneMultipleInheritance_RTTIBaseClassDiffererentOrder_KeepsCorrectOffsets)
     {
         using namespace Clone;
@@ -5782,6 +5817,22 @@ namespace UnitTest
         EXPECT_FLOAT_EQ(4.0f, value);
     }
 
+    TEST_F(Serialization, AttributeInvocable_TypedPointerInvocation_Succeeds)
+    {
+        SerializeTestClasses::BaseNoRtti instance;
+        int callCount = 0;
+        AZ::AttributeInvocable<void(SerializeTestClasses::BaseNoRtti*)> attribute(
+            [&](SerializeTestClasses::BaseNoRtti* object)
+            {
+                EXPECT_EQ(&instance, object);
+                ++callCount;
+            });
+        AZ::AttributeInvoker invoker(&instance, &attribute);
+        EXPECT_TRUE(invoker.Invoke<void>());
+
+        EXPECT_EQ(1, callCount);
+    }
+
     TEST_F(Serialization, AttributeInvocable_UsingVoidPointerInstance_Succeeds)
     {
         static constexpr AZ::Crc32 invokableCrc = AZ_CRC_CE("Invokable");
@@ -6200,7 +6251,7 @@ namespace UnitTest
         RootFieldNameV1::Reflect(m_serializeContext.get());
         ConvertedClass::Reflect(m_serializeContext.get());
 
-        RootFieldNameV1 oldDeprecatedElement;
+        RootFieldNameV1 oldDeprecatedElement{};
         // Test Saving and Loading XML
         AZStd::vector<AZ::u8> byteBuffer;
         AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
@@ -6246,7 +6297,7 @@ namespace UnitTest
         RootFieldNameV1::Reflect(m_serializeContext.get());
         ConvertedClass::Reflect(m_serializeContext.get());
 
-        RootFieldNameV1 oldDeprecatedElement;
+        RootFieldNameV1 oldDeprecatedElement{};
         // Test Saving and Loading XML
         AZStd::vector<AZ::u8> byteBuffer;
         AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
@@ -6292,7 +6343,7 @@ namespace UnitTest
         RootFieldNameV1::Reflect(m_serializeContext.get());
         ConvertedClass::Reflect(m_serializeContext.get());
 
-        RootFieldNameV1 oldDeprecatedElement;
+        RootFieldNameV1 oldDeprecatedElement{};
         // Test Saving and Loading XML
         AZStd::vector<AZ::u8> byteBuffer;
         AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);

@@ -34,7 +34,7 @@ namespace EMotionFX
 
         // Expect the rin graph get loaded.
         AnimGraph* graphBeforeSave = animGraphManager.FindAnimGraphByFileName(rinGraphPath.c_str());
-        EXPECT_TRUE(graphBeforeSave) << "Rin graph should be loaded";
+        ASSERT_TRUE(graphBeforeSave) << "Rin graph should be loaded";
 
         // Set the anim graph file dirty flag, so it will get picked up in autosave.
         graphBeforeSave->SetDirtyFlag(true);
@@ -45,7 +45,7 @@ namespace EMotionFX
         // Verify that rin file is saved in the auto save.
         EMStudio::FileManager* fileManager = EMStudio::GetMainWindow()->GetFileManager();
         const AZStd::vector<AZStd::string>& savedSourceFile = fileManager->GetSavedSourceAssets();
-        EXPECT_EQ(savedSourceFile.size(), 1) << "A graph should be auto saved in the file manager.";
+        ASSERT_EQ(savedSourceFile.size(), 1) << "A graph should be auto saved in the file manager.";
 
         // Verify the source name, make sure it is the rin graph that get saved.
         const AZStd::string& autoSavedFile = savedSourceFile[0];

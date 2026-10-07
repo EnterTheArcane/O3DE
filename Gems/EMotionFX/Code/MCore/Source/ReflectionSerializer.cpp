@@ -84,7 +84,7 @@ namespace MCore
                 {
                     AZStd::vector<char> inBuffer;
                     AZ::IO::ByteContainerStream<AZStd::vector<char>> inStream(&inBuffer);
-                    classDataElement->m_serializer->Save(static_cast<const char*>(classPtr) + classElement->m_offset, inStream);
+                    classDataElement->m_serializer->Save(classElement->GetAddress(classPtr), inStream);
                     inStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
 
                     AZStd::string outBuffer;
@@ -98,7 +98,7 @@ namespace MCore
                 {
                     AZStd::string outBuffer;
                     AZ::IO::ByteContainerStream<AZStd::string> outStream(&outBuffer);
-                    if (AZ::Utils::SaveObjectToStream(outStream, AZ::ObjectStream::ST_XML, static_cast<const char*>(classPtr) + classElement->m_offset, classDataElement->m_typeId))
+                    if (AZ::Utils::SaveObjectToStream(outStream, AZ::ObjectStream::ST_XML, classElement->GetAddress(classPtr), classDataElement->m_typeId))
                     {
                         return AZ::Success(outBuffer);
                     }
@@ -200,12 +200,12 @@ namespace MCore
                 AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> convertedStream(&byteArray);
                 classDataElement->m_serializer->TextToData(value.c_str(), 0, convertedStream);
                 convertedStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-                return classDataElement->m_serializer->Load(static_cast<char*>(classPtr) + classElement->m_offset, convertedStream, 0);
+                return classDataElement->m_serializer->Load(classElement->GetAddress(classPtr), convertedStream, 0);
             }
             else
             {
                 AZ::IO::ByteContainerStream<const AZStd::string> inputStream(&value);
-                return AZ::Utils::LoadObjectFromStreamInPlace(inputStream, context, classElement->m_typeId, static_cast<char*>(classPtr) + classElement->m_offset);
+                return AZ::Utils::LoadObjectFromStreamInPlace(inputStream, context, classElement->m_typeId, classElement->GetAddress(classPtr));
             }
         }
         return false;
@@ -425,7 +425,7 @@ namespace MCore
         const AZ::SerializeContext::ClassElement* classElement = RecursivelyFindClassElement(context, classData, nameCrc);
         if (classElement)
         {
-            return static_cast<char*>(classPtr) + classElement->m_offset;
+            return classElement->GetAddress(classPtr);
         }
         return nullptr;
     }

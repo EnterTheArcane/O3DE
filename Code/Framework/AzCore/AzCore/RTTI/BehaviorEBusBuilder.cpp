@@ -15,7 +15,10 @@ namespace AZ::Internal
         : Base(context)
         , m_ebus(ebus)
     {
-        Base::m_currentAttributes = &ebus->m_attributes;
+        if (ebus)
+        {
+            Base::m_currentAttributes = &ebus->m_attributes;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////

@@ -12,6 +12,7 @@ o3de_fetch_content(tiff
     URL_HASH "62b15f44c10106065211efa22a2dc77937bd97ee1f6e3afd2c9659010de112eb"
     GIT "https://gitlab.com/libtiff/libtiff.git"
     GIT_HASH "d01a94be176f5f6a87f7ee1c0b32e65416aa2b4d"
+    PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/tiff.patch"
     NO_ADD_SUBDIR
 )
 FetchContent_MakeAvailable(tiff)

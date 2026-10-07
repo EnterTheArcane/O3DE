@@ -243,8 +243,11 @@ namespace AZ::IO
             }
 
             u64 totalBytesRead = m_readSizeAverage.GetTotal();
-            double totalReadTime = aznumeric_caster(m_readTimeAverage.GetTotal().count());
-            startTime += Statistic::TimeValue(aznumeric_cast<u64>((readSize * totalReadTime) / totalBytesRead));
+            if (totalBytesRead > 0)
+            {
+                double totalReadTime = aznumeric_caster(m_readTimeAverage.GetTotal().count());
+                startTime += Statistic::TimeValue(aznumeric_cast<u64>((readSize * totalReadTime) / totalBytesRead));
+            }
             activeOffset = offset + readSize;
         }
         request->SetEstimatedCompletion(startTime);

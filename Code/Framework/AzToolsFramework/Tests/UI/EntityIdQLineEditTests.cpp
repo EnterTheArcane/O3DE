@@ -72,7 +72,7 @@ namespace UnitTest
         EntityIdList selectedEntities;
         ToolsApplicationRequestBus::BroadcastResult(selectedEntities, &ToolsApplicationRequests::GetSelectedEntities);
 
-        EXPECT_EQ(selectedEntities.size(), 1) << "Double clicking on an EntityIdQLabel should only select a single entity";
+    ASSERT_EQ(selectedEntities.size(), 1) << "Double clicking on an EntityIdQLabel should only select a single entity";
         EXPECT_TRUE(selectedEntities[0] == entityId) << "The selected entity is not the one that was double clicked";
 
         selectedEntities.clear();

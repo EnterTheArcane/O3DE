@@ -464,7 +464,7 @@ namespace {{ Component.attrib['Namespace'] }}
         {{ ControllerBaseName }}({{ ComponentName }}& owner);
         ~{{ ControllerBaseName }}() override = default;
 
-        void NetworkAttach(Multiplayer::NetBindComponent* netBindComponent, Multiplayer::ReplicationRecord& predictableEntityRecord);
+        static void NetworkAttach(Multiplayer::NetBindComponent* netBindComponent, Multiplayer::ReplicationRecord& predictableEntityRecord);
 
         void Activate(Multiplayer::EntityIsMigrating entityIsMigrating) override;
         void Deactivate(Multiplayer::EntityIsMigrating entityIsMigrating) override;

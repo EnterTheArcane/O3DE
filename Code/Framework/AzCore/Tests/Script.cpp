@@ -352,13 +352,13 @@ namespace UnitTest
             // you can get the index yourself or use the FN_xxx enum FN_OnEvent
             static int eventIndex = GetFunctionIndex("OnEvent");
             AZ_Assert(eventIndex != -1, "We can't find event with name %s", "OnEvent");
-            Call(eventIndex, data);
+            Call(eventIndex, AZStd::move(data));
         }
 
         int OnEventWithResult(int data) override
         {
             int result = 0; // default result as a function hook might not exists
-            CallResult(result, FN_OnEventWithResult, data);
+            CallResult(result, FN_OnEventWithResult, AZStd::move(data));
             return result;
         }
 
@@ -423,13 +423,13 @@ namespace UnitTest
             // you can get the index yourself or use the FN_xxx enum FN_OnEvent
             static int eventIndex = GetFunctionIndex("OnEvent");
             AZ_Assert(eventIndex != -1, "We can't find event with name %s", "OnEvent");
-            Call(eventIndex, data);
+            Call(eventIndex, AZStd::move(data));
         }
 
         int OnEventWithResult(int data) override
         {
             int result = 0; // default result as a function hook might not exists
-            CallResult(result, FN_OnEventWithResult, data);
+            CallResult(result, FN_OnEventWithResult, AZStd::move(data));
             return result;
         }
 
@@ -1313,6 +1313,47 @@ namespace UnitTest
     TEST_F(BehaviorContextTest, LuaTest)
     {
         run();
+    }
+
+    TEST_F(BehaviorContextFixture, LuaNativePointerStorage_AlignedForFortyArguments)
+    {
+        AZ::BehaviorArgument arguments[40];
+        AZ::StackVariableAllocator tempAllocator;
+        for (int index = 0; index < AZ_ARRAY_SIZE(arguments); ++index)
+        {
+            int* pointer = nullptr;
+            auto& argument = arguments[index];
+            argument.Set(&pointer);
+            AZ::LuaPrepareValue prepare = nullptr;
+            AZ::BehaviorClass* behaviorClass = nullptr;
+            ASSERT_NE(nullptr, AZ::ToLuaStack(m_behaviorContext, &argument, &prepare, behaviorClass));
+            ASSERT_NE(nullptr, prepare);
+            EXPECT_FALSE(prepare(argument, behaviorClass, tempAllocator, nullptr));
+            EXPECT_EQ(0, reinterpret_cast<uintptr_t>(argument.m_value) % alignof(void*));
+            *static_cast<int*>(argument.GetValueAddress()) = index;
+        }
+        for (int index = 0; index < AZ_ARRAY_SIZE(arguments); ++index)
+        {
+            EXPECT_EQ(index, *static_cast<int*>(arguments[index].GetValueAddress()));
+        }
+    }
+
+    TEST_F(BehaviorContextFixture, LuaClassPointerStorage_UsesPointerAlignment)
+    {
+        using ByteAlignedClass = AZStd::array<char, 1>;
+        m_behaviorContext->Class<ByteAlignedClass>("ByteAlignedClass");
+        ByteAlignedClass* pointer = nullptr;
+        AZ::BehaviorArgument argument;
+        argument.Set(&pointer);
+        AZ::LuaPrepareValue prepare = nullptr;
+        AZ::BehaviorClass* behaviorClass = nullptr;
+        ASSERT_NE(nullptr, AZ::ToLuaStack(m_behaviorContext, &argument, &prepare, behaviorClass));
+        ASSERT_NE(nullptr, prepare);
+        AZ::StackVariableAllocator tempAllocator;
+        ASSERT_NE(nullptr, tempAllocator.allocate(1, 1));
+        EXPECT_FALSE(prepare(argument, behaviorClass, tempAllocator, nullptr));
+        EXPECT_EQ(0, reinterpret_cast<uintptr_t>(argument.m_value) % alignof(void*));
+        EXPECT_EQ(nullptr, *static_cast<void**>(argument.GetValueAddress()));
     }
 
     TEST_F(BehaviorContextTest, LuaBehaviorEBusHandlerWithDocMacroCompilesSuccessfully)

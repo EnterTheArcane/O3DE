@@ -227,37 +227,37 @@ namespace UnitTest
 
         {
             PropertyTreeEditor::PropertyAccessOutcome boolOutcome = propertyTree.GetProperty("My Bool");
-            EXPECT_TRUE(boolOutcome.IsSuccess());
+            ASSERT_TRUE(boolOutcome.IsSuccess());
             EXPECT_TRUE(AZStd::any_cast<bool>(boolOutcome.GetValue()));
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome intOutcome = propertyTree.GetProperty("My Int");
-            EXPECT_TRUE(intOutcome.IsSuccess());
+            ASSERT_TRUE(intOutcome.IsSuccess());
             EXPECT_EQ(AZStd::any_cast<int>(intOutcome.GetValue()), propertyTreeEditorTester.m_myInt);
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome floatOutcome = propertyTree.GetProperty("My Float");
-            EXPECT_TRUE(floatOutcome.IsSuccess());
+            ASSERT_TRUE(floatOutcome.IsSuccess());
             EXPECT_FLOAT_EQ(AZStd::any_cast<float>(floatOutcome.GetValue()), propertyTreeEditorTester.m_myFloat);
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome stringOutcome = propertyTree.GetProperty("My String");
-            EXPECT_TRUE(stringOutcome.IsSuccess());
+            ASSERT_TRUE(stringOutcome.IsSuccess());
             EXPECT_STREQ(AZStd::any_cast<AZStd::string>(stringOutcome.GetValue()).data(), propertyTreeEditorTester.m_myString.data());
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome nestedOutcome = propertyTree.GetProperty("Nested|My Nested String");
-            EXPECT_TRUE(nestedOutcome.IsSuccess());
+            ASSERT_TRUE(nestedOutcome.IsSuccess());
             EXPECT_STREQ(AZStd::any_cast<AZStd::string>(nestedOutcome.GetValue()).data(), propertyTreeEditorTester.m_nestedTester.m_myNestedString.data());
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome groupedOutcome = propertyTree.GetProperty("Grouped|My Grouped String");
-            EXPECT_TRUE(groupedOutcome.IsSuccess());
+            ASSERT_TRUE(groupedOutcome.IsSuccess());
             EXPECT_STREQ(AZStd::any_cast<AZStd::string>(groupedOutcome.GetValue()).data(), propertyTreeEditorTester.m_myGroupedString.data());
         }
 
@@ -296,55 +296,55 @@ namespace UnitTest
 
         {
             PropertyTreeEditor::PropertyAccessOutcome boolOutcomeSet = propertyTree.SetProperty("My Bool", AZStd::any(false));
-            EXPECT_TRUE(boolOutcomeSet.IsSuccess());
+            ASSERT_TRUE(boolOutcomeSet.IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome boolOutcomeGet = propertyTree.GetProperty("My Bool");
-            EXPECT_TRUE(boolOutcomeGet.IsSuccess());
+            ASSERT_TRUE(boolOutcomeGet.IsSuccess());
             EXPECT_FALSE(AZStd::any_cast<bool>(boolOutcomeGet.GetValue()));
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome intOutcomeSet = propertyTree.SetProperty("My Int", AZStd::any(48));
-            EXPECT_TRUE(intOutcomeSet.IsSuccess());
+            ASSERT_TRUE(intOutcomeSet.IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome intOutcomeGet = propertyTree.GetProperty("My Int");
-            EXPECT_TRUE(intOutcomeGet.IsSuccess());
+            ASSERT_TRUE(intOutcomeGet.IsSuccess());
             EXPECT_EQ(AZStd::any_cast<int>(intOutcomeGet.GetValue()), AZStd::any_cast<int>(intOutcomeSet.GetValue()));
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome floatOutcomeSet = propertyTree.SetProperty("My Float", AZStd::any(48.0f));
-            EXPECT_TRUE(floatOutcomeSet.IsSuccess());
+            ASSERT_TRUE(floatOutcomeSet.IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome floatOutcomeGet = propertyTree.GetProperty("My Float");
-            EXPECT_TRUE(floatOutcomeGet.IsSuccess());
+            ASSERT_TRUE(floatOutcomeGet.IsSuccess());
             EXPECT_FLOAT_EQ(AZStd::any_cast<float>(floatOutcomeGet.GetValue()), AZStd::any_cast<float>(floatOutcomeSet.GetValue()));
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome stringOutcomeSet = propertyTree.SetProperty("My String", AZStd::make_any<AZStd::string>("New Value"));
-            EXPECT_TRUE(stringOutcomeSet.IsSuccess());
+            ASSERT_TRUE(stringOutcomeSet.IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome stringOutcomeGet = propertyTree.GetProperty("My String");
-            EXPECT_TRUE(stringOutcomeGet.IsSuccess());
+            ASSERT_TRUE(stringOutcomeGet.IsSuccess());
             EXPECT_STREQ(AZStd::any_cast<AZStd::string>(stringOutcomeSet.GetValue()).data(), AZStd::any_cast<AZStd::string>(stringOutcomeGet.GetValue()).data());
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome stringOutcomeSet = propertyTree.SetProperty("Nested|My Nested String", AZStd::make_any<AZStd::string>("New Nested Value"));
-            EXPECT_TRUE(stringOutcomeSet.IsSuccess());
+            ASSERT_TRUE(stringOutcomeSet.IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome stringOutcomeGet = propertyTree.GetProperty("Nested|My Nested String");
-            EXPECT_TRUE(stringOutcomeGet.IsSuccess());
+            ASSERT_TRUE(stringOutcomeGet.IsSuccess());
             EXPECT_STREQ(AZStd::any_cast<AZStd::string>(stringOutcomeSet.GetValue()).data(), AZStd::any_cast<AZStd::string>(stringOutcomeGet.GetValue()).data());
         }
 
         {
             PropertyTreeEditor::PropertyAccessOutcome stringOutcomeSet = propertyTree.SetProperty("Grouped|My Grouped String", AZStd::make_any<AZStd::string>("New Grouped Value"));
-            EXPECT_TRUE(stringOutcomeSet.IsSuccess());
+            ASSERT_TRUE(stringOutcomeSet.IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome stringOutcomeGet = propertyTree.GetProperty("Grouped|My Grouped String");
-            EXPECT_TRUE(stringOutcomeGet.IsSuccess());
+            ASSERT_TRUE(stringOutcomeGet.IsSuccess());
             EXPECT_STREQ(AZStd::any_cast<AZStd::string>(stringOutcomeSet.GetValue()).data(), AZStd::any_cast<AZStd::string>(stringOutcomeGet.GetValue()).data());
         }
 
@@ -415,13 +415,15 @@ namespace UnitTest
             EXPECT_FALSE(outcomeAdd0.IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome outcomeAdd1 = propertyTree.AddContainerItem("My New List", key, value);
-            EXPECT_TRUE(outcomeAdd1.IsSuccess());
+            ASSERT_TRUE(outcomeAdd1.IsSuccess());
         }
 
         // GetContainerCount
         {
             EXPECT_FALSE(propertyTree.GetContainerCount("My New Int").IsSuccess());
-            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerCount("My New List");
+            ASSERT_TRUE(outcome.IsSuccess());
+            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(outcome.GetValue()));
         }
 
         // GetContainerItem
@@ -435,10 +437,11 @@ namespace UnitTest
             AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
             PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerItem("My New List", key);
-            EXPECT_TRUE(outcome.IsSuccess());
+            ASSERT_TRUE(outcome.IsSuccess());
             if (outcome.IsSuccess())
             {
                 auto&& testerValue = AZStd::any_cast<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>(&outcome.GetValue());
+                ASSERT_NE(testerValue, nullptr);
                 EXPECT_STREQ("NestedString", testerValue->m_myNestedString.c_str());
             }
         }
@@ -455,13 +458,14 @@ namespace UnitTest
             AZ_TEST_START_TRACE_SUPPRESSION;
             EXPECT_FALSE(propertyTree.UpdateContainerItem("My New List", keyString, value).IsSuccess());
             AZ_TEST_STOP_TRACE_SUPPRESSION(1);
-            EXPECT_TRUE(propertyTree.UpdateContainerItem("My New List", key, value).IsSuccess());
+            ASSERT_TRUE(propertyTree.UpdateContainerItem("My New List", key, value).IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerItem("My New List", key);
-            EXPECT_TRUE(outcome.IsSuccess());
+            ASSERT_TRUE(outcome.IsSuccess());
             if (outcome.IsSuccess())
             {
                 auto&& testerValue = AZStd::any_cast<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>(&outcome.GetValue());
+                ASSERT_NE(testerValue, nullptr);
                 EXPECT_STREQ(testUpdate.m_myNestedString.c_str(), testerValue->m_myNestedString.c_str());
             }
         }
@@ -477,8 +481,10 @@ namespace UnitTest
             AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
             PropertyTreeEditor::PropertyAccessOutcome outcomeAdd1 = propertyTree.RemoveContainerItem("My New List", key);
-            EXPECT_TRUE(outcomeAdd1.IsSuccess());
-            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+            ASSERT_TRUE(outcomeAdd1.IsSuccess());
+            PropertyTreeEditor::PropertyAccessOutcome countOutcome = propertyTree.GetContainerCount("My New List");
+            ASSERT_TRUE(countOutcome.IsSuccess());
+            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(countOutcome.GetValue()));
         }
 
         // ResetContainer
@@ -489,20 +495,26 @@ namespace UnitTest
             propertyTree.AddContainerItem("My New List", AZStd::make_any<AZ::s32>(1), value);
             propertyTree.AddContainerItem("My New List", AZStd::make_any<AZ::s32>(2), value);
 
-            EXPECT_EQ(3, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+            PropertyTreeEditor::PropertyAccessOutcome countOutcome = propertyTree.GetContainerCount("My New List");
+            ASSERT_TRUE(countOutcome.IsSuccess());
+            EXPECT_EQ(3, AZStd::any_cast<AZ::u64>(countOutcome.GetValue()));
             propertyTree.ResetContainer("My New List");
-            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+            countOutcome = propertyTree.GetContainerCount("My New List");
+            ASSERT_TRUE(countOutcome.IsSuccess());
+            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(countOutcome.GetValue()));
         }
 
         // AppendContainerItem
         {
             AZStd::any value = AZStd::make_any<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>();
 
-            EXPECT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
-            EXPECT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
-            EXPECT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
+            ASSERT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
+            ASSERT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
+            ASSERT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
 
-            EXPECT_EQ(3, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+            PropertyTreeEditor::PropertyAccessOutcome countOutcome = propertyTree.GetContainerCount("My New List");
+            ASSERT_TRUE(countOutcome.IsSuccess());
+            EXPECT_EQ(3, AZStd::any_cast<AZ::u64>(countOutcome.GetValue()));
             propertyTree.ResetContainer("My New List");
         }
     }
@@ -525,12 +537,14 @@ namespace UnitTest
             TestData testItem;
             testItem.m_myNestedString = testDataString;
             AZStd::any value = AZStd::make_any<TestData>(testItem);
-            EXPECT_TRUE(propertyTree.AddContainerItem("My Map", key, value).IsSuccess());
+            ASSERT_TRUE(propertyTree.AddContainerItem("My Map", key, value).IsSuccess());
         }
 
         // GetContainerCount
         {
-            EXPECT_EQ(2, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerCount("My Map");
+            ASSERT_TRUE(outcome.IsSuccess());
+            EXPECT_EQ(2, AZStd::any_cast<AZ::u64>(outcome.GetValue()));
         }
 
         // GetContainerItem
@@ -538,10 +552,11 @@ namespace UnitTest
             AZStd::any key = AZStd::make_any<AZStd::string>("two");
 
             PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerItem("My Map", key);
-            EXPECT_TRUE(outcome.IsSuccess());
+            ASSERT_TRUE(outcome.IsSuccess());
             if (outcome.IsSuccess())
             {
                 auto&& testerValue = AZStd::any_cast<TestData>(&outcome.GetValue());
+                ASSERT_NE(testerValue, nullptr);
                 EXPECT_STREQ(testDataString, testerValue->m_myNestedString.c_str());
             }
         }
@@ -553,12 +568,14 @@ namespace UnitTest
             testUpdate.m_myNestedString = "a new value";
             AZStd::any value = AZStd::make_any<TestData>(testUpdate);
 
-            EXPECT_TRUE(propertyTree.UpdateContainerItem("My Map", key, value).IsSuccess());
+            ASSERT_TRUE(propertyTree.UpdateContainerItem("My Map", key, value).IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerItem("My Map", key);
+            ASSERT_TRUE(outcome.IsSuccess());
             if (outcome.IsSuccess())
             {
                 auto&& testerValue = AZStd::any_cast<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>(&outcome.GetValue());
+                ASSERT_NE(testerValue, nullptr);
                 EXPECT_STREQ(testUpdate.m_myNestedString.c_str(), testerValue->m_myNestedString.c_str());
             }
         }
@@ -567,22 +584,30 @@ namespace UnitTest
         {
             AZStd::any key = AZStd::make_any<AZStd::string>("two");
 
-            EXPECT_TRUE(propertyTree.RemoveContainerItem("My Map", key).IsSuccess());
-            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+            ASSERT_TRUE(propertyTree.RemoveContainerItem("My Map", key).IsSuccess());
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerCount("My Map");
+            ASSERT_TRUE(outcome.IsSuccess());
+            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(outcome.GetValue()));
         }
 
         // ResetContainer
         {
-            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerCount("My Map");
+            ASSERT_TRUE(outcome.IsSuccess());
+            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(outcome.GetValue()));
             propertyTree.ResetContainer("My Map");
-            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+            outcome = propertyTree.GetContainerCount("My Map");
+            ASSERT_TRUE(outcome.IsSuccess());
+            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(outcome.GetValue()));
         }
 
         // AppendContainerItem
         {
             AZStd::any value = AZStd::make_any<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>();
             EXPECT_FALSE(propertyTree.AppendContainerItem("My Map", value).IsSuccess());
-            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerCount("My Map");
+            ASSERT_TRUE(outcome.IsSuccess());
+            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(outcome.GetValue()));
         }
     }
 
@@ -675,17 +700,17 @@ namespace UnitTest
         // can access a hidden value with 'visible enforcement' set to false
         {
             PropertyTreeEditor::PropertyAccessOutcome outcomeGet = propertyTree.GetProperty("My Hidden Double");
-            EXPECT_TRUE(outcomeGet.IsSuccess());
+            ASSERT_TRUE(outcomeGet.IsSuccess());
             EXPECT_EQ(42.0, AZStd::any_cast<double>(outcomeGet.GetValue()));
         }
 
         // can mutate a hidden value with 'visible enforcement' set to false
         {
             PropertyTreeEditor::PropertyAccessOutcome outcomeSet = propertyTree.SetProperty("My Hidden Double", AZStd::any(12.0));
-            EXPECT_TRUE(outcomeSet.IsSuccess());
+            ASSERT_TRUE(outcomeSet.IsSuccess());
 
             PropertyTreeEditor::PropertyAccessOutcome outcomeGet = propertyTree.GetProperty("My Hidden Double");
-            EXPECT_TRUE(outcomeGet.IsSuccess());
+            ASSERT_TRUE(outcomeGet.IsSuccess());
             EXPECT_EQ(12.0, AZStd::any_cast<double>(outcomeGet.GetValue()));
         }
 
@@ -719,17 +744,17 @@ namespace UnitTest
 
             // get current value of My New Int
             PropertyTreeEditor::PropertyAccessOutcome intOutcomeGet = propertyTree.GetProperty("My New Int");
-            EXPECT_TRUE(intOutcomeGet.IsSuccess());
+            ASSERT_TRUE(intOutcomeGet.IsSuccess());
 
             newIntValue = AZStd::any_cast<int>(intOutcomeGet.GetValue());
 
             // Set new value to My Old Int
             PropertyTreeEditor::PropertyAccessOutcome intOutcomeSet = propertyTree.SetProperty("My Old Int", AZStd::any(12));
-            EXPECT_TRUE(intOutcomeSet.IsSuccess());
+            ASSERT_TRUE(intOutcomeSet.IsSuccess());
 
             // Read value of My New Int again
             PropertyTreeEditor::PropertyAccessOutcome intOutcomeGetAgain = propertyTree.GetProperty("My New Int");
-            EXPECT_TRUE(intOutcomeGetAgain.IsSuccess());
+            ASSERT_TRUE(intOutcomeGetAgain.IsSuccess());
 
             // Verify that My Old Int and My New Int refer to the same property
             EXPECT_TRUE(AZStd::any_cast<int>(intOutcomeGetAgain.GetValue()) != newIntValue);
