@@ -28,6 +28,7 @@ block()
         URL_HASH "d48ca0121962fa0639502c0f56c4e3ae72f98e55d88727225444f500775c0074"
         GIT "https://github.com/recastnavigation/recastnavigation.git"
         GIT_HASH "6dc1667f580357e8a2154c28b7867bea7e8ad3a7"
+        PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/o3de.patch"
         EXCLUDE_FROM_ALL
     )
 

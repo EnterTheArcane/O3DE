@@ -723,10 +723,11 @@ namespace UnitTest
         m_whiteBoxMeshAsset->Associate(AZ::EntityComponentIdPair{});
 
         AZ::Entity* systemEntity = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(
-            systemEntity, &AZ::ComponentApplicationBus::Events::FindEntity, AZ::SystemEntityId);
+    AZ::ComponentApplicationBus::BroadcastResult(
+        systemEntity, &AZ::ComponentApplicationBus::Events::FindEntity, AZ::SystemEntityId);
+    ASSERT_NE(systemEntity, nullptr);
 
-        systemEntity->Deactivate();
+    systemEntity->Deactivate();
         systemEntity->AddComponent(m_editorWhiteBoxSystemComponentDescriptor->CreateComponent());
         systemEntity->Activate();
 

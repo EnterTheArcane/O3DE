@@ -11,6 +11,7 @@
 #include <Atom/RHI/QueryPool.h>
 #include <AzCore/std/containers/bitset.h>
 #include <Tests/Device.h>
+#include <Tests/Query.h>
 
 namespace UnitTest
 {
@@ -310,8 +311,7 @@ namespace UnitTest
         auto& timestampQueryPool = queryPools[static_cast<uint32_t>(RHI::QueryType::Timestamp)];
         auto& statisticsQueryPool = queryPools[static_cast<uint32_t>(RHI::QueryType::PipelineStatistics)];
 
-        uint64_t data;
-        RHI::CommandList& dummyCommandList = reinterpret_cast<RHI::CommandList&>(data);
+        QueryCommandList dummyCommandList;
 
         // Correct begin and end for occlusion
         {
@@ -351,8 +351,7 @@ namespace UnitTest
         {
             RHI::Ptr<RHI::Query> query = aznew RHI::Query;
             occlusionQueryPool->InitQuery(query.get());
-            uint64_t anotherData;
-            RHI::CommandList& anotherDummyCmdList = reinterpret_cast<RHI::CommandList&>(anotherData);
+            QueryCommandList anotherDummyCmdList;
             for (auto deviceIndex{ 0 }; deviceIndex < DeviceCount; ++deviceIndex)
             {
                 EXPECT_EQ(RHI::ResultCode::Success, query->GetDeviceQuery(deviceIndex)->Begin(dummyCommandList));

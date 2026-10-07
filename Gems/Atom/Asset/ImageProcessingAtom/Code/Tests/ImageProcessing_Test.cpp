@@ -16,6 +16,7 @@
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
+#include <AzCore/std/bit.h>
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Memory/Memory.h>
@@ -78,6 +79,38 @@ using namespace ImageProcessingAtom;
 
 namespace UnitTest
 {
+    TEST(ImageProcessingHalfTest, FloatToHalfHandlesZeroAndUnderflow)
+    {
+        const AZ::u32 inputs[] = {
+            0x00000000U, 0x00000001U, 0x00800000U, 0x28800000U, 0x29000000U, 0x33000000U,
+            0x80000000U, 0x80000001U, 0x80800000U, 0xA8800000U, 0xA9000000U, 0xB3000000U
+        };
+        for (AZ::u32 input : inputs)
+        {
+            const float value = AZStd::bit_cast<float>(input);
+            const SHalf half(value);
+            EXPECT_EQ(AZStd::bit_cast<AZ::u16>(half), static_cast<AZ::u16>((input >> 16U) & 0x8000U));
+        }
+
+        EXPECT_EQ(AZStd::bit_cast<AZ::u16>(SHalf(0x1p-24f)), 0x0001U);
+        EXPECT_EQ(AZStd::bit_cast<AZ::u16>(SHalf(0x1p-14f)), 0x0400U);
+        EXPECT_EQ(AZStd::bit_cast<AZ::u16>(SHalf(1.0f)), 0x3C00U);
+    }
+
+    TEST(ImageProcessingHalfTest, FiniteHalfValuesRoundTripExactly)
+    {
+        for (AZ::u32 bits = 0; bits <= 0xFFFFU; ++bits)
+        {
+            if ((bits & 0x7C00U) == 0x7C00U)
+            {
+                continue;
+            }
+            const SHalf original = AZStd::bit_cast<SHalf>(static_cast<AZ::u16>(bits));
+            const SHalf converted(static_cast<float>(original));
+            ASSERT_EQ(AZStd::bit_cast<AZ::u16>(converted), bits);
+        }
+    }
+
     // Expose AZ::AssetManagerComponent::Reflect function for testing
     class MyAssetManagerComponent
         : public AZ::AssetManagerComponent

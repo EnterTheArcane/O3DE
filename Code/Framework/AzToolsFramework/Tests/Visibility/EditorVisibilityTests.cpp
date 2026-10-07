@@ -248,10 +248,11 @@ namespace UnitTest
         // register new test component
         GetApplication()->RegisterComponentDescriptor(TestBoundComponent::CreateDescriptor());
 
-        AZ::Entity* entity = nullptr;
-        const auto entityId = CreateDefaultEditorEntity("Entity", &entity);
+    AZ::Entity* entity = nullptr;
+    const auto entityId = CreateDefaultEditorEntity("Entity", &entity);
+    ASSERT_NE(entity, nullptr);
 
-        entity->Deactivate();
+    entity->Deactivate();
         auto testBoundComponent = static_cast<TestBoundComponent*>(entity->CreateComponent<TestBoundComponent>());
         entity->Activate();
 

@@ -31,10 +31,11 @@ namespace LmbrCentral
 
     void EditorAxisAlignedBoxShapeComponentFixture::SetUpEditorFixtureImpl()
     {
-        AZ::SerializeContext* serializeContext = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    AZ::SerializeContext* serializeContext = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    ASSERT_NE(serializeContext, nullptr);
 
-        // need to reflect EditorSphereShapeComponent in order for EditorBaseShapeComponent to be reflected
+    // need to reflect EditorSphereShapeComponent in order for EditorBaseShapeComponent to be reflected
         m_editorSphereShapeComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(EditorSphereShapeComponent::CreateDescriptor());
 
         m_editorAxisAlignedBoxShapeComponentDescriptor =
@@ -45,8 +46,9 @@ namespace LmbrCentral
         m_editorSphereShapeComponentDescriptor->Reflect(serializeContext);
         m_editorAxisAlignedBoxShapeComponentDescriptor->Reflect(serializeContext);
 
-        UnitTest::CreateDefaultEditorEntity("AxisAlignedBoxShapeComponentEntity", &m_entity);
-        m_entityId = m_entity->GetId();
+    UnitTest::CreateDefaultEditorEntity("AxisAlignedBoxShapeComponentEntity", &m_entity);
+    ASSERT_NE(m_entity, nullptr);
+    m_entityId = m_entity->GetId();
         m_entity->Deactivate();
         m_entityComponentIdPair =
             AZ::EntityComponentIdPair(m_entityId, m_entity->CreateComponent(EditorAxisAlignedBoxShapeComponentTypeId)->GetId());

@@ -410,11 +410,29 @@ void TerrainSystem::MakeBulkQueries(
             if (windowAreaId != AZ::EntityId())
             {
                 size_t spanLength = (windowEnd - windowStart) + 1;
+                AZStd::span<AZ::Vector3> outPositionsWindow;
+                if (!outPositions.empty())
+                {
+                    outPositionsWindow = outPositions.subspan(windowStart, spanLength);
+                }
+
+                AZStd::span<bool> outTerrainExistsWindow;
+                if (!outTerrainExists.empty())
+                {
+                    outTerrainExistsWindow = outTerrainExists.subspan(windowStart, spanLength);
+                }
+
+                AZStd::span<AzFramework::SurfaceData::SurfaceTagWeightList> outSurfaceWeightsWindow;
+                if (!outSurfaceWeights.empty())
+                {
+                    outSurfaceWeightsWindow = outSurfaceWeights.subspan(windowStart, spanLength);
+                }
+
                 queryCallback(
-                    AZStd::span(inPositions.data() + windowStart, spanLength),
-                    AZStd::span(outPositions.data() + windowStart, spanLength),
-                    AZStd::span(outTerrainExists.data() + windowStart, spanLength),
-                    AZStd::span(outSurfaceWeights.data() + windowStart, spanLength),
+                    inPositions.subspan(windowStart, spanLength),
+                    outPositionsWindow,
+                    outTerrainExistsWindow,
+                    outSurfaceWeightsWindow,
                     windowAreaId);
             }
 

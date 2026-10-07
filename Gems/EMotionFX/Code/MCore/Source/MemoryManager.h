@@ -109,7 +109,11 @@ public:                                                                         
      */
     MCORE_INLINE void* MemCopy(void* dest, const void* source, size_t numBytes)
     {
-        return memcpy(dest, source, numBytes);
+        if (numBytes > 0)
+        {
+            return memcpy(dest, source, numBytes);
+        }
+        return dest;
     }
 
     /**
@@ -123,7 +127,11 @@ public:                                                                         
      */
     MCORE_INLINE void* MemMove(void* dest, const void* source, size_t numBytes)
     {
-        return memmove(dest, source, numBytes);
+        if (numBytes > 0)
+        {
+            return memmove(dest, source, numBytes);
+        }
+        return dest;
     }
 
     /**
@@ -135,7 +143,11 @@ public:                                                                         
      */
     MCORE_INLINE void* MemSet(void* address, const int value, size_t numBytes)
     {
-        return memset(address, value, numBytes);
+        if (numBytes > 0)
+        {
+            return memset(address, value, numBytes);
+        }
+        return address;
     }
 
     //--------------------------------------------------------------------------------

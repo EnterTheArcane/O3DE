@@ -394,7 +394,7 @@ namespace AZ::IO
         //////////////////////////////////////////////////////////////
         // Test equal priority requests that are past their deadlines (aka panic)
         //////////////////////////////////////////////////////////////
-        IStreamerTypes::Deadline panicDeadline(IStreamerTypes::Deadline::min());
+        IStreamerTypes::Deadline panicDeadline(-AZStd::chrono::seconds(1));
         auto estimatedCompleteTime = AZStd::chrono::steady_clock::now();
         char fakeBuffer[8];
         FileRequestPtr panicRequest = m_streamer->Read("PanicRequest", fakeBuffer, sizeof(fakeBuffer), 8, panicDeadline);
@@ -407,6 +407,9 @@ namespace AZ::IO
 
         // Passed deadline, different object
         FileRequestPtr panicRequest2 = m_streamer->Read("PanicRequest2", fakeBuffer, sizeof(fakeBuffer), 8, panicDeadline);
+        // Separate Read calls take different clock snapshots; compare requests with the same absolute deadline.
+        panicRequest2->m_request.GetCommandFromChain<Requests::ReadRequestData>()->m_deadline =
+            panicRequest->m_request.GetCommandFromChain<Requests::ReadRequestData>()->m_deadline;
         panicRequest2->m_request.SetEstimatedCompletion(estimatedCompleteTime);
         EXPECT_EQ(
             m_streamer->m_streamStack->Thread_PrioritizeRequests(&panicRequest->m_request, &panicRequest2->m_request),

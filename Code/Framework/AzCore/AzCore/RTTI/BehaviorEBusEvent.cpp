@@ -19,7 +19,9 @@ namespace AZ::Internal
         {
             // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array
             // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
-            AZStd::span<BehaviorArgument> newArguments(reinterpret_cast<BehaviorArgument*>(alloca(sizeof(BehaviorArgument) * totalArguments)), totalArguments);
+        void* argumentBuffer = alloca(sizeof(BehaviorArgument) * totalArguments + alignof(BehaviorArgument) - 1);
+        AZStd::span<BehaviorArgument> newArguments(
+            AZ::PointerAlignUp(reinterpret_cast<BehaviorArgument*>(argumentBuffer), alignof(BehaviorArgument)), totalArguments);
             // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
             size_t argIndex = 0;
             for (; argIndex < arguments.size(); ++argIndex)
@@ -83,7 +85,9 @@ namespace AZ::Internal
         if (arguments.size() < totalArguments)
         {
             // Clone the arguments on the stack and validate that the method can be invoked with the arguments
-            AZStd::span<BehaviorArgument> newArguments(reinterpret_cast<BehaviorArgument*>(alloca(sizeof(BehaviorArgument) * totalArguments)), totalArguments);
+        void* argumentBuffer = alloca(sizeof(BehaviorArgument) * totalArguments + alignof(BehaviorArgument) - 1);
+        AZStd::span<BehaviorArgument> newArguments(
+            AZ::PointerAlignUp(reinterpret_cast<BehaviorArgument*>(argumentBuffer), alignof(BehaviorArgument)), totalArguments);
             // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
             size_t argIndex = 0;
             for (; argIndex < arguments.size(); ++argIndex)

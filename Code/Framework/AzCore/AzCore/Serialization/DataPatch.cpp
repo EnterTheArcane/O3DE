@@ -613,7 +613,7 @@ namespace AZ
             else
             {
                 // We are stored by value, use the parent offset
-                targetPointer = reinterpret_cast<char*>(parentPointer) + sourceNode->m_classElement->m_offset;
+                targetPointer = sourceNode->m_classElement->GetAddress(parentPointer);
             }
             reservePointer = targetPointer;
 
@@ -695,7 +695,7 @@ namespace AZ
                 else
                 {
                     // We are stored by value, use the parent offset
-                    targetPointer = reinterpret_cast<char*>(parentPointer) + sourceNode->m_classElement->m_offset;
+                    targetPointer = sourceNode->m_classElement->GetAddress(parentPointer);
                 }
 
                 reservePointer = targetPointer;

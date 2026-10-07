@@ -70,7 +70,7 @@ namespace AzToolsFramework
         EntityIdList children;
         AZ::TransformBus::EventResult(children, hierarchy.m_parentId, &AZ::TransformBus::Events::GetChildren);
 
-        EXPECT_EQ(children.size(), 1);
+    ASSERT_EQ(children.size(), 1);
         EXPECT_EQ(children[0], hierarchy.m_childId);
     }
 

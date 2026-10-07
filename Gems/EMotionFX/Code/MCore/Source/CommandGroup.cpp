@@ -16,6 +16,7 @@ namespace MCore
         ReserveCommands(5);
         SetContinueAfterError(true);
         SetReturnFalseAfterError(false);
+        SetAddToHistoryAfterError(true);
     }
 
     CommandGroup::CommandGroup(const AZStd::string& groupName, size_t numCommandsToReserve)
@@ -24,6 +25,7 @@ namespace MCore
         ReserveCommands(numCommandsToReserve);
         SetContinueAfterError(true);
         SetAddToHistoryAfterError(true);
+        SetReturnFalseAfterError(false);
     }
 
     CommandGroup::~CommandGroup()

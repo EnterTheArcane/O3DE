@@ -30,6 +30,8 @@
 
 #include <AzCore/Debug/Profiler.h>
 
+#include <cstring>
+
 #if defined(AZ_ENABLE_TRACING) && !defined(AZ_DISABLE_SERIALIZER_DEBUG)
 #   define AZ_ENABLE_SERIALIZER_DEBUG
 #endif
@@ -857,7 +859,7 @@ namespace AZ
                 {
                     if (fromClass->m_elements[i].m_typeId == toClassId)
                     {
-                        return (char*)(instance) + fromClass->m_elements[i].m_offset;
+                        return fromClass->m_elements[i].GetAddress(instance);
                     }
                 }
             }
@@ -1319,7 +1321,7 @@ namespace AZ
                 for (size_t i = 0, n = dataClassInfo->m_elements.size(); i < n; ++i)
                 {
                     const SerializeContext::ClassElement& ed = dataClassInfo->m_elements[i];
-                    void* dataAddress = (char*)(objectPtr) + ed.m_offset;
+                    void* dataAddress = ed.GetAddress(objectPtr);
                     if (dataAddress)
                     {
                         const SerializeContext::ClassData* elemClassInfo = ed.m_genericClassInfo ? ed.m_genericClassInfo->GetClassData() : FindClassData(ed.m_typeId, dataClassInfo, ed.m_nameCrc);
@@ -1742,7 +1744,7 @@ namespace AZ
             else
             {
                 // Allocate memory for our element using the creator provided
-                destPtr = reinterpret_cast<char*>(parentPtr) + elementData->m_offset;
+                destPtr = elementData->GetAddress(parentPtr);
             }
 
             reservePtr = destPtr;
@@ -2442,8 +2444,9 @@ namespace AZ::Serialize
         , m_byteStream(&m_buffer)
     {
         m_id = rhs.m_id;
-        m_version = rhs.m_version;
-        m_dataType = rhs.m_dataType;
+        // Empty nodes can have deferred format/version metadata; copy its representation without reading typed values.
+        std::memcpy(&m_version, &rhs.m_version, sizeof(m_version));
+        std::memcpy(&m_dataType, &rhs.m_dataType, sizeof(m_dataType));
 
         m_buffer = rhs.m_buffer;
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
@@ -2468,9 +2471,9 @@ namespace AZ::Serialize
         m_name = rhs.m_name;
         m_nameCrc = rhs.m_nameCrc;
         m_id = rhs.m_id;
-        m_version = rhs.m_version;
+        std::memmove(&m_version, &rhs.m_version, sizeof(m_version));
         m_dataSize = rhs.m_dataSize;
-        m_dataType = rhs.m_dataType;
+        std::memmove(&m_dataType, &rhs.m_dataType, sizeof(m_dataType));
 
         m_buffer = rhs.m_buffer;
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
@@ -2499,8 +2502,8 @@ namespace AZ::Serialize
         , m_byteStream(&m_buffer)
     {
         m_id = rhs.m_id;
-        m_version = rhs.m_version;
-        m_dataType = rhs.m_dataType;
+        std::memcpy(&m_version, &rhs.m_version, sizeof(m_version));
+        std::memcpy(&m_dataType, &rhs.m_dataType, sizeof(m_dataType));
         if (rhs.m_stream == &rhs.m_byteStream)
         {
             AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
@@ -2539,9 +2542,9 @@ namespace AZ::Serialize
         m_name = rhs.m_name;
         m_nameCrc = rhs.m_nameCrc;
         m_id = rhs.m_id;
-        m_version = rhs.m_version;
+        std::memmove(&m_version, &rhs.m_version, sizeof(m_version));
         m_dataSize = rhs.m_dataSize;
-        m_dataType = rhs.m_dataType;
+        std::memmove(&m_dataType, &rhs.m_dataType, sizeof(m_dataType));
         if (rhs.m_stream == &rhs.m_byteStream)
         {
             AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
@@ -3058,7 +3061,7 @@ namespace AZ::Serialize
             }
             else
             {   // normal elements
-                dataAddress = reinterpret_cast<char*>(parentPtr) + classElement.m_offset;
+                dataAddress = classElement.GetAddress(parentPtr);
             }
 
             void* reserveAddress = dataAddress;
@@ -3334,9 +3337,17 @@ namespace AZ::Serialize
     {
         m_name = other.m_name;
         m_nameCrc = other.m_nameCrc;
+        m_baseClassOffset = other.m_baseClassOffset;
         m_typeId = other.m_typeId;
         m_dataSize = other.m_dataSize;
-        m_offset = other.m_offset;
+        if (other.m_flags & FLG_BASE_CLASS)
+        {
+            m_baseCast = other.m_baseCast;
+        }
+        else
+        {
+            m_offset = other.m_offset;
+        }
 
         m_azRtti = other.m_azRtti;
         m_genericClassInfo = other.m_genericClassInfo;

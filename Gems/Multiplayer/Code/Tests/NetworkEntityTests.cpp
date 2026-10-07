@@ -550,6 +550,30 @@ namespace Multiplayer
         EXPECT_EQ(prefabAssetId, netBindComponent->GetPrefabAssetId());
     }
 
+    TEST_F(MultiplayerNetworkEntityTests, TestPredictableRecordInitializedBeforeControllerConstruction)
+    {
+        const NetEntityRole roles[] = {
+            NetEntityRole::Authority, NetEntityRole::Autonomous, NetEntityRole::Server, NetEntityRole::Client
+        };
+        for (const NetEntityRole role : roles)
+        {
+            SCOPED_TRACE(static_cast<int>(role));
+            EntityInfo entityInfo(3, "prediction", NetEntityId{ 3 }, EntityInfo::Role::None);
+            PopulateNetworkEntity(entityInfo);
+            auto* netBindComponent = entityInfo.m_entity->FindComponent<NetBindComponent>();
+            auto* networkTransformComponent = entityInfo.m_entity->FindComponent<NetworkTransformComponent>();
+
+            PreInitEntity(netBindComponent, entityInfo.m_entity.get(), entityInfo.m_netId, role);
+            EXPECT_EQ(networkTransformComponent->GetController(), nullptr);
+            EXPECT_TRUE(netBindComponent->GetPredictableRecord().HasChanges());
+
+            entityInfo.m_entity->Init();
+            EXPECT_EQ(networkTransformComponent->GetController() != nullptr, NetworkRoleHasController(role));
+            EXPECT_TRUE(netBindComponent->GetPredictableRecord().HasChanges());
+            entityInfo.m_entity->Activate();
+        }
+    }
+
     TEST_F(MultiplayerNetworkEntityTests, TestNetBindDirty)
     {
         ConstNetworkEntityHandle handle(m_root->m_entity.get(), m_networkEntityManager->GetNetworkEntityTracker());

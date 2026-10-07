@@ -105,6 +105,7 @@ protected:
     const AZ::SerializeContext::ClassElement* ComputeOffsetFromElementName(
         const AZ::SerializeContext::ClassData* classData,
         IUiAnimTrack* track,
+        const void* instance,
         size_t baseOffset);
 
     //! This is called on load to compute the offset into the component for each track

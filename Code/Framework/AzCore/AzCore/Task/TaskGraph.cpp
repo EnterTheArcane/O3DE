@@ -16,7 +16,7 @@ namespace AZ
 
     void TaskGraphEvent::Wait()
     {
-        AZ_Assert(m_executor->GetTaskWorker() == nullptr, "Event %s waiting in a task is unsupported", m_label);
+        AZ_Assert(!m_executor || m_executor->GetTaskWorker() == nullptr, "Event %s waiting in a task is unsupported", m_label);
         m_semaphore.acquire();
     }
 

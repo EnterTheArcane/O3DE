@@ -26,6 +26,17 @@ namespace AZ::Statistics
         s_profilerProxy = profilerProxy;
     }
 
+    StatisticalProfilerProxy::StatisticalProfilerProxy()
+    {
+        AZ::Interface<StatisticalProfilerProxy>::Register(this);
+    }
+
+    StatisticalProfilerProxy::~StatisticalProfilerProxy()
+    {
+        TimedScope::ClearCachedProxy();
+        AZ::Interface<StatisticalProfilerProxy>::Unregister(this);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void StatisticalProfilerProxySystemComponent::Reflect(AZ::ReflectContext* context)
     {

@@ -237,12 +237,12 @@ namespace AZ::ShaderCompiler
         {
             bool isAlreadyGlobal = IsGlobal(uid.GetName());
             bool isNotContainedInType = !m_ir->IsNestedStructOrEnum(uid);
-            if (isAlreadyGlobal && isNotContainedInType)
+            if (isAlreadyGlobal && isNotContainedInType && options.m_rootConstantsMaxSize)
             {
                 auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(uid.GetName());
                 const auto& rootconstantClassInfo = *m_ir->GetSymbolSubAs<ClassInfo>(m_ir->m_rootConstantStructUID.m_name);
 
-                if (options.m_rootConstantsMaxSize && rootconstantClassInfo.HasMember(uid.GetNameLeaf())
+                if (rootconstantClassInfo.HasMember(uid.GetNameLeaf())
                     && varInfo->CheckHasAllStorageFlags({ StorageFlag::Rootconstant }))
                 {
                     IdentifierUID constructRootconstantReference = *rootconstantClassInfo.FindMemberFromLeafName(uid.GetNameLeaf());

@@ -10,6 +10,7 @@
 #include <AzCore/std/containers/bitset.h>
 #include <Tests/Factory.h>
 #include <Tests/Device.h>
+#include <Tests/Query.h>
 #include <Atom/RHI/FrameEventBus.h>
 
 namespace UnitTest
@@ -307,8 +308,7 @@ namespace UnitTest
         auto& timestampQueryPool = queryPools[static_cast<uint32_t>(RHI::QueryType::Timestamp)];
         auto& statisticsQueryPool = queryPools[static_cast<uint32_t>(RHI::QueryType::PipelineStatistics)];
 
-        uint64_t data;
-        RHI::CommandList& dummyCommandList = reinterpret_cast<RHI::CommandList&>(data);
+        QueryCommandList dummyCommandList;
 
         // Correct begin and end for occlusion
         {
@@ -339,8 +339,7 @@ namespace UnitTest
         {            
             auto query = RHI::Factory::Get().CreateQuery();
             occlusionQueryPool->InitQuery(query.get());
-            uint64_t anotherData;
-            RHI::CommandList& anotherDummyCmdList = reinterpret_cast<RHI::CommandList&>(anotherData);
+            QueryCommandList anotherDummyCmdList;
             EXPECT_EQ(RHI::ResultCode::Success, query->Begin(dummyCommandList));
             AZ_TEST_START_ASSERTTEST;
             EXPECT_EQ(RHI::ResultCode::InvalidArgument, query->End(anotherDummyCmdList));

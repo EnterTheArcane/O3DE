@@ -139,11 +139,9 @@ TEST_F(UtilitiesUnitTests, CopyFileWithTimeout_FeedFilesInDifferentStates_Succee
     QString outputFileName(dir.filePath("test1.txt"));
     
     QFile inputFile(fileName);
-    bool res = inputFile.open(QFile::WriteOnly);
-    AZ_Assert(res, "Failed to open file %s", qPrintable(fileName));
+    ASSERT_TRUE(inputFile.open(QFile::WriteOnly));
     QFile outputFile(outputFileName);
-    res = outputFile.open(QFile::WriteOnly);
-    AZ_Assert(res, "Failed to open file %s", qPrintable(outputFileName));
+    ASSERT_TRUE(outputFile.open(QFile::WriteOnly));
 
     const int waitTimeInSeconds = 1; // Timeout for copying files
 #if defined(AZ_PLATFORM_WINDOWS)

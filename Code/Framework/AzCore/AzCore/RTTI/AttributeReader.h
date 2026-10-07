@@ -185,9 +185,9 @@ namespace AZ
         bool Read(U& value, Args&&... args)
         {
             using DecayInstType = AZStd::remove_cvref_t<InstType>;
-            if constexpr (AZStd::is_pointer_v<DecayInstType> && AZStd::is_void_v<AZStd::remove_pointer_t<DecayInstType>>)
+            if constexpr (AZStd::is_pointer_v<DecayInstType>)
             {
-                // Forward the void* as an rvalue so it is not a void*&
+                // Forward the stored pointer by value to match the callable's instance parameter.
                 return Internal::AttributeReader<T, U, Args...>::Read(
                     value, m_attribute, static_cast<DecayInstType>(m_instance), AZStd::forward<Args>(args)...);
             }
@@ -201,9 +201,9 @@ namespace AZ
         bool Invoke(Args&&... args)
         {
             using DecayInstType = AZStd::remove_cvref_t<InstType>;
-            if constexpr (AZStd::is_pointer_v<DecayInstType> && AZStd::is_void_v<AZStd::remove_pointer_t<DecayInstType>>)
+            if constexpr (AZStd::is_pointer_v<DecayInstType>)
             {
-                // Forward the void* as an rvalue so it is not a void*&
+                // Forward the stored pointer by value to match the callable's instance parameter.
                 return Internal::AttributeInvoke<RetType>(m_attribute, static_cast<DecayInstType>(m_instance), AZStd::forward<Args>(args)...);
             }
             else

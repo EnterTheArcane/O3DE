@@ -29,7 +29,7 @@ namespace UnitTest
     {
         // Acquire the system entity
         AZ::Entity* systemEntity = GetApplication()->FindEntity(AZ::SystemEntityId);
-        EXPECT_TRUE(systemEntity);
+        ASSERT_TRUE(systemEntity);
 
         m_prefabSystemComponent = systemEntity->FindComponent<AzToolsFramework::Prefab::PrefabSystemComponent>();
         EXPECT_TRUE(m_prefabSystemComponent);

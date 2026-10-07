@@ -33,6 +33,7 @@ namespace EMStudio
         m_isHighlighted          = false;
         m_conFromOutputOnly      = false;
         m_isCollapsed            = false;
+        m_isVisible              = false;
         m_isProcessed            = false;
         m_isUpdated              = false;
         m_isEnabled              = true;

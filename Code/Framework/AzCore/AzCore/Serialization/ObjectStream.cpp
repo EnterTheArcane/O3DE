@@ -925,7 +925,7 @@ namespace AZ
                 }
                 else
                 {   // normal elements
-                    storageElement.m_reserveAddress = reinterpret_cast<char*>(parentClassPtr) + classElement->m_offset;
+                    storageElement.m_reserveAddress = classElement->GetAddress(parentClassPtr);
                 }
 
                 storageElement.m_dataAddress = storageElement.m_reserveAddress;

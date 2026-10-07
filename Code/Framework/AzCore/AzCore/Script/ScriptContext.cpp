@@ -2340,10 +2340,14 @@ LUA_API const Node* lua_getDummyNode()
                 if (value.m_traits & BehaviorParameter::TR_POINTER)
                 {
                     // we need value to pointer be pointer to a pointer
-                    void* valueAddress = tempAllocator.allocate(sizeof(T) + sizeof(void*), AZStd::alignment_of<T>::value, 0);
-                    void* valueAddressPtr = reinterpret_cast<AZ::u8*>(valueAddress)+sizeof(T);
-                    *reinterpret_cast<void**>(valueAddressPtr) = valueAddress;
-                    value.m_value = valueAddressPtr;
+                    struct Storage
+                    {
+                        void* m_pointer;
+                        T m_value;
+                    };
+                    auto* storage = static_cast<Storage*>(value.m_tempData.allocate(sizeof(Storage), alignof(Storage), 0));
+                    storage->m_pointer = &storage->m_value;
+                    value.m_value = &storage->m_pointer;
                 }
                 else // even references are stored by value as we need to convert from lua native type, i.e. there is not real reference for NativeTypes (numbers, strings, etc.)
                 {
@@ -2369,7 +2373,7 @@ LUA_API const Node* lua_getDummyNode()
                 if (value.m_traits & BehaviorParameter::TR_POINTER)
                 {
                     // we need value to pointer be pointer to a pointer
-                    void* valueAddress = tempAllocator.allocate(2 * sizeof(void*), valueClass->m_alignment, 0);
+                    void* valueAddress = tempAllocator.allocate(2 * sizeof(void*), alignof(void*), 0);
                     void* valueAddressPtr = reinterpret_cast<AZ::u8*>(valueAddress)+sizeof(void*);
                     ::memset(valueAddress, 0, sizeof(void*));
                     *reinterpret_cast<void**>(valueAddressPtr) = valueAddress;

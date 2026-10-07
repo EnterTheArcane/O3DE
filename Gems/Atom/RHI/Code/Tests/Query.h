@@ -8,12 +8,40 @@
 #pragma once
 
 #include <AzCore/UnitTest/TestTypes.h>
+#include <Atom/RHI/CommandList.h>
 #include <Atom/RHI/DeviceQuery.h>
 #include <Atom/RHI/DeviceQueryPool.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
 namespace UnitTest
 {
+    // Query tests only track command-list identity; no rendering commands are submitted.
+    class QueryCommandList final : public AZ::RHI::CommandList
+    {
+    public:
+        void SetViewports(const AZ::RHI::Viewport*, uint32_t) override {}
+        void SetScissors(const AZ::RHI::Scissor*, uint32_t) override {}
+        void SetShaderResourceGroupForDraw(const AZ::RHI::DeviceShaderResourceGroup&) override {}
+        void SetShaderResourceGroupForDispatch(const AZ::RHI::DeviceShaderResourceGroup&) override {}
+        void Submit(const AZ::RHI::DeviceCopyItem&, uint32_t) override {}
+        void Submit(const AZ::RHI::DeviceDrawItem&, uint32_t) override {}
+        void Submit(const AZ::RHI::DeviceDispatchItem&, uint32_t) override {}
+        void Submit(const AZ::RHI::DeviceDispatchRaysItem&, uint32_t) override {}
+        void BeginPredication(const AZ::RHI::DeviceBuffer&, uint64_t, AZ::RHI::PredicationOp) override {}
+        void EndPredication() override {}
+        void BuildBottomLevelAccelerationStructure(const AZ::RHI::DeviceRayTracingBlas&) override {}
+        void UpdateBottomLevelAccelerationStructure(const AZ::RHI::DeviceRayTracingBlas&) override {}
+        void BuildClusterAccelerationStructures(const AZ::RHI::DeviceRayTracingClusterBlas&) override {}
+        void BuildClusterBottomLevelAccelerationStructures(const AZStd::vector<const AZ::RHI::DeviceRayTracingClusterBlas*>&) override {}
+        void QueryBlasCompactionSizes(
+            const AZStd::vector<AZStd::pair<AZ::RHI::DeviceRayTracingBlas*, AZ::RHI::DeviceRayTracingCompactionQuery*>>&) override {}
+        void CompactBottomLevelAccelerationStructure(const AZ::RHI::DeviceRayTracingBlas&, const AZ::RHI::DeviceRayTracingBlas&) override {}
+        void BuildTopLevelAccelerationStructure(
+            const AZ::RHI::DeviceRayTracingTlas&, const AZStd::vector<const AZ::RHI::DeviceRayTracingBlas*>&,
+            const AZStd::vector<const AZ::RHI::DeviceRayTracingClusterBlas*>&) override {}
+        void SetFragmentShadingRate(AZ::RHI::ShadingRate, const AZ::RHI::ShadingRateCombinators&) override {}
+    };
+
     class Query
         : public AZ::RHI::DeviceQuery
     {

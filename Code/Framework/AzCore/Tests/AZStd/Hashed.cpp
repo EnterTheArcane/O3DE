@@ -2265,7 +2265,7 @@ namespace UnitTest
         {
             map.emplace(i, i);
         }
-        int val = 0;
+    unsigned int val = 0;
         while (state.KeepRunning())
         {
             val += map[rand() % count];

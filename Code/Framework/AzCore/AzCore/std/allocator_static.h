@@ -66,13 +66,14 @@ namespace AZStd
         {
             AZ_Assert(alignment > 0 && (alignment & (alignment - 1)) == 0, "AZStd::static_buffer_allocator::allocate - alignment must be > 0 and power of 2");
             char* address = AZ::PointerAlignUp(m_freeData, alignment);
-            m_freeData = address + byteSize;
-            if (static_cast<size_t>(m_freeData - reinterpret_cast<char*>(&m_data)) > Size)
+            const size_type offset = reinterpret_cast<size_type>(address) - reinterpret_cast<size_type>(&m_data);
+            if (byteSize > Size || offset > Size - byteSize) [[unlikely]]
             {
                 AZ_Assert(false, "AZStd::static_buffer_allocator - run out of memory!");
                 return nullptr;
             }
 
+            m_freeData = address + byteSize;
             m_lastAllocation = address;
             return address;
         }

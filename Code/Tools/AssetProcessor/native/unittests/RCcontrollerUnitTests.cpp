@@ -230,6 +230,7 @@ void RCcontrollerUnitTests::ConnectJobSignalsAndSlots(bool& allJobsCompleted, Jo
 void RCcontrollerUnitTests::SetUp()
 {
     UnitTest::AssetProcessorUnitTestBase::SetUp();
+    ASSERT_NE(m_appManager->m_platformConfig, nullptr);
 
     m_rcController = AZStd::make_unique<AssetProcessor::RCController>();
 

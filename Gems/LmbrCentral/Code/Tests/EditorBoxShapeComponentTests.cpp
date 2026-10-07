@@ -82,8 +82,9 @@ namespace LmbrCentral
 
     void EditorBoxShapeComponentFixture::SetUpEditorFixtureImpl()
     {
-        AZ::SerializeContext* serializeContext = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    AZ::SerializeContext* serializeContext = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    ASSERT_NE(serializeContext, nullptr);
 
         // need to reflect EditorSphereShapeComponent in order for EditorBaseShapeComponent to be reflected
         m_editorSphereShapeComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(EditorSphereShapeComponent::CreateDescriptor());
@@ -96,8 +97,9 @@ namespace LmbrCentral
         m_editorSphereShapeComponentDescriptor->Reflect(serializeContext);
         m_editorBoxShapeComponentDescriptor->Reflect(serializeContext);
 
-        UnitTest::CreateDefaultEditorEntity("BoxShapeComponentEntity", &m_entity);
-        m_entityId = m_entity->GetId();
+    UnitTest::CreateDefaultEditorEntity("BoxShapeComponentEntity", &m_entity);
+    ASSERT_NE(m_entity, nullptr);
+    m_entityId = m_entity->GetId();
         m_entity->Deactivate();
         m_entity->CreateComponent(AzToolsFramework::Components::EditorNonUniformScaleComponent::RTTI_Type());
         m_entityComponentIdPair =

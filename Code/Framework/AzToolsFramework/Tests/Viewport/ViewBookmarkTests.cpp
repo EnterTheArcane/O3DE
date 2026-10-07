@@ -43,6 +43,7 @@ namespace UnitTest
 
             AzToolsFramework::ViewBookmarkPersistInterface* bookmarkPersistInterface =
                 AZ::Interface<AzToolsFramework::ViewBookmarkPersistInterface>::Get();
+            ASSERT_NE(bookmarkPersistInterface, nullptr);
 
             auto persistentSetReg = AZStd::make_shared<LocalPersistentSettingsRegistry>();
             bookmarkPersistInterface->OverrideStreamWriteFn(

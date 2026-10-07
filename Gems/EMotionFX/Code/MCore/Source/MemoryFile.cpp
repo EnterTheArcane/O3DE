@@ -10,6 +10,7 @@
 #include "MemoryFile.h"
 #include "DiskFile.h"
 #include "LogManager.h"
+#include <AzCore/std/limits.h>
 
 
 namespace MCore
@@ -96,6 +97,10 @@ namespace MCore
     // returns the position (offset) in the file in bytes
     size_t MemoryFile::GetPos() const
     {
+        if (m_memoryStart == nullptr)
+        {
+            return 0;
+        }
         return (size_t)(m_currentPos - m_memoryStart);
     }
 
@@ -103,21 +108,22 @@ namespace MCore
     // write a given byte to the file
     bool MemoryFile::WriteByte(const uint8 value)
     {
-        Write(&value, 1);
-        return true;
+        return Write(&value, 1) == 1;
     }
 
 
     // seek a given number of bytes ahead from it's current position
     bool MemoryFile::Forward(size_t numBytes)
     {
-        uint8* newPos = m_currentPos + numBytes;
-        if (newPos > (m_memoryStart + m_length))
+        if (numBytes > m_length - MemoryFile::GetPos())
         {
             return false;
         }
 
-        m_currentPos = newPos;
+        if (numBytes > 0)
+        {
+            m_currentPos += numBytes;
+        }
         return true;
     }
 
@@ -138,26 +144,43 @@ namespace MCore
     // write data to the file
     size_t MemoryFile::Write(const void* data, size_t length)
     {
+        const size_t offset = MemoryFile::GetPos();
         // if it won't fit in our allocated buffer, we have to enlarge it
-        if ((m_currentPos + length > m_memoryStart + m_length) && m_allocate)
+        if (length > m_length - offset)
         {
-            size_t offset = m_currentPos - m_memoryStart;
-            size_t numBytesExtra = m_currentPos + length - m_memoryStart;
-            numBytesExtra += m_preAllocSize;
-            m_memoryStart = (uint8*)MCore::Realloc((uint8*)m_memoryStart, m_length + numBytesExtra, MCORE_MEMCATEGORY_MEMORYFILE);
+            if (!m_allocate)
+            {
+                return 0;
+            }
+
+            const size_t maxExtra = AZStd::numeric_limits<size_t>::max() - m_length;
+            if (offset > maxExtra || length > maxExtra - offset || m_preAllocSize > maxExtra - offset - length)
+            {
+                return 0;
+            }
+            const size_t numBytesExtra = offset + length + m_preAllocSize;
+            uint8* memoryStart = static_cast<uint8*>(MCore::Realloc(m_memoryStart, m_length + numBytesExtra, MCORE_MEMCATEGORY_MEMORYFILE));
+            if (memoryStart == nullptr)
+            {
+                return 0;
+            }
+            m_memoryStart = memoryStart;
             m_length += numBytesExtra;
             m_currentPos = m_memoryStart + offset;
         }
 
         // memcopy over the data
-        MCORE_ASSERT((m_currentPos + length) <= (m_memoryStart + m_length)); // make sure we don't write past the end of our buffer
         MCore::MemCopy(m_currentPos, data, length);
-        Forward(length);
+        if (length > 0)
+        {
+            m_currentPos += length;
+        }
 
         // only overwrite the used length in case we reached the boundary (don't do it in case we modify some data in the middle etc.)
-        if (m_usedLength < GetPos())
+        const size_t newPos = offset + length;
+        if (m_usedLength < newPos)
         {
-            m_usedLength = GetPos();
+            m_usedLength = newPos;
         }
 
         return length;
@@ -167,18 +190,20 @@ namespace MCore
     // read data from the file
     size_t MemoryFile::Read(void* data, size_t length)
     {
-        if (m_currentPos + length > (uint8*)m_memoryStart + m_length)
+        const size_t available = m_length - MemoryFile::GetPos();
+        size_t numRead = length;
+        if (length > available)
         {
-            const size_t numRead = length - ((m_currentPos + length) - ((uint8*)m_memoryStart + m_length));
-            MCore::MemCopy(data, m_currentPos, numRead);
-            Forward(numRead);
-            MCore::LogWarning("MCore::MemoryFile::Read() - We can only read %d bytes of the %d bytes requested, as we are reading past the end of the memory file!", numRead, length);
-            return numRead;
+            numRead = available;
+            MCore::LogWarning("MCore::MemoryFile::Read() - We can only read %zu bytes of the %zu bytes requested, as we are reading past the end of the memory file!", numRead, length);
         }
 
-        MCore::MemCopy(data, m_currentPos, length);
-        Forward(length);
-        return length;
+        MCore::MemCopy(data, m_currentPos, numRead);
+        if (numRead > 0)
+        {
+            m_currentPos += numRead;
+        }
+        return numRead;
     }
 
 

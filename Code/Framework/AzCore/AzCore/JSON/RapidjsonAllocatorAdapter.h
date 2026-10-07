@@ -50,6 +50,11 @@ namespace AZ::Json
 
         void* Realloc(void* ptr, size_t originalSize, size_t newSize)
         {
+            if (ptr == nullptr)
+            {
+                return Malloc(newSize);
+            }
+
             auto originalPtr = reinterpret_cast<AZStd::byte*>(ptr);
             // Can always resize downwards
             if (newSize <= originalSize)

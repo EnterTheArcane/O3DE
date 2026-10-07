@@ -157,7 +157,7 @@ namespace AZ
                 }
 
                 template<typename Iterator, typename ReturnType>
-                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator[](size_t index)->typename super::reference
+                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator[](typename super::difference_type index)->typename super::reference
                 {
                     AZ_Assert(super::m_converter, "No valid conversion function set for ConvertIterator.");
                     return super::m_converter(super::m_iterator[index]);
@@ -185,7 +185,7 @@ namespace AZ
                 }
 
                 template<typename Iterator, typename ReturnType>
-                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator+(size_t n) const->typename super::RootIterator
+                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator+(typename super::difference_type n) const->typename super::RootIterator
                 {
                     typename super::RootIterator result = *static_cast<const typename super::RootIterator*>(this);
                     result.m_iterator += n;
@@ -193,7 +193,7 @@ namespace AZ
                 }
 
                 template<typename Iterator, typename ReturnType>
-                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator-(size_t n) const->typename super::RootIterator
+                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator-(typename super::difference_type n) const->typename super::RootIterator
                 {
                     typename super::RootIterator result = *static_cast<const typename super::RootIterator*>(this);
                     result.m_iterator -= n;
@@ -207,14 +207,14 @@ namespace AZ
                 }
 
                 template<typename Iterator, typename ReturnType>
-                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator+=(size_t n)->typename super::RootIterator &
+                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator+=(typename super::difference_type n)->typename super::RootIterator &
                 {
                     super::m_iterator += n;
                     return *static_cast<typename super::RootIterator*>(this);
                 }
 
                 template<typename Iterator, typename ReturnType>
-                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator-=(size_t n)->typename super::RootIterator &
+                auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator-=(typename super::difference_type n)->typename super::RootIterator &
                 {
                     super::m_iterator -= n;
                     return *static_cast<typename super::RootIterator*>(this);

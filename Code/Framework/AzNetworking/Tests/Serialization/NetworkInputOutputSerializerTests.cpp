@@ -91,6 +91,7 @@ namespace UnitTest
         EXPECT_EQ(inElement.testInt8, outElement.testInt8);
         EXPECT_EQ(inElement.testInt16, outElement.testInt16);
         EXPECT_EQ(inElement.testInt32, outElement.testInt32);
+        EXPECT_EQ(inElement.testInt64, outElement.testInt64);
         EXPECT_EQ(inElement.testUint8, outElement.testUint8);
         EXPECT_EQ(inElement.testUint16, outElement.testUint16);
         EXPECT_EQ(inElement.testUint32, outElement.testUint32);

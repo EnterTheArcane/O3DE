@@ -25,7 +25,7 @@ public:
 
 protected:
     void UpdateConnectionManager();
-    ConnectionManager* m_connectionManager;
+        ConnectionManager* m_connectionManager = nullptr;
 };
 
 void ConnectionManagerUnitTest::SetUp()
@@ -37,11 +37,14 @@ void ConnectionManagerUnitTest::SetUp()
 
 void ConnectionManagerUnitTest::TearDown()
 {
-    //removing all connections
-    for (auto iter = m_connectionManager->getConnectionMap().begin(); iter != m_connectionManager->getConnectionMap().end(); iter++)
-    {
-        iter.value()->Terminate();
-    }
+        //removing all connections
+        if (m_connectionManager)
+        {
+            for (auto iter = m_connectionManager->getConnectionMap().begin(); iter != m_connectionManager->getConnectionMap().end(); iter++)
+            {
+                iter.value()->Terminate();
+            }
+        }
 
     // Process all the pending events
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);

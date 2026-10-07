@@ -241,7 +241,7 @@ namespace Archive
         " the ArchiveDefaultBlockAlignment");
 
     //! Represents an entry of a single file within the Archive
-    struct alignas(32) ArchiveTocFileMetadata
+    struct ArchiveTocFileMetadata
     {
         ArchiveTocFileMetadata();
 

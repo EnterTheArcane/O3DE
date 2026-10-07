@@ -76,8 +76,9 @@ namespace LmbrCentral
 
     void EditorSphereShapeComponentFixture::SetUpEditorFixtureImpl()
     {
-        AZ::SerializeContext* serializeContext = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    AZ::SerializeContext* serializeContext = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    ASSERT_NE(serializeContext, nullptr);
 
         m_editorSphereShapeComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(EditorSphereShapeComponent::CreateDescriptor());
 
@@ -85,8 +86,9 @@ namespace LmbrCentral
         SphereShape::Reflect(serializeContext);
         m_editorSphereShapeComponentDescriptor->Reflect(serializeContext);
 
-        UnitTest::CreateDefaultEditorEntity("CapsuleShapeComponentEntity", &m_entity);
-        m_entityId = m_entity->GetId();
+    UnitTest::CreateDefaultEditorEntity("CapsuleShapeComponentEntity", &m_entity);
+    ASSERT_NE(m_entity, nullptr);
+    m_entityId = m_entity->GetId();
         m_entity->Deactivate();
         m_entityComponentIdPair =
             AZ::EntityComponentIdPair(m_entityId, m_entity->CreateComponent(EditorSphereShapeComponentTypeId)->GetId());

@@ -391,6 +391,7 @@ namespace AzToolsFramework
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
             AZ_Assert(serializeContext, "Serialization context not available");
+            m_proxyNode.m_context = serializeContext;
 
             AZ::TypeId typeId;
             auto typeIdAttribute = node.FindMember(PropertyEditor::ValueType.GetName());

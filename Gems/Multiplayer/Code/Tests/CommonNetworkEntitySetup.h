@@ -202,11 +202,16 @@ namespace Multiplayer
             return nullptr;
         }
 
+        void PreInitEntity(NetBindComponent* netBindComponent, AZ::Entity* entity, NetEntityId netId, NetEntityRole role)
+        {
+            netBindComponent->PreInit(entity, PrefabEntityId{ AZ::Name("test"), 1 }, netId, role);
+        }
+
         void SetupEntity(const AZStd::unique_ptr<AZ::Entity>& entity, NetEntityId netId, NetEntityRole role)
         {
             if (const auto netBindComponent = entity->FindComponent<Multiplayer::NetBindComponent>())
             {
-                netBindComponent->PreInit(entity.get(), PrefabEntityId{ AZ::Name("test"), 1 }, netId, role);
+                PreInitEntity(netBindComponent, entity.get(), netId, role);
                 entity->Init();
             }
         }

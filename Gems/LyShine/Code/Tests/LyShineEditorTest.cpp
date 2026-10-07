@@ -186,8 +186,11 @@ protected:
     {
         m_componentDescriptors = {};
 
-        m_sysComponent->Deactivate();
-        m_sysComponent = nullptr;
+        if (m_sysComponent)
+        {
+            m_sysComponent->Deactivate();
+            m_sysComponent = nullptr;
+        }
         m_app.Stop();
 
         m_data.reset();

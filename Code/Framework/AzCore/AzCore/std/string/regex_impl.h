@@ -87,7 +87,7 @@ namespace AZStd
     namespace regex_constants
     {
         // constants used in regular expressions
-        enum syntax_option_type
+        enum syntax_option_type : int
         {   // specify RE syntax rules
             ECMAScript = 0x01,
             basic = 0x02,
@@ -106,7 +106,7 @@ namespace AZStd
 
         AZ_DEFINE_ENUM_BITWISE_OPERATORS(syntax_option_type)
 
-        enum match_flag_type
+        enum match_flag_type : int
         {   // specify matching and formatting rules
             match_default = 0x0000,
             match_not_bol = 0x0001,

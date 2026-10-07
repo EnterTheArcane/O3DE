@@ -68,7 +68,7 @@ namespace AzManipulatorTestFramework
 
     bool IndirectCallManipulatorManager::ManipulatorBeingInteracted() const
     {
-        bool manipulatorInteracting;
+        bool manipulatorInteracting = false;
         AzToolsFramework::ManipulatorManagerRequestBus::EventResult(
             manipulatorInteracting, AzToolsFramework::GetMainManipulatorManagerId(),
             &AzToolsFramework::ManipulatorManagerRequestBus::Events::Interacting);

@@ -85,6 +85,10 @@ namespace UnitTest
     {
         AZ::Entity* whiteBoxEntity = nullptr;
         CreateDefaultEditorEntity("WhiteBox", &whiteBoxEntity);
+        if (!whiteBoxEntity)
+        {
+            return {};
+        }
 
         whiteBoxEntity->Deactivate();
         auto* editorWhiteBoxComponent = whiteBoxEntity->CreateComponent<WhiteBox::EditorWhiteBoxComponent>();
@@ -108,6 +112,7 @@ namespace UnitTest
         m_whiteBoxComponentDescriptor->Reflect(serializeContext);
 
         auto editorEntityAndWhiteBox = CreateEditorEntityWithEditorWhiteBoxComponent();
+        ASSERT_NE(editorEntityAndWhiteBox.m_entity, nullptr);
         m_whiteBoxEntityId = editorEntityAndWhiteBox.GetEntityId();
         m_whiteBoxComponent = editorEntityAndWhiteBox.m_editorWhiteBoxComponent;
     }

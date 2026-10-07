@@ -28,10 +28,11 @@ namespace UnitTest
             // register a component implementing RenderGeometry::IntersectionRequestBus
             app->RegisterComponentDescriptor(RenderGeometryIntersectionTestComponent::CreateDescriptor());
 
-            AZ::Entity* entityGround = nullptr;
-            m_entityIdGround = CreateDefaultEditorEntity("EntityGround", &entityGround);
+        AZ::Entity* entityGround = nullptr;
+        m_entityIdGround = CreateDefaultEditorEntity("EntityGround", &entityGround);
+        ASSERT_NE(entityGround, nullptr);
 
-            entityGround->Deactivate();
+        entityGround->Deactivate();
             auto ground = entityGround->CreateComponent<RenderGeometryIntersectionTestComponent>();
             entityGround->Activate();
 

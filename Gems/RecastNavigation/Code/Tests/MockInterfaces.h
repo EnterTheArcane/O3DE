@@ -151,8 +151,11 @@ namespace RecastNavigationTests
         void BindChildChangedEventHandler(AZ::ChildChangedEvent::Handler&) override {}
         void NotifyChildChangedEvent(AZ::ChildChangeType, AZ::EntityId) override {}
 
-        MOCK_METHOD0(GetLocalTM, const AZ::Transform& ());
-        MOCK_METHOD0(GetWorldTM, const AZ::Transform& ());
-        MOCK_METHOD0(IsStaticTransform, bool());
+        const AZ::Transform& GetLocalTM() override { return m_transform; }
+        const AZ::Transform& GetWorldTM() override { return m_transform; }
+        AZ::Vector3 GetWorldTranslation() override { return m_transform.GetTranslation(); }
+        bool IsStaticTransform() override { return false; }
+
+        AZ::Transform m_transform = AZ::Transform::CreateIdentity();
     };
 }

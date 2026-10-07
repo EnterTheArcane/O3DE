@@ -1,0 +1,24 @@
+diff --git a/Detour/Include/DetourNavMesh.h b/Detour/Include/DetourNavMesh.h
+index 193c2f4..d5cb0c5 100644
+--- a/Detour/Include/DetourNavMesh.h
++++ b/Detour/Include/DetourNavMesh.h
+@@ -199,6 +199,9 @@ struct dtPoly
+ /// Defines a link between polygons.
+ /// @note This structure is rarely if ever used by the end user.
+ /// @see dtMeshTile
++#ifdef DT_POLYREF64
++#pragma pack(push, 4)
++#endif
+ struct dtLink
+ {
+ 	dtPolyRef ref;					///< Neighbour reference. (The neighbor that is linked to.)
+@@ -208,6 +211,9 @@ struct dtLink
+ 	unsigned char bmin;				///< If a boundary link, defines the minimum sub-edge area.
+ 	unsigned char bmax;				///< If a boundary link, defines the maximum sub-edge area.
+ };
++#ifdef DT_POLYREF64
++#pragma pack(pop)
++#endif
+ 
+ /// Bounding volume node.
+ /// @note This structure is rarely if ever used by the end user.

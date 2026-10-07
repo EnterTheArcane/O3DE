@@ -50,6 +50,14 @@ namespace UnitTest
         TaskExecutor* m_executor;
     };
 
+    TEST_F(TaskGraphTestFixture, WaitForEmptyGraphCompletes)
+    {
+        TaskGraph graph{ "EmptyGraph" };
+        TaskGraphEvent event{ "EmptyGraphEvent" };
+        graph.Submit(&event);
+        event.Wait();
+    }
+
     TEST(TaskGraphTests, TrivialTaskLambda)
     {
         int x = 0;

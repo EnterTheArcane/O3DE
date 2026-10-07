@@ -12,6 +12,7 @@
 
 #include <Atom/ImageProcessing/PixelFormats.h>
 
+#include <AzCore/std/bit.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/string/string.h>
 
@@ -26,7 +27,7 @@ namespace ImageProcessingAtom
         {
             AZ::u32 Result;
 
-            AZ::u32 intValue = ((AZ::u32*)(&floatValue))[0];
+            AZ::u32 intValue = AZStd::bit_cast<AZ::u32>(floatValue);
             AZ::u32 Sign = (intValue & 0x80000000U) >> 16U;
             intValue = intValue & 0x7FFFFFFFU;
 
@@ -42,7 +43,14 @@ namespace ImageProcessingAtom
                     // The number is too small to be represented as a normalized half.
                     // Convert it to a denormalized value.
                     AZ::u32 Shift = 113U - (intValue >> 23U);
-                    intValue = (0x800000U | (intValue & 0x7FFFFFU)) >> Shift;
+                    if (Shift < 32U)
+                    {
+                        intValue = (0x800000U | (intValue & 0x7FFFFFU)) >> Shift;
+                    }
+                    else
+                    {
+                        intValue = 0;
+                    }
                 }
                 else
                 {
@@ -89,7 +97,7 @@ namespace ImageProcessingAtom
                 ((Exponent + 112) << 23) | // Exponent
                 (Mantissa << 13);          // Mantissa
 
-            return *(float*)&Result;
+            return AZStd::bit_cast<float>(Result);
         }
 
     private:

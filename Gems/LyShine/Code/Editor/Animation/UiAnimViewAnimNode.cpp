@@ -186,23 +186,26 @@ void CUiAnimViewAnimNode::UiElementPropertyChanged()
                     const AZ::Uuid& classId = AZ::SerializeTypeInfo<AZ::Component>::GetUuid(oldComponent);
 
                     const AZ::SerializeContext::ClassData* classData = context->FindClassData(classId);
+                    const void* instance = newComponent->RTTI_AddressOf(classId);
+                    const size_t componentOffset = static_cast<const char*>(instance) - reinterpret_cast<const char*>(newComponent);
 
                     // we would like to be able to know what changed
                     for (const AZ::SerializeContext::ClassElement& element : classData->m_elements)
                     {
+                        const size_t offset = componentOffset + element.GetOffset(instance);
                         if (element.m_flags & AZ::SerializeContext::ClassElement::FLG_BASE_CLASS)
                         {
-                            if (BaseClassPropertyPotentiallyChanged(context, newComponent, oldComponent, element, element.m_offset))
+                            if (BaseClassPropertyPotentiallyChanged(context, newComponent, oldComponent, element, offset))
                             {
                                 valueChanged = true;
                             }
                         }
                         else
                         {
-                            if (HasComponentParamValueAzChanged(newComponent, oldComponent, element, element.m_offset))
+                            if (HasComponentParamValueAzChanged(newComponent, oldComponent, element, offset))
                             {
                                 valueChanged = true;
-                                AzEntityPropertyChanged(oldComponent, newComponent, element, element.m_offset);
+                                AzEntityPropertyChanged(oldComponent, newComponent, element, offset);
                             }
                         }
                     }
@@ -374,13 +377,13 @@ void CUiAnimViewAnimNode::SetComponentParamValueAz(float time,
         const AZ::SerializeContext::ClassData* classData = context->FindClassData(element.m_typeId);
         if (classData && !classData->m_elements.empty())
         {
-            AzCreateCompoundTrackIfNeeded(time, dstComponent, srcComponent, element, element.m_offset);
+            AzCreateCompoundTrackIfNeeded(time, dstComponent, srcComponent, element, offset);
 
             for (const AZ::SerializeContext::ClassElement& subElement : classData->m_elements)
             {
                 SetComponentParamValueAz(time,
                     dstComponent, srcComponent,
-                    subElement, offset + subElement.m_offset);
+                    subElement, offset + subElement.GetOffset(srcElementData));
             }
         }
     }
@@ -476,7 +479,7 @@ bool CUiAnimViewAnimNode::HasComponentParamValueAzChanged(
             for (const AZ::SerializeContext::ClassElement& subElement : classData->m_elements)
             {
                 if (HasComponentParamValueAzChanged(dstComponent, srcComponent,
-                        subElement, offset + subElement.m_offset))
+                        subElement, offset + subElement.GetOffset(srcElementData)))
                 {
                     changed = true;
                     break;
@@ -491,9 +494,9 @@ bool CUiAnimViewAnimNode::HasComponentParamValueAzChanged(
 bool CUiAnimViewAnimNode::BaseClassPropertyPotentiallyChanged(
     AZ::SerializeContext* context,
     AZ::Component* dstComponent, AZ::Component* srcComponent,
-    const AZ::SerializeContext::ClassElement& element, [[maybe_unused]] size_t offset)
+    const AZ::SerializeContext::ClassElement& element, size_t offset)
 {
-    size_t baseClassOffset = element.m_offset;
+    const void* baseInstance = reinterpret_cast<const char*>(dstComponent) + offset;
     const AZ::Uuid& baseClassId = element.m_typeId;
     const AZ::SerializeContext::ClassData* baseClassData = context->FindClassData(baseClassId);
 
@@ -502,7 +505,7 @@ bool CUiAnimViewAnimNode::BaseClassPropertyPotentiallyChanged(
     {
         for (const AZ::SerializeContext::ClassElement& baseElement : baseClassData->m_elements)
         {
-            size_t baseOffset = baseClassOffset + baseElement.m_offset;
+            const size_t baseOffset = offset + baseElement.GetOffset(baseInstance);
             if (baseElement.m_flags & AZ::SerializeContext::ClassElement::FLG_BASE_CLASS)
             {
                 if (BaseClassPropertyPotentiallyChanged(context, dstComponent, srcComponent, baseElement, baseOffset))

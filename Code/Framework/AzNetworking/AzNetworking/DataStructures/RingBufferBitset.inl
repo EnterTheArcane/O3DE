@@ -74,7 +74,8 @@ namespace AzNetworking
     {
         const uint32_t headBitsToShift = std::min<uint32_t>(count, m_unusedHeadBits);
 
-        m_container[m_headElementOffset] <<= headBitsToShift;
+        // A full-width shift only occurs for an empty head chunk, which is already zero.
+        m_container[m_headElementOffset] <<= headBitsToShift % NumBitsetChunkedBits;
         m_unusedHeadBits -= headBitsToShift;
         count -= headBitsToShift;
 

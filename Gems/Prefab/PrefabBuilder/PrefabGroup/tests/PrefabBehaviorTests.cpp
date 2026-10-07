@@ -43,6 +43,10 @@ namespace UnitTest
         void SetUp() override
         {
             PrefabBuilderTests::SetUp();
+            if (HasFatalFailure())
+            {
+                return;
+            }
             m_prefabGroupBehavior = AZStd::make_unique<AZ::SceneAPI::Behaviors::PrefabGroupBehavior>();
             m_prefabGroupBehavior->Activate();
 
@@ -67,7 +71,10 @@ namespace UnitTest
 
             m_assetSystemRequestMock.BusDisconnect();
 
-            m_prefabGroupBehavior->Deactivate();
+            if (m_prefabGroupBehavior)
+            {
+                m_prefabGroupBehavior->Deactivate();
+            }
             m_prefabGroupBehavior.reset();
 
             PrefabBuilderTests::TearDown();

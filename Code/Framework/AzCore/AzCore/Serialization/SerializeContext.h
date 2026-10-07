@@ -882,6 +882,38 @@ namespace AZ::Serialize
     struct AZCORE_API ClassElement
     {
         AZ_TYPE_INFO_WITH_NAME_DECL_API(AZCORE_API, ClassElement);
+        struct BaseClassOffset
+        {
+            static constexpr AZ::u32 Unresolved = std::numeric_limits<AZ::u32>::max();
+
+            BaseClassOffset() = default;
+            BaseClassOffset(const BaseClassOffset& other)
+                : m_value(other.Get())
+            {}
+
+            BaseClassOffset& operator=(const BaseClassOffset& other)
+            {
+                m_value.store(other.Get(), AZStd::memory_order_relaxed);
+                return *this;
+            }
+
+            AZ::u32 Get() const
+            {
+                return m_value.load(AZStd::memory_order_relaxed);
+            }
+
+            void Set(size_t value) const
+            {
+                if (value < Unresolved)
+                {
+                    m_value.store(static_cast<AZ::u32>(value), AZStd::memory_order_relaxed);
+                }
+            }
+
+        private:
+            mutable AZStd::atomic<AZ::u32> m_value{ Unresolved };
+        };
+
         enum Flags
         {
             FLG_POINTER = (1 << 0),       ///< Element is stored as pointer (it's not a value).
@@ -905,11 +937,48 @@ namespace AZ::Serialize
         void ClearAttributes();
         Attribute* FindAttribute(AttributeId attributeId) const;
 
+        //! Resolve an element in a live instance of its containing class.
+        const void* GetAddress(const void* instance) const
+        {
+            if (m_flags & FLG_BASE_CLASS)
+            {
+                const AZ::u32 offset = m_baseClassOffset.Get();
+                if (offset == BaseClassOffset::Unresolved) [[unlikely]]
+                {
+                    const void* address = m_baseCast(instance);
+                    m_baseClassOffset.Set(static_cast<const char*>(address) - static_cast<const char*>(instance));
+                    return address;
+                }
+                return static_cast<const char*>(instance) + offset;
+            }
+            return static_cast<const char*>(instance) + m_offset;
+        }
+
+        void* GetAddress(void* instance) const
+        {
+            return const_cast<void*>(GetAddress(static_cast<const void*>(instance)));
+        }
+
+        //! Compute an offset from a live instance for callers that cache element locations.
+        size_t GetOffset(const void* instance) const
+        {
+            if (m_flags & FLG_BASE_CLASS)
+            {
+                return static_cast<const char*>(GetAddress(instance)) - static_cast<const char*>(instance);
+            }
+            return m_offset;
+        }
+
         const char* m_name{ "" };                 ///< Used in XML output and debugging purposes
         AZ::Crc32 m_nameCrc{};                    ///< CRC32 of m_name
+        BaseClassOffset m_baseClassOffset;         ///< Cached live-instance offset for FLG_BASE_CLASS.
         Uuid m_typeId = AZ::TypeId::CreateNull();
         size_t m_dataSize{};
-        size_t m_offset{};
+        union
+        {
+            size_t m_offset{};                       ///< Member offset; not valid for FLG_BASE_CLASS.
+            const void* (*m_baseCast)(const void*);   ///< Live-instance cast for FLG_BASE_CLASS.
+        };
 
         IRttiHelper* m_azRtti{};                  ///< Interface used to support RTTI.
         GenericClassInfo* m_genericClassInfo = nullptr;   ///< Valid when the generic class is set. So you don't search for the actual type in the class register.
@@ -1885,16 +1954,6 @@ namespace AZ
         };
     }
 
-    namespace SerializeInternal
-    {
-        template<class Derived, class Base>
-        size_t GetBaseOffset()
-        {
-            Derived* der = reinterpret_cast<Derived*>(AZ_INVALID_POINTER);
-            return reinterpret_cast<char*>(static_cast<Base*>(der)) - reinterpret_cast<char*>(der);
-        }
-    } // namespace SerializeInternal
-
     //=========================================================================
     // Cast
     // [02/08/2013]
@@ -1989,7 +2048,10 @@ namespace AZ
         ed.m_flags = ClassElement::FLG_BASE_CLASS;
         ed.m_dataSize = sizeof(BaseClass);
         ed.m_typeId = AZ::AzTypeInfo<BaseClass>::Uuid();
-        ed.m_offset = SerializeInternal::GetBaseOffset<T, BaseClass>();
+        ed.m_baseCast = [](const void* instance) -> const void*
+        {
+            return static_cast<const BaseClass*>(static_cast<const T*>(instance));
+        };
         ed.m_genericClassInfo = SerializeGenericTypeInfo<BaseClass>::GetGenericInfo();
         ed.m_azRtti = GetRttiHelper<BaseClass>();
         ed.m_editData = nullptr;

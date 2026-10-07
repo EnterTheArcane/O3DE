@@ -12,6 +12,7 @@ o3de_fetch_content(mikktspace
     URL_HASH "aeba65ddee85a679133d510d71d00b108f603752f90b15b9ecf7777033f6e351"
     GIT "https://github.com/mmikk/MikkTSpace.git"
     GIT_HASH "3e895b49d05ea07e4c2133156cfa94369e19e409"
+    PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/o3de.patch"
 )
 FetchContent_MakeAvailable(mikktspace)
 

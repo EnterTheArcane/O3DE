@@ -77,7 +77,7 @@ namespace LmbrCentral
             EditorComponentIndirectCallManipulatorViewportInteractionFixture::SetUpEditorFixtureImpl();
 
             auto* entity1 = AzToolsFramework::GetEntityById(m_entityId1);
-            AZ_Assert(entity1, "Entity1 could not be found");
+            ASSERT_NE(entity1, nullptr);
             entity1->Deactivate();
             CreateEditorComponent(entity1);
             entity1->Activate();
