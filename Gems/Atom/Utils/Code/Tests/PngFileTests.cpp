@@ -97,7 +97,7 @@ namespace UnitTest
         EXPECT_EQ(image.GetBufferFormat(), PngFile::Format::RGB);
         EXPECT_EQ(image.GetWidth(), 3);
         EXPECT_EQ(image.GetHeight(), 2);
-        EXPECT_EQ(image.GetBuffer().size(), 18);
+        ASSERT_EQ(image.GetBuffer().size(), 18);
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  0), Color3(255u,   0u,   0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  3), Color3(0u,   255u,   0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  6), Color3(0u,     0u, 255u));
@@ -113,7 +113,7 @@ namespace UnitTest
         EXPECT_EQ(image.GetBufferFormat(), PngFile::Format::RGBA);
         EXPECT_EQ(image.GetWidth(), 3);
         EXPECT_EQ(image.GetHeight(), 2);
-        EXPECT_EQ(image.GetBuffer().size(), 24);
+        ASSERT_EQ(image.GetBuffer().size(), 24);
         EXPECT_EQ(Color4(image.GetBuffer().begin() +  0), Color4(255u,   0u,   0u, 200u));
         EXPECT_EQ(Color4(image.GetBuffer().begin() +  4), Color4(0u,   255u,   0u, 150u));
         EXPECT_EQ(Color4(image.GetBuffer().begin() +  8), Color4(0u,     0u, 255u, 100u));
@@ -133,7 +133,7 @@ namespace UnitTest
         EXPECT_EQ(image.GetBufferFormat(), PngFile::Format::RGB);
         EXPECT_EQ(image.GetWidth(), 3);
         EXPECT_EQ(image.GetHeight(), 2);
-        EXPECT_EQ(image.GetBuffer().size(), 18);
+        ASSERT_EQ(image.GetBuffer().size(), 18);
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  0), Color3(255u,   0u,   0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  3), Color3(0u,   255u,   0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  6), Color3(0u,     0u, 255u));
@@ -149,7 +149,7 @@ namespace UnitTest
         EXPECT_EQ(image.GetBufferFormat(), PngFile::Format::RGB);
         EXPECT_EQ(image.GetWidth(), 1);
         EXPECT_EQ(image.GetHeight(), 3);
-        EXPECT_EQ(image.GetBuffer().size(), 9);
+        ASSERT_EQ(image.GetBuffer().size(), 9);
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  0), Color3(255u,   0u,   0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  3), Color3(0u,   255u,   0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  6), Color3(0u,     0u, 255u));
@@ -162,7 +162,7 @@ namespace UnitTest
         EXPECT_EQ(image.GetBufferFormat(), PngFile::Format::RGB);
         EXPECT_EQ(image.GetWidth(), 1);
         EXPECT_EQ(image.GetHeight(), 2);
-        EXPECT_EQ(image.GetBuffer().size(), 6);
+        ASSERT_EQ(image.GetBuffer().size(), 6);
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  0), Color3(0u,     0u,   0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  3), Color3(255u, 255u, 255u));
     }
@@ -174,7 +174,7 @@ namespace UnitTest
         EXPECT_EQ(image.GetBufferFormat(), PngFile::Format::RGB);
         EXPECT_EQ(image.GetWidth(), 5);
         EXPECT_EQ(image.GetHeight(), 1);
-        EXPECT_EQ(image.GetBuffer().size(), 15);
+        ASSERT_EQ(image.GetBuffer().size(), 15);
         // The values in this file are 30.0f, 30.1f, 30.2f, 30.3f, 30.4f. But we use PNG_TRANSFORM_STRIP_16 to reduce them to 8 bits per channel for simplicity.
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  0), Color3(76u,   0u,   0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() +  3), Color3(77u,   0u,   0u));
@@ -246,6 +246,7 @@ namespace UnitTest
 
         // ... and the loaded data is smaller
         EXPECT_NE(loadedImage.GetBuffer(), savedImage.GetBuffer());
+        ASSERT_EQ(loadedImage.GetBuffer().size(), 9);
         EXPECT_EQ(Color3(loadedImage.GetBuffer().begin() +  0), Color3(255u,   0u,   0u));
         EXPECT_EQ(Color3(loadedImage.GetBuffer().begin() +  3), Color3(0u,   255u,   0u));
         EXPECT_EQ(Color3(loadedImage.GetBuffer().begin() +  6), Color3(0u,     0u, 255u));
@@ -362,7 +363,7 @@ namespace UnitTest
         EXPECT_EQ(image.GetBufferFormat(), PngFile::Format::RGB);
         EXPECT_EQ(image.GetWidth(), 3);
         EXPECT_EQ(image.GetHeight(), 2);
-        EXPECT_EQ(image.GetBuffer().size(), 18);
+        ASSERT_EQ(image.GetBuffer().size(), 18);
         EXPECT_EQ(Color3(image.GetBuffer().begin() + 0), Color3(255u, 0u, 0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() + 3), Color3(0u, 255u, 0u));
         EXPECT_EQ(Color3(image.GetBuffer().begin() + 6), Color3(0u, 0u, 255u));
