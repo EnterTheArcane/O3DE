@@ -328,7 +328,7 @@
          </size>
         </property>
         <property name="orientation" stdset="0">
-         <number>5</number>
+         <enum>Qt::Vertical</enum>
         </property>
        </widget>
       </item>

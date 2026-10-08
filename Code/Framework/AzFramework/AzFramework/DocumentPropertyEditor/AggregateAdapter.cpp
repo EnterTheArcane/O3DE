@@ -858,7 +858,7 @@ namespace AZ::DocumentPropertyEditor
 
     void RowAggregateAdapter::RemoveChildRows(Dom::Value& rowValue)
     {
-        for (auto valueIter = rowValue.MutableArrayBegin(), endIter = rowValue.MutableArrayEnd(); valueIter != endIter; /*in loop*/)
+        for (auto valueIter = rowValue.MutableArrayBegin(); valueIter != rowValue.MutableArrayEnd(); /*in loop*/)
         {
             if (IsRow(*valueIter))
             {

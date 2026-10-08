@@ -270,7 +270,7 @@ namespace AZ::Render
                     screenPosition = AzFramework::Vector3FromScreenPoint(screenPoint, ndcPoint.GetZ());
                 }
                 minZ = AZStd::GetMin(minZ, screenPosition.GetZ());
-                maxZ = AZStd::GetMin(maxZ, screenPosition.GetZ());
+                maxZ = AZStd::GetMax(maxZ, screenPosition.GetZ());
 
                 // Create a vertex offset from the position to draw from based on the icon size
                 // Vertex positions are in screen space coordinates

@@ -15,7 +15,7 @@ index 2a883d16a..5645004d5 100644
       }
     }
   
-@@ -40,3 +41,15 @@ diff -rupN -x .git autoclone/tinyusdz_repo-src/src/external/stb_image_resize2.h
+@@ -40,3 +41,19 @@ diff -rupN -x .git autoclone/tinyusdz_repo-src/src/external/stb_image_resize2.h
   #endif
   
   
@@ -23,7 +23,7 @@ index 2a883d16a..5645004d5 100644
 +index 5b6be1d2..0f15f7c3 100644
 +--- a/src/value-types.hh
 ++++ b/src/value-types.hh
-+@@ -13,6 +13,7 @@
++@@ -13,9 +13,11 @@
 + #include <algorithm>
 + #include <array>
 + #include <cmath>
@@ -31,3 +31,16 @@ index 2a883d16a..5645004d5 100644
 + #include <cstring>
 + #include <functional>
 + #include <iostream>
+++#include <iterator>
++ #include <limits>
++ #include <map>
++ #include <memory>
+diff --git a/contrib/poly2tri/poly2tri/common/shapes.h b/contrib/poly2tri/poly2tri/common/shapes.h
+--- a/contrib/poly2tri/poly2tri/common/shapes.h
++++ b/contrib/poly2tri/poly2tri/common/shapes.h
+@@ -36,4 +36,5 @@
+ #include <cmath>
+ #include <cstddef>
++#include <iosfwd>
+ #include <stdexcept>
+ #include <vector>

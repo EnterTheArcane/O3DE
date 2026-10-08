@@ -75,7 +75,7 @@ namespace AZ::Render
             AZStd::mutex m_mutex;
             AZStd::vector<RHI::Ptr<MaterialEntry>> m_materialData;
             RPI::RingBuffer m_materialDataBuffer;
-            bool m_bufferNeedsUpdate;
+            bool m_bufferNeedsUpdate = false;
 
             RHI::ShaderInputNameIndex m_fallbackPBRMaterialIndex = "m_fallbackPBRMaterial";
             RHI::ShaderInputNameIndex m_nullCubeMapIndex = "m_nullCubeMapIndex";

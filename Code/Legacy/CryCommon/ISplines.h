@@ -792,7 +792,7 @@ namespace spline
 
         typedef TSplineSlopes< T, Key, bRangeLimit > super_type;
 
-        std::vector< TCoeffBasis<T> > m_coeffs;
+        AZStd::vector< TCoeffBasis<T> > m_coeffs;
 
         virtual void comp_deriv()
         {

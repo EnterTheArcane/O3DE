@@ -136,21 +136,14 @@ namespace AzFramework
 #if defined(__IPHONE_13_0) || defined(__TVOS_13_0)
         if(@available(iOS 13.0, tvOS 13.0, *))
         {
-            UIWindow* foundWindow = nil;
-            NSArray* windows = [[UIApplication sharedApplication] windows];
-            for (UIWindow* window in windows)
+            for (UIScene* scene in [UIApplication sharedApplication].connectedScenes)
             {
-                if (window.isKeyWindow)
+                if (scene.activationState == UISceneActivationStateForegroundActive &&
+                    [scene isKindOfClass:[UIWindowScene class]])
                 {
-                    foundWindow = window;
+                    uiOrientation = ((UIWindowScene*)scene).interfaceOrientation;
                     break;
                 }
-            }
-            UIWindowScene* windowScene = foundWindow ? foundWindow.windowScene : nullptr;
-            AZ_Assert(windowScene, "WindowScene is invalid");
-            if(windowScene)
-            {
-                uiOrientation = windowScene.interfaceOrientation;
             }
         }
 #else

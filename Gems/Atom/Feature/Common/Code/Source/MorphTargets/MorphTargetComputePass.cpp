@@ -46,7 +46,7 @@ namespace AZ
         {
             if (auto featureProcessor = GetSkinnedMeshFeatureProcessor())
             {
-                featureProcessor->SetupMorphTargetScope(frameGraph, Pass::GetDeviceIndex());
+                featureProcessor->SetupMorphTargetScope(frameGraph, RHI::ScopeProducer::GetDeviceIndex());
             }
 
             ComputePass::SetupFrameGraphDependencies(frameGraph);
