@@ -39,7 +39,7 @@ namespace AZ
         {
             if (auto featureProcessor = GetSkinnedMeshFeatureProcessor())
             {
-                featureProcessor->SetupSkinningScope(frameGraph, Pass::GetDeviceIndex());
+                featureProcessor->SetupSkinningScope(frameGraph, RHI::ScopeProducer::GetDeviceIndex());
             }
 
             ComputePass::SetupFrameGraphDependencies(frameGraph);

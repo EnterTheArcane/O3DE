@@ -787,7 +787,7 @@ namespace AZ::RHI
                     {
                         ImageFrameAttachment* imageFrameAttachment = transientImageGraphAttachments[attachmentIndex];
                         AZ_Assert(
-                            !CheckBit(transientImages[attachmentIndex], scopeIndex),
+                            !CheckBit(transientImages[attachmentIndex], scopeDeviceIndex),
                             "DeviceImage has been activated already. %s",
                             imageFrameAttachment->GetId().GetCStr());
 

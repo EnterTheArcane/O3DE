@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <algorithm>
+
 #include <AzCore/std/concepts/concepts.h>
 #include <AzCore/std/iterator.h>
 #include <AzCore/std/typetraits/integral_constant.h>

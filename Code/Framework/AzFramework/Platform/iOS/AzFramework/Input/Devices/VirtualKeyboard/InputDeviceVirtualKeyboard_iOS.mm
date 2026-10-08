@@ -238,21 +238,36 @@ namespace AzFramework
     {
         UIWindow* foundWindow = nil;        
 #if defined(__IPHONE_13_0) || defined(__TVOS_13_0)
-        if(@available(iOS 13.0, tvOS 13.0, *))
+        if (@available(iOS 13.0, tvOS 13.0, *))
         {
-            NSArray* windows = [[UIApplication sharedApplication] windows];
-            for (UIWindow* window in windows)
+            for (UIScene* scene in [UIApplication sharedApplication].connectedScenes)
             {
-                if (window.isKeyWindow)
+                if (![scene isKindOfClass:[UIWindowScene class]])
                 {
-                    foundWindow = window;
+                    continue;
+                }
+                for (UIWindow* window in [(UIWindowScene*)scene windows])
+                {
+                    if (window.isKeyWindow)
+                    {
+                        foundWindow = window;
+                        break;
+                    }
+                }
+                if (foundWindow)
+                {
                     break;
                 }
             }
         }
-#else
-        foundWindow = [[UIApplication sharedApplication] keyWindow];
 #endif
+        if (!foundWindow)
+        {
+            // The launcher still creates its window through the app delegate lifecycle.
+            AZ_PUSH_DISABLE_WARNING_CLANG("-Wdeprecated-declarations")
+            foundWindow = [UIApplication sharedApplication].keyWindow;
+            AZ_POP_DISABLE_WARNING_CLANG
+        }
         
         // Get the application's root view.
         UIView* rootView = foundWindow ? foundWindow.rootViewController.view : nullptr;

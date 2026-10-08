@@ -369,7 +369,9 @@ function(ly_add_target)
         # the runtime dependencies using file-tracking, instead, we will have them as a post build step
         # Non-multi config generators like Ninja (not "Ninja Multi-Config"), Makefiles, etc have trouble to
         # produce file-level dependencies per configuration, so we also default to use a post build step
-        if(NOT is_multi_config_generator OR CMAKE_GENERATOR MATCHES Xcode)
+        # macOS bundle fixup requires the application executable to exist.
+        if(NOT is_multi_config_generator OR CMAKE_GENERATOR MATCHES Xcode
+            OR (PAL_PLATFORM_NAME STREQUAL "Mac" AND ly_add_target_APPLICATION))
 
             add_custom_command(TARGET ${ly_add_target_NAME} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}/runtime_dependencies/$<CONFIG>/${ly_add_target_NAME}.cmake
