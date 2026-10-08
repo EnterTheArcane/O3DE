@@ -319,7 +319,7 @@ public:
             constexpr uint32_t IndexElementSize = aznumeric_cast<uint32_t>(sizeof(uint32_t));
 
             // Calculate the Aabb for the given positions.
-            AZ::Aabb aabb;
+            AZ::Aabb aabb = AZ::Aabb::CreateNull();
             for (uint32_t i = 0; i < positions.size(); i += 3)
             {
                 aabb.AddPoint(AZ::Vector3(positions[i], positions[i + 1], positions[i + 2]));
