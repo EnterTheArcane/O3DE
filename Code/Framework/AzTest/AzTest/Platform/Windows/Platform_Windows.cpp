@@ -10,6 +10,7 @@
 #include <iostream>
 #include <AzTest/Platform.h>
 #include <AzCore/std/string/conversions.h>
+#include <AzCore/std/debugging.h>
 
 //-------------------------------------------------------------------------------------------------
 class ModuleHandle
@@ -122,7 +123,7 @@ namespace AZ
 
         void Platform::WaitForDebugger()
         {
-            while (!::IsDebuggerPresent()) {}
+            while (!AZStd::is_debugger_present()) {}
         }
 
         void Platform::SuppressPopupWindows()

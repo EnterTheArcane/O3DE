@@ -11,6 +11,7 @@
 #include <AzCore/base.h>
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Debug/TraceMessageBus.h>
+#include <AzCore/std/debugging.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/string/fixed_string.h>
 
@@ -28,11 +29,6 @@ namespace AZ::Debug
     namespace Platform
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
-        bool IsDebuggerPresent()
-        {
-            return ::IsDebuggerPresent() ? true : false;
-        }
-
         void HandleExceptions(bool isEnabled)
         {
             if (isEnabled)
@@ -48,7 +44,7 @@ namespace AZ::Debug
 
         bool AttachDebugger()
         {
-            if (IsDebuggerPresent())
+            if (AZStd::is_debugger_present())
             {
                 return true;
             }
@@ -85,10 +81,6 @@ namespace AZ::Debug
             return false;
         }
 
-        void DebugBreak()
-        {
-            __debugbreak();
-        }
 #endif // AZ_ENABLE_DEBUG_TOOLS
 
         void Terminate(int exitCode)

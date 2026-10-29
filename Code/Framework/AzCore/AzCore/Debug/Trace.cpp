@@ -27,6 +27,7 @@
 #include <AzCore/Module/Environment.h>
 #include <AzCore/Console/IConsole.h>
 #include <AzCore/std/chrono/chrono.h>
+#include <AzCore/std/debugging.h>
 
 namespace AZ::Debug
 {
@@ -36,9 +37,7 @@ namespace AZ::Debug
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
         bool AttachDebugger();
-        bool IsDebuggerPresent();
         void HandleExceptions(bool isEnabled);
-        void DebugBreak();
 #endif
         void Terminate(int exitCode);
     }
@@ -207,7 +206,7 @@ namespace AZ::Debug
     Trace::IsDebuggerPresent()
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
-        return Platform::IsDebuggerPresent();
+        return AZStd::is_debugger_present();
 #else
         return false;
 #endif
@@ -281,7 +280,7 @@ namespace AZ::Debug
             return; // Do not break when tests are running unless debugger is present
         }
 
-        Platform::DebugBreak();
+        AZStd::breakpoint();
 
 #endif // AZ_ENABLE_DEBUG_TOOLS
     }

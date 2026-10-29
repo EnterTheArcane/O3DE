@@ -7,6 +7,9 @@
 #
 
 set(FILES
+    AzCore/std/debugging_Platform.h
+    ../Common/WinAPI/AzCore/std/debugging_WinAPI.h
+    ../Common/WinAPI/AzCore/std/debugging_WinAPI.cpp
     AzCore/AzCore_Traits_Platform.h
     AzCore/AzCore_Traits_Windows.h
     AzCore/base_Platform.h

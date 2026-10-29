@@ -8,6 +8,10 @@
 
 #pragma once
 
+#include <AzCore/std/debugging.h>
+
+#define CryDebugBreak() AZStd::breakpoint()
+
 // Description : Specific to Win32 declarations, inline functions etc.
 
 

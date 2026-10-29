@@ -16,6 +16,9 @@
 
 // Include Platform Def to get mutliplatform AZ_DLL_IMPORT and AZ_DLL_EXPORT to use below
 #include <AzCore/PlatformDef.h>
+#include <AzCore/std/debugging.h>
+
+#define IM_DEBUG_BREAK() AZStd::breakpoint()
 
 //---- Define assertion handler. Defaults to calling assert().
 // If your macro uses multiple statements, make sure is enclosed in a 'do { .. } while (0)' block so it can be used as a single statement.

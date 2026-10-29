@@ -7,6 +7,10 @@
 #
 
 set(FILES
+    AzCore/std/debugging_Platform.h
+    ../Common/UnixLike/AzCore/std/debugging_UnixLike.h
+    ../Common/UnixLike/AzCore/std/debugging_UnixLike.cpp
+    ../Common/UnixLike/AzCore/std/internal/debugging_procfs.h
     AzCore/PlatformId/PlatformId_Platform.h
     AzCore/PlatformId/PlatformId_Android.h
     ../Common/UnixLike/AzCore/std/parallel/internal/condition_variable_UnixLike.h

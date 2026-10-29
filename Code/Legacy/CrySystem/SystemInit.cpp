@@ -196,7 +196,7 @@ static void CmdCrashTest(IConsoleCmdArgs* pArgs)
             }
             break;
         case 7:
-            __debugbreak();
+            CryDebugBreak();
             break;
         case 8:
             CrySleep(1000 * 60 * 10);
@@ -1417,7 +1417,7 @@ void CSystem::CreateSystemVars()
     CSystem::SetAssertLevel(defaultAssertValue);
 
     REGISTER_CVAR2(
-        "sys_error_debugbreak", &g_cvars.sys_error_debugbreak, 0, VF_CHEAT, "__debugbreak() if a VALIDATOR_ERROR_DBGBREAK message is hit");
+        "sys_error_debugbreak", &g_cvars.sys_error_debugbreak, 0, VF_CHEAT, "Break into the debugger if a VALIDATOR_ERROR_DBGBREAK message is hit");
 
     REGISTER_STRING("dlc_directory", "", 0, "Holds the path to the directory where DLC should be installed to and read from");
 

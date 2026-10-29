@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <AzCore/std/debugging.h>
+
 // Description : Apple specific declarations common amongst its products
 
 //////////////////////////////////////////////////////////////////////////
@@ -283,9 +285,9 @@ typedef struct _SECURITY_ATTRIBUTES
 #endif //__cplusplus
 
 #ifdef _RELEASE
-#define __debugbreak()
+#define CryDebugBreak()
 #else
-#define __debugbreak() ::raise(SIGTRAP)
+#define CryDebugBreak() AZStd::breakpoint()
 #endif
 
 #define __assume(x)

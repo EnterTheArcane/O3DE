@@ -11,6 +11,7 @@
 #include <AzCore/Console/IConsole.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/IO/SystemFile.h>
+#include <cstdlib>
 
 namespace UnitTest
 {
@@ -93,6 +94,41 @@ namespace UnitTest
         ASSERT_FALSE(m_warning);
         ASSERT_FALSE(m_printf);
     }
+
+#if GTEST_HAS_DEATH_TEST
+#if AZ_TRAIT_DISABLE_FAILED_DEATH_TESTS
+    TEST(TraceDeathTest, DISABLED_BreakRespectsOverriddenDebuggerDetection)
+#else
+    TEST(TraceDeathTest, BreakRespectsOverriddenDebuggerDetection)
+#endif
+    {
+        class NonDebuggedTrace : public AZ::Debug::Trace
+        {
+        public:
+            bool IsDebuggerPresent() override
+            {
+                m_detectionCalled = true;
+                return false;
+            }
+
+            bool m_detectionCalled = false;
+        };
+
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
+        constexpr bool expectedDetection = true;
+#else
+        constexpr bool expectedDetection = false;
+#endif
+        // Constructing a tracer replaces the global instance, so isolate it from the test runner.
+        EXPECT_EXIT(
+            {
+                NonDebuggedTrace trace;
+                trace.Break();
+                std::_Exit(static_cast<int>(trace.m_detectionCalled != expectedDetection));
+            },
+            ::testing::ExitedWithCode(0), "");
+    }
+#endif
 
     TEST_F(TraceTests, Level1)
     {

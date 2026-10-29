@@ -20,7 +20,7 @@ static_assert(MAX_WARNING_LENGTH>32,"MAX_WARNING_LENGTH should be bigger than 32
 enum EValidatorSeverity : int
 {
     VALIDATOR_ERROR,
-    VALIDATOR_ERROR_DBGBRK, // will __debugbreak() if sys_error_debugbreak is 1
+    VALIDATOR_ERROR_DBGBRK, // Break into the debugger if sys_error_debugbreak is 1
     VALIDATOR_WARNING,
     VALIDATOR_COMMENT
 };

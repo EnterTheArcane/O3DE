@@ -7,6 +7,9 @@
 #
 
 set(FILES
+    AzCore/std/debugging_Platform.h
+    ../Common/Apple/AzCore/std/debugging_Apple.h
+    ../Common/Apple/AzCore/std/debugging_Apple.cpp
     AzCore/AzCore_Traits_Platform.h
     AzCore/AzCore_Traits_Mac.h
     AzCore/base_Platform.h

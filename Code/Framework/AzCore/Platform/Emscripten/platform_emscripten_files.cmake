@@ -7,6 +7,8 @@
 #
 
 set(FILES
+    AzCore/std/debugging_Platform.h
+    AzCore/std/debugging_Emscripten.cpp
     AzCore/AzCore_Traits_Platform.h
     AzCore/AzCore_Traits_Emscripten.h
     AzCore/base_Platform.h

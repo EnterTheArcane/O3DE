@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <AzCore/std/debugging.h>
+
 // Description : Specific to Linux declarations, inline functions etc.
 
 
@@ -49,9 +51,9 @@
 #define PLATFORM_64BIT
 
 #if defined(_RELEASE) || defined(__ARM_ARCH)
-    #define __debugbreak()
+    #define CryDebugBreak()
 #else
-    #define __debugbreak() asm("int3")
+    #define CryDebugBreak() AZStd::breakpoint()
 #endif
 
 #define __assume(x)

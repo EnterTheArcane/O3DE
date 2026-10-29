@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <AzCore/std/debugging.h>
+
 // Description : Specific to Android declarations, inline functions etc.
 
 
@@ -122,9 +124,9 @@ extern size_t wcsnlen(const wchar_t* str, size_t maxLen);
 #define TARGET_DEFAULT_ALIGN (16U)
 
 #ifdef _RELEASE
-    #define __debugbreak()
+    #define CryDebugBreak()
 #else
-    #define __debugbreak() __builtin_trap()
+    #define CryDebugBreak() AZStd::breakpoint()
 #endif
 
 // there is no __finite in android, only variants of isfinite

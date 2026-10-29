@@ -7,6 +7,10 @@
 #
 
 set(FILES
+    AzCore/std/debugging_Platform.h
+    ../Common/UnixLike/AzCore/std/debugging_UnixLike.h
+    ../Common/UnixLike/AzCore/std/debugging_UnixLike.cpp
+    ../Common/UnixLike/AzCore/std/internal/debugging_procfs.h
     AzCore/AzCore_Traits_Platform.h
     AzCore/AzCore_Traits_Linux.h
     AzCore/base_Platform.h

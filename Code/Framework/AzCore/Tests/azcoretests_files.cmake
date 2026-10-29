@@ -27,6 +27,7 @@ set(FILES
     AZStd/ConceptsTests.cpp
     AZStd/ConcurrencyCheckerTests.cpp
     AZStd/CreateDestroy.cpp
+    AZStd/Debugging.cpp
     AZStd/ConcurrentAllocators.cpp
     AZStd/ConcurrentContainers.cpp
     AZStd/ChronoTests.cpp

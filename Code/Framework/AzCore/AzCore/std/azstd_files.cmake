@@ -26,6 +26,7 @@ set(FILES
     concepts/concepts_copyable.h
     concepts/concepts_movable.h
     createdestroy.h
+    debugging.h
     docs.h
     exceptions.h
     functional.h
