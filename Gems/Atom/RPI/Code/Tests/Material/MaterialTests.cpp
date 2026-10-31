@@ -23,7 +23,7 @@
 #include <Atom/RPI.Reflect/Material/MaterialNameContext.h>
 #include <Atom/RPI.Reflect/Material/MaterialTypeAssetCreator.h>
 #include <Atom/RPI.Reflect/Shader/ShaderOptionGroup.h>
-#include <AzCore/Component/TickBus.h>
+#include <AzCore/Asset/AssetManager.h>
 
 namespace UnitTest
 {
@@ -1613,7 +1613,7 @@ namespace UnitTest
         typeHandler.OnAssetReloaded(replacement);
         ASSERT_EQ(m_testMaterialTypeAsset->GetGeneralShaderCollection()[0].GetShaderAsset().Get(), replacement.Get());
 
-        TickBus::ExecuteQueuedEvents();
+        Data::AssetManager::Instance().DispatchEvents();
         EXPECT_EQ(material->GetGeneralShaderCollection()[0].GetShaderAsset().Get(), replacement.Get());
         EXPECT_FLOAT_EQ(material->GetPropertyValue<float>(property), 9.5f);
     }

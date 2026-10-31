@@ -14,7 +14,6 @@
 #include <Atom/RPI.Public/Shader/ShaderSystemInterface.h>
 #include <Atom/RPI.Public/Shader/ShaderResourceGroup.h>
 
-#include <AzCore/Component/TickBus.h>
 #include <AzCore/Instance/InstanceDatabase.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/std/time.h>
@@ -202,6 +201,7 @@ namespace AZ
 
         void Shader::Shutdown()
         {
+            Data::AssetManagerNotificationBus::Handler::BusDisconnect();
             ShaderVariantFinderNotificationBus::Handler::BusDisconnect();
             Data::AssetBus::MultiHandler::BusDisconnect();
 
@@ -299,18 +299,27 @@ namespace AZ
             m_reloadedAssets.clear();
 
             Init(*m_asset.Get());
-            // Material type assets must update their shader references before materials reinitialize.
-            AZ::TickBus::QueueFunction([shaderInstanceId = GetId()]
+            // Wait for material type assets to update their shader references before notifying materials.
+            Data::AssetManagerNotificationBus::Handler::BusConnect();
+        }
+
+        void Shader::OnAssetEventsDispatchEnd()
+        {
+            // A blocking asset load can finish a nested dispatch while outer asset handlers are still running.
+            if (Data::AssetBus::IsInDispatchThisThread())
             {
-                if (!Data::InstanceDatabase<Shader>::IsReady())
-                {
-                    return;
-                }
-                if (Data::Instance<Shader> shader = Data::InstanceDatabase<Shader>::Instance().Find(shaderInstanceId))
-                {
-                    ShaderReloadNotificationBus::Event(shader->GetAsset().GetId(), &ShaderReloadNotificationBus::Events::OnShaderReinitialized, *shader);
-                }
-            });
+                return;
+            }
+
+            Data::AssetManagerNotificationBus::Handler::BusDisconnect();
+            if (!Data::InstanceDatabase<Shader>::IsReady())
+            {
+                return;
+            }
+            if (Data::Instance<Shader> shader = Data::InstanceDatabase<Shader>::Instance().Find(GetId()))
+            {
+                ShaderReloadNotificationBus::Event(shader->GetAsset().GetId(), &ShaderReloadNotificationBus::Events::OnShaderReinitialized, *shader);
+            }
         }
         ///////////////////////////////////////////////////////////////////////
 

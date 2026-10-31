@@ -25,7 +25,7 @@
 #include <Common/ErrorMessageFinder.h>
 #include <Common/SerializeTester.h>
 
-#include <AzCore/Component/TickBus.h>
+#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Instance/InstanceDatabase.h>
 #include <AzCore/Math/Random.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -1489,32 +1489,102 @@ namespace UnitTest
         ReloadListener shaderListener(asset.GetId());
         ReloadListener rootListener(root.GetId());
 
-        Data::AssetBus::Event(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
+        Data::AssetBus::QueueEvent(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
         EXPECT_EQ(shaderListener.m_notifications, 0);
         EXPECT_EQ(rootListener.m_notifications, 0);
-        Data::AssetBus::Event(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+        Data::AssetBus::QueueEvent(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+        Data::AssetBus::ExecuteQueuedEvents();
         EXPECT_EQ(shaderListener.m_notifications, 0);
-        TickBus::ExecuteQueuedEvents();
+        Data::AssetManager::Instance().DispatchEvents();
         EXPECT_EQ(shaderListener.m_notifications, 1);
         EXPECT_EQ(rootListener.m_notifications, 0);
         EXPECT_EQ(shaderListener.m_shader, shader.get());
 
-        Data::AssetBus::Event(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+        Data::AssetBus::QueueEvent(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
         EXPECT_EQ(shaderListener.m_notifications, 1);
-        Data::AssetBus::Event(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
+        Data::AssetBus::QueueEvent(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
         EXPECT_EQ(shaderListener.m_notifications, 1);
-        TickBus::ExecuteQueuedEvents();
+        Data::AssetManager::Instance().DispatchEvents();
         EXPECT_EQ(shaderListener.m_notifications, 2);
         EXPECT_EQ(rootListener.m_notifications, 0);
         EXPECT_EQ(shaderListener.m_shader, shader.get());
+
+        for (int reload = 0; reload < 2; ++reload)
+        {
+            Data::AssetBus::QueueEvent(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+            Data::AssetBus::QueueEvent(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
+        }
+        struct NestedDispatchHandler final : Data::AssetBus::Handler
+        {
+            ~NestedDispatchHandler()
+            {
+                BusDisconnect();
+            }
+
+            void OnAssetReady(Data::Asset<Data::AssetData>) override
+            {
+                Data::AssetManager::Instance().DispatchEvents();
+            }
+        } nestedDispatchHandler;
+        const Data::AssetId nestedAssetId(Uuid::CreateRandom());
+        nestedDispatchHandler.BusConnect(nestedAssetId);
+        Data::AssetBus::QueueEvent(nestedAssetId, &Data::AssetBus::Events::OnAssetReady, asset);
+        Data::AssetBus::QueueFunction([&shaderListener]
+        {
+            EXPECT_EQ(shaderListener.m_notifications, 2);
+        });
+        Data::AssetManager::Instance().DispatchEvents();
+        EXPECT_EQ(shaderListener.m_notifications, 3);
+        Data::AssetManager::Instance().DispatchEvents();
+        EXPECT_EQ(shaderListener.m_notifications, 3);
 
         Data::AssetBus::Event(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
         Data::AssetBus::Event(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
         const Data::InstanceId instanceId = shader->GetId();
         shader = nullptr;
         EXPECT_FALSE(Data::InstanceDatabase<RPI::Shader>::Instance().Find(instanceId));
-        TickBus::ExecuteQueuedEvents();
-        EXPECT_EQ(shaderListener.m_notifications, 2);
+        Data::AssetManager::Instance().DispatchEvents();
+        EXPECT_EQ(shaderListener.m_notifications, 3);
+    }
+
+    TEST_F(ShaderTests, ShaderReload_KeepsShaderAliveDuringNotification)
+    {
+        Data::Asset<RPI::ShaderAsset> asset = CreateShaderAsset();
+        Data::Instance<RPI::Shader> shader = RPI::Shader::FindOrCreate(asset);
+        ASSERT_TRUE(shader);
+        const Data::InstanceId instanceId = shader->GetId();
+        struct ReleasingListener final : RPI::ShaderReloadNotificationBus::Handler
+        {
+            explicit ReleasingListener(Data::Instance<RPI::Shader>& shader)
+                : m_shader(shader)
+            {
+                BusConnect(shader->GetAsset().GetId());
+            }
+
+            ~ReleasingListener()
+            {
+                BusDisconnect();
+            }
+
+            void OnShaderReinitialized(const RPI::Shader& shader) override
+            {
+                const Data::InstanceId instanceId = shader.GetId();
+                m_shader = nullptr;
+                EXPECT_TRUE(Data::InstanceDatabase<RPI::Shader>::Instance().Find(instanceId));
+                ++m_notifications;
+            }
+
+            Data::Instance<RPI::Shader>& m_shader;
+            int m_notifications = 0;
+        } listener(shader);
+
+        const auto root = asset->GetRootVariantAsset();
+        Data::AssetBus::QueueEvent(root.GetId(), &Data::AssetBus::Events::OnAssetReloaded, root);
+        Data::AssetBus::QueueEvent(asset.GetId(), &Data::AssetBus::Events::OnAssetReloaded, asset);
+        Data::AssetManager::Instance().DispatchEvents();
+        EXPECT_EQ(listener.m_notifications, 1);
+        EXPECT_FALSE(shader);
+        EXPECT_FALSE(Data::InstanceDatabase<RPI::Shader>::Instance().Find(instanceId));
     }
 
     TEST_F(ShaderTests, ValidateShaderVariantIdMath)

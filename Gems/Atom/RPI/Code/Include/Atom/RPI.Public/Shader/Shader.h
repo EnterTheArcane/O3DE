@@ -20,6 +20,7 @@
 #include <Atom/RHI/PipelineLibrary.h>
 #include <Atom/RHI/PipelineState.h>
 
+#include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Instance/InstanceData.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -57,6 +58,7 @@ namespace AZ
             : public Data::InstanceData
             , public Data::AssetBus::MultiHandler
             , public ShaderVariantFinderNotificationBus::Handler
+            , private Data::AssetManagerNotificationBus::Handler
         {
             friend class ShaderSystem;
         public:
@@ -178,6 +180,9 @@ namespace AZ
 
             // AssetBus overrides...
             void OnAssetReloaded(Data::Asset<Data::AssetData> asset) override;
+
+            // AssetManagerNotificationBus overrides...
+            void OnAssetEventsDispatchEnd() override;
 
             // ShaderVariantFinderNotificationBus overrides...
             void OnShaderVariantTreeAssetReady(Data::Asset<ShaderVariantTreeAsset> /*shaderVariantTreeAsset*/, bool /*isError*/) override {};
