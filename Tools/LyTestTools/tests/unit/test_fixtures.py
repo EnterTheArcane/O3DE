@@ -20,6 +20,15 @@ pytestmark = pytest.mark.SUITE_smoke
 
 class TestFixtures(object):
 
+    @pytest.mark.parametrize("build_name", ["debug", "profile"])
+    def test_GetBuildDirectory_ExistingConfiguration_ReturnsDirectory(self, tmp_path, build_name):
+        build_directory = tmp_path / build_name
+        build_directory.mkdir()
+        config = mock.Mock()
+        config.getoption.return_value = str(build_directory)
+
+        assert test_tools_fixtures._get_build_directory(config) == str(build_directory)
+
     def test_AddOptionForLogs_MockParser_OptionAdded(self):
         mock_parser = mock.MagicMock()
 

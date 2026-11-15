@@ -509,6 +509,30 @@ namespace AZ
         {
             m_multisampleState = multisampleState;
 
+            uint32_t supportedSampleCounts = 0x7F;
+            for (int deviceIndex = 0; deviceIndex < m_rhiSystem.GetDeviceCount(); ++deviceIndex)
+            {
+                supportedSampleCounts &= m_rhiSystem.GetDevice(deviceIndex)->GetFeatures().m_supportedMsaaSampleCounts;
+            }
+
+            uint16_t sampleCount = 64;
+            while (sampleCount > 1 &&
+                (sampleCount > multisampleState.m_samples ||
+                    (supportedSampleCounts & sampleCount) == 0))
+            {
+                sampleCount /= 2;
+            }
+
+            if (sampleCount != m_multisampleState.m_samples)
+            {
+                AZ_Warning("RPI", false, "MSAA sample count %u is unsupported. Using %u samples.",
+                    m_multisampleState.m_samples, sampleCount);
+                m_multisampleState.m_samples = sampleCount;
+                m_multisampleState.m_quality = 0;
+                m_multisampleState.m_customPositions = {};
+                m_multisampleState.m_customPositionsCount = 0;
+            }
+
             bool isNonMsaaPipeline = (m_multisampleState.m_samples == 1);
             const char* supervariantName = isNonMsaaPipeline ? AZ::RPI::NoMsaaSupervariantName : "";
             AZ::RPI::ShaderSystemInterface::Get()->SetSupervariantName(AZ::Name(supervariantName));
@@ -524,7 +548,7 @@ namespace AZ
                     // are recreated using the new supervariant name coming from MSAA at application level just set above.
                     // In conclusion, it's not safe to skip here setting MSAA state to the render pipeline when it's the
                     // same as the target.
-                    renderPipeline->GetRenderSettings().m_multisampleState = multisampleState;
+                    renderPipeline->GetRenderSettings().m_multisampleState = m_multisampleState;
                     renderPipeline->MarkPipelinePassChanges(PipelinePassChanges::MultisampleStateChanged);
                 }
             }

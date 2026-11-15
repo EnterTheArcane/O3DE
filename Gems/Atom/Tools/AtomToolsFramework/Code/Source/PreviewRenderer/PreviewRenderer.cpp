@@ -72,10 +72,8 @@ namespace AtomToolsFramework
         {
             pipelineDesc.m_renderSettings.m_multisampleState = AZ::RPI::RPISystemInterface::Get()->GetApplicationMultisampleState();
         }
-        else
-        {
-            AZ::RPI::RPISystemInterface::Get()->SetApplicationMultisampleState(pipelineDesc.m_renderSettings.m_multisampleState);
-        }
+        AZ::RPI::RPISystemInterface::Get()->SetApplicationMultisampleState(pipelineDesc.m_renderSettings.m_multisampleState);
+        pipelineDesc.m_renderSettings.m_multisampleState = AZ::RPI::RPISystemInterface::Get()->GetApplicationMultisampleState();
         
         m_renderPipeline = AZ::RPI::RenderPipeline::CreateRenderPipeline(pipelineDesc);
         m_scene->AddRenderPipeline(m_renderPipeline);

@@ -58,6 +58,7 @@ namespace AtomToolsFramework
         void CreateStaticModules(AZStd::vector<AZ::Module*>& outModules) override;
         const char* GetCurrentConfigurationName() const override;
         void StartCommon(AZ::Entity* systemEntity) override;
+        void Stop() override;
         void Destroy() override;
         void RunMainLoop() override;
 

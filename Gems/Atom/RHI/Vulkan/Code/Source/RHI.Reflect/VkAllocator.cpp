@@ -20,6 +20,12 @@ namespace AZ
             size_t                                      alignment,
             [[maybe_unused]] VkSystemAllocationScope    allocationScope)
         {
+            // Mesa's command-copy path treats a null zero-byte allocation as an allocation failure.
+            if (size == 0)
+            {
+                size = 1;
+            }
+
             return AZ::AllocatorInstance<AZ::SystemAllocator>::Get().Allocate(size, alignment, 0, "RHI::Vulkan", __FILE__, __LINE__);
         }
 

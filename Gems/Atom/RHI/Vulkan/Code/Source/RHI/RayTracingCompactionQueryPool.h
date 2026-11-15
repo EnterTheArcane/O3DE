@@ -72,6 +72,8 @@ namespace AZ
             RHI::ResultCode InitInternal(RHI::RayTracingCompactionQueryPoolDescriptor desc) override;
             //////////////////////////////////////////////////////////////////////////
 
+            void Shutdown() override;
+
             VkQueryPool m_nativeQueryPool = VK_NULL_HANDLE;
             AZStd::vector<int> m_freeList;
             AZStd::vector<int> m_queriesEnqueuedForReset;

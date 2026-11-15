@@ -172,7 +172,21 @@ namespace AZ
             m_instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(m_descriptor.m_requiredExtensions.size());
             m_instanceCreateInfo.ppEnabledExtensionNames = m_descriptor.m_requiredExtensions.data();
 
-            VkResult result = GetContext().CreateInstance( &m_instanceCreateInfo, VkSystemAllocator::Get(), &m_instance);
+            const VkValidationFeatureEnableEXT gpuAssistedValidation = VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT;
+            VkValidationFeaturesEXT validationFeatures{};
+            validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+            validationFeatures.pNext = m_instanceCreateInfo.pNext;
+            if (validation == RHI::ValidationMode::GPU)
+            {
+                // shortcut: GPU-AV does not model SPD's subgroup shuffles. Re-enable this check when it does.
+                AZ::Utils::SetEnv("VK_LAYER_GPUAV_SHARED_MEMORY_DATA_RACE", "0", false);
+                validationFeatures.enabledValidationFeatureCount = 1;
+                validationFeatures.pEnabledValidationFeatures = &gpuAssistedValidation;
+                m_instanceCreateInfo.pNext = &validationFeatures;
+            }
+
+            VkResult result = GetContext().CreateInstance(&m_instanceCreateInfo, VkSystemAllocator::Get(), &m_instance);
+            m_instanceCreateInfo.pNext = validationFeatures.pNext;
 
             if (validation != RHI::ValidationMode::Disabled &&
                 (result == VK_ERROR_LAYER_NOT_PRESENT || result == VK_ERROR_EXTENSION_NOT_PRESENT))

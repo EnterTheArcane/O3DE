@@ -25,8 +25,6 @@ except ModuleNotFoundError: # Not all projects enable the Multiplayer Gem.
     pass
 
 import azlmbr.debug
-import ly_test_tools.environment.waiter as waiter
-import ly_test_tools.environment.process_utils as process_utils
 
 # Controls how many reconnection attempts to make from the editor to the multiplayer server before giving up and failing the test.
 # Note that the editor will wait one additional second in between each attempt, so the final time will be
@@ -221,6 +219,9 @@ class TestHelper:
             multiplayer.PythonEditorFuncs_enter_game_mode()
 
             if editor_server_mode == TestHelper.EditorServerMode.DEDICATED_SERVER:
+                import ly_test_tools.environment.waiter as waiter
+                import ly_test_tools.environment.process_utils as process_utils
+
                 # note that this next line merely waits for the editor say that it has asked the server to launch, not that it did actually launch.
                 TestHelper.wait_for_condition(lambda : multiplayer_helper.serverLaunched, 20.0)
 

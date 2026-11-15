@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 """
 import os
 import pytest
+import ly_test_tools
 
 from ly_test_tools.o3de.editor_test import EditorSingleTest, EditorTestSuite, EditorBatchedTest
 
@@ -15,7 +16,7 @@ from ly_test_tools.o3de.editor_test import EditorSingleTest, EditorTestSuite, Ed
 @pytest.mark.SUITE_smoke
 @pytest.mark.REQUIRES_gpu
 @pytest.mark.parametrize("project", ["AutomatedTesting"])
-@pytest.mark.parametrize("launcher_platform", ['windows_editor'])
+@pytest.mark.parametrize("launcher_platform", [ly_test_tools.HOST_OS_EDITOR])
 class TestAutomation_RHIValidation_Vulkan(EditorTestSuite):
     # Remove -BatchMode from global_extra_cmdline_args since we need rendering for these tests.
     global_extra_cmdline_args = [
@@ -31,7 +32,7 @@ class TestAutomation_RHIValidation_Vulkan(EditorTestSuite):
 @pytest.mark.SUITE_smoke
 @pytest.mark.REQUIRES_gpu
 @pytest.mark.parametrize("project", ["AutomatedTesting"])
-@pytest.mark.parametrize("launcher_platform", ['windows_editor'])
+@pytest.mark.parametrize("launcher_platform", [ly_test_tools.HOST_OS_EDITOR])
 class TestAutomation_RHIValidation_Vulkan_LowEndPipeline(EditorTestSuite):
     # Remove -BatchMode from global_extra_cmdline_args since we need rendering for these tests.
     global_extra_cmdline_args = [
@@ -41,6 +42,21 @@ class TestAutomation_RHIValidation_Vulkan_LowEndPipeline(EditorTestSuite):
         "--r_renderPipelinePath=passes/LowEndRenderPipeline.azasset"
         ]  # Default is ["-BatchMode", "-autotest_mode"]
     use_null_renderer = False  # Default is True
+
+    class test_RHIValidation_Vulkan_DefaultLevel(EditorBatchedTest):
+        from .tests.rhi_validation import RHIValidation_Vulkan_DefaultLevel as test_module
+
+@pytest.mark.SUITE_smoke
+@pytest.mark.REQUIRES_gpu
+@pytest.mark.parametrize("project", ["AutomatedTesting"])
+@pytest.mark.parametrize("launcher_platform", [ly_test_tools.HOST_OS_EDITOR])
+class TestAutomation_RHIValidation_Vulkan_GPU(EditorTestSuite):
+    global_extra_cmdline_args = [
+        "-autotest_mode",
+        "-rhi=vulkan",
+        "-rhi-device-validation=gpu"
+        ]
+    use_null_renderer = False
 
     class test_RHIValidation_Vulkan_DefaultLevel(EditorBatchedTest):
         from .tests.rhi_validation import RHIValidation_Vulkan_DefaultLevel as test_module

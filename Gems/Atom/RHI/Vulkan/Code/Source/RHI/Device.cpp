@@ -122,6 +122,7 @@ namespace AZ
             m_enabledDeviceFeatures.independentBlend = deviceFeatures.independentBlend;
             m_enabledDeviceFeatures.shaderStorageImageMultisample = deviceFeatures.shaderStorageImageMultisample;
             m_enabledDeviceFeatures.shaderStorageImageReadWithoutFormat = deviceFeatures.shaderStorageImageReadWithoutFormat;
+            m_enabledDeviceFeatures.shaderStorageImageWriteWithoutFormat = deviceFeatures.shaderStorageImageWriteWithoutFormat;
 
             if (deviceFeatures.geometryShader)
             {
@@ -1451,6 +1452,14 @@ namespace AZ
             m_features.m_subpassInputSupport = RHI::SubpassInputSupportType::Color | RHI::SubpassInputSupportType::DepthStencil;
 
             const VkPhysicalDeviceProperties& deviceProperties = physicalDevice.GetPhysicalDeviceProperties();
+            const auto& limits = deviceProperties.limits;
+            m_features.m_supportedMsaaSampleCounts = limits.framebufferColorSampleCounts
+                & limits.framebufferDepthSampleCounts
+                & limits.framebufferStencilSampleCounts
+                & limits.sampledImageColorSampleCounts
+                & limits.sampledImageDepthSampleCounts
+                & limits.sampledImageStencilSampleCounts;
+
             // Our sparse image implementation requires the device support sparse binding and particle residency for 2d and 3d images
             // And it should use standard block shape (64k).
             // It also requires memory alias support so resources can use the same block repeatedly (this may reduce performance based on implementation)

@@ -1064,7 +1064,6 @@ namespace AZ::ShaderCompiler
 
     void CodeEmitter::EmitSRGDataView(const IdentifierUID& tId, const Options& options, const RootSigDesc& rootSig) const
     {
-        EmitAllAttachedAttributes(tId, Except{ { "input_attachment_index" } });
         auto   bindSet = BindingPair::Set::Merged;
         auto&  bindInfo = rootSig.Get(tId);
         auto*  varInfo = m_ir->GetSymbolSubAs<VarInfo>(tId.m_name);
@@ -1075,6 +1074,7 @@ namespace AZ::ShaderCompiler
         // depending on platforms we may have supplementary attributes or/and type modifier.
         auto [prefix, suffix] = GetPlatformEmitter().GetDataViewHeaderFooter(*this, tId, bindInfo.m_registerBinding.m_pair[bindSet].m_registerIndex, registerTypeLetter, stringifiedLogicalSpace, options);
         m_out << prefix;
+        EmitAllAttachedAttributes(tId, Except{ { "input_attachment_index" } });
         // declaration of the view variable on the global scope.
         // type unmangled_path_to_symbol [optional_array_dimension] : optional_register_binding_as_suffix
         m_out << varType << " " << ReplaceSeparators(tId.m_name, Underscore);

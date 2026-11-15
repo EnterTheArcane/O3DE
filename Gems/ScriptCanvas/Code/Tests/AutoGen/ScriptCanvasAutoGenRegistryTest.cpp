@@ -7,7 +7,9 @@
  */
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/ComponentApplicationLifecycle.h>
 #include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Settings/SettingsRegistryImpl.h>
 
 #include <ScriptCanvas/AutoGen/ScriptCanvasAutoGenRegistry.h>
 #include <Tests/Framework/ScriptCanvasUnitTestFixture.h>
@@ -47,6 +49,48 @@ namespace ScriptCanvasUnitTest
         ScriptCanvasModel::Instance().RemoveDescriptor(descriptor);
 
         descriptor->ReleaseDescriptor();
+    }
+
+    TEST_F(ScriptCanvasUnitTestFixture, RegisteredDescriptorsReleasedBeforeModulesUnloadWithoutSystemComponent)
+    {
+        AZ::SettingsRegistryImpl settingsRegistry;
+        AZ::SettingsRegistry::Register(&settingsRegistry);
+
+        ScriptCanvasModel model;
+        for (int registration = 0; registration < 2; ++registration)
+        {
+            auto* descriptor = MockNode::CreateDescriptor();
+            EXPECT_TRUE(model.RegisterReflection("MockNode", [](AZ::ReflectContext*) {}, descriptor));
+            EXPECT_EQ(AZ::ComponentDescriptorBus::FindFirstHandler(azrtti_typeid<MockNode>()), descriptor);
+
+            EXPECT_TRUE(AZ::ComponentApplicationLifecycle::SignalEvent(settingsRegistry, "SystemComponentsDeactivated", R"({})"));
+
+            EXPECT_TRUE(model.GetDescriptors().empty());
+            EXPECT_EQ(AZ::ComponentDescriptorBus::FindFirstHandler(azrtti_typeid<MockNode>()), nullptr);
+
+            model.Release();
+        }
+
+        AZ::SettingsRegistry::Unregister(&settingsRegistry);
+    }
+
+    TEST_F(ScriptCanvasUnitTestFixture, InitRegistersCleanupForDescriptorsCreatedBeforeSettingsRegistry)
+    {
+        ScriptCanvasModel model;
+        auto* descriptor = MockNode::CreateDescriptor();
+        EXPECT_TRUE(model.RegisterReflection("MockNode", [](AZ::ReflectContext*) {}, descriptor));
+
+        AZ::SettingsRegistryImpl settingsRegistry;
+        AZ::SettingsRegistry::Register(&settingsRegistry);
+        model.Init();
+
+        EXPECT_TRUE(AZ::ComponentApplicationLifecycle::SignalEvent(settingsRegistry, "SystemComponentsDeactivated", R"({})"));
+
+        EXPECT_TRUE(model.GetDescriptors().empty());
+        EXPECT_EQ(AZ::ComponentDescriptorBus::FindFirstHandler(azrtti_typeid<MockNode>()), nullptr);
+
+        model.Release();
+        AZ::SettingsRegistry::Unregister(&settingsRegistry);
     }
 
 } // namespace ScriptCanvasUnitTest

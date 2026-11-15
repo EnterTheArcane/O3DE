@@ -10,6 +10,7 @@
 #include <Atom/RHI/DeviceQueryPool.h>
 #include <RHI/Device.h>
 #include <RHI/RayTracingCompactionQueryPool.h>
+#include <RHI/ReleaseContainer.h>
 
 namespace AZ
 {
@@ -132,6 +133,24 @@ namespace AZ
             m_queriesEnqueuedForReset = m_freeList;
 
             return resultCode;
+        }
+
+        void RayTracingCompactionQueryPool::Shutdown()
+        {
+            if (m_nativeQueryPool != VK_NULL_HANDLE)
+            {
+                auto& device = static_cast<Device&>(GetDevice());
+                device.QueueForRelease(
+                    new ReleaseContainer<VkQueryPool>(
+                        device.GetNativeDevice(),
+                        m_nativeQueryPool,
+                        device.GetContext().DestroyQueryPool));
+                m_nativeQueryPool = VK_NULL_HANDLE;
+            }
+
+            m_freeList.clear();
+            m_queriesEnqueuedForReset.clear();
+            Base::Shutdown();
         }
     } // namespace Vulkan
 } // namespace AZ

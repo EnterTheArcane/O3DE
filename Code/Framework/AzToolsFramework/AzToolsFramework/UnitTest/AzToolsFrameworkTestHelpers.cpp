@@ -176,12 +176,10 @@ namespace UnitTest
                 return action->shortcut() == keySequence;
             });
 
-            // if we get a match, generate the shortcut for this key combination
+            // Trigger the matching action without fabricating a Qt shortcut registration ID.
             if (actionIt != cachedActions.end())
             {
-                // trigger shortcut
-                QShortcutEvent shortcutEvent(keySequence, 0);
-                QApplication::sendEvent(*actionIt, &shortcutEvent);
+                (*actionIt)->trigger();
                 keyEvent->accept();
                 return true;
             }

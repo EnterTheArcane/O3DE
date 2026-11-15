@@ -5,6 +5,8 @@
  *
  */
 
+#include <Atom/RHI/Device.h>
+#include <Atom/RHI/RHISystemInterface.h>
 #include <Atom/RPI.Edit/Common/AssetUtils.h>
 #include <Atom/RPI.Public/RPISystemInterface.h>
 #include <AtomToolsFramework/Application/AtomToolsApplication.h>
@@ -239,6 +241,22 @@ namespace AtomToolsFramework
             AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ExitMainLoop);
             Stop();
         });
+    }
+
+    void AtomToolsApplication::Stop()
+    {
+        if (m_isStarted)
+        {
+            if (auto* rhiSystem = AZ::RHI::RHISystemInterface::Get())
+            {
+                for (int deviceIndex = 0; deviceIndex < rhiSystem->GetDeviceCount(); ++deviceIndex)
+                {
+                    rhiSystem->GetDevice(deviceIndex)->WaitForIdle();
+                }
+            }
+        }
+
+        Base::Stop();
     }
 
     void AtomToolsApplication::Destroy()

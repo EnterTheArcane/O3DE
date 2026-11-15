@@ -44,4 +44,33 @@ namespace AZ::ShaderCompiler
     {
         return SubpassInputSupportFlag::All;
     }
+
+    std::pair<string, string> VulkanPlatformEmitter::GetDataViewHeaderFooter(
+        const CodeEmitter& codeEmitter,
+        const IdentifierUID& symbol,
+        uint32_t bindInfoRegisterIndex,
+        string_view registerTypeLetter,
+        optional<string> stringifiedLogicalSpace,
+        const Options& options) const
+    {
+        auto headerFooter = CommonVulkanPlatformEmitter::GetDataViewHeaderFooter(codeEmitter, symbol, bindInfoRegisterIndex, registerTypeLetter, stringifiedLogicalSpace, options);
+        const auto* ir = codeEmitter.GetIR();
+        const auto* varInfo = ir->GetSymbolSubAs<VarInfo>(symbol.GetName());
+        const auto& typeName = varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName();
+        const auto scalarType = varInfo->m_typeInfoExt.m_genericParameter.m_arithmeticInfo.UnderlyingScalarToStr();
+        const bool hasFloatingPointElements = scalarType == "half" || scalarType == "float" || scalarType == "double";
+
+        // Integer image atomics require a declared SPIR-V format.
+        if (hasFloatingPointElements
+            && (StartsWith(typeName, "?RWTexture")
+            || StartsWith(typeName, "?RasterizerOrderedTexture")
+            || typeName == "?RWBuffer"
+            || typeName == "?RasterizerOrderedBuffer")
+            && !ir->m_symbols.GetAttribute(symbol, "image_format"))
+        {
+            // Floating point elements can use normalized or smaller image formats.
+            headerFooter.first += "[[vk::image_format(\"unknown\")]]\n";
+        }
+        return headerFooter;
+    }
 }

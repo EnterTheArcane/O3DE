@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <AzCore/Settings/SettingsRegistry.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/functional.h>
@@ -92,6 +93,10 @@ public:
     const AZStd::list<AZ::ComponentDescriptor*>& GetDescriptors() const { return m_descriptors; }
 
 private:
+
+    void RegisterLifecycleHandler();
+
+    AZ::SettingsRegistryInterface::NotifyEventHandler m_systemComponentsDeactivatedHandler;
 
     AZStd::list<AZ::ComponentDescriptor*> m_descriptors;
 

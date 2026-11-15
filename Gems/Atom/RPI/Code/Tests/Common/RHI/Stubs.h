@@ -53,6 +53,11 @@ namespace UnitTest
             AZ_CLASS_ALLOCATOR(Device, AZ::SystemAllocator);
             Device();
 
+            void SetSupportedMsaaSampleCounts(uint32_t sampleCounts)
+            {
+                m_features.m_supportedMsaaSampleCounts = sampleCounts;
+            }
+
         private:
             AZ::RHI::ResultCode InitInternal([[maybe_unused]] AZ::RHI::PhysicalDevice&) override { return AZ::RHI::ResultCode::Success; }
             AZ::RHI::ResultCode InitInternalBindlessSrg([[maybe_unused]] const AZ::RHI::BindlessSrgDescriptor& bindlessSrgDesc) override { return AZ::RHI::ResultCode::Success;}

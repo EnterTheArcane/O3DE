@@ -77,7 +77,7 @@ if(WIN32)
         "${vulkan-validationlayers_SOURCE_DIR}/layers/VkLayer_khronos_validation.def"
     )
 
-    set(JSON_LIBRARY_PATH "./VkLayer_khronos_validation.dll")
+    set(JSON_LIBRARY_PATH ".\\\\VkLayer_khronos_validation.dll")
 elseif(APPLE)
     set_target_properties(vulkan-validationlayers PROPERTIES SUFFIX ".dylib")
 
@@ -103,11 +103,6 @@ else()
 
     set(JSON_LIBRARY_PATH "./libVkLayer_khronos_validation.so")
 endif()
-
-ly_add_target_files(
-    TARGETS vulkan-validationlayers
-    FILES "$<TARGET_FILE:vulkan-validationlayers>"
-)
 
 ly_install_files(
     FILES

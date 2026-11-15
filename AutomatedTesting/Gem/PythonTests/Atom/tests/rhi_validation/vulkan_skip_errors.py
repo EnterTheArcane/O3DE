@@ -8,6 +8,12 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 class VulkanValidationErrors:
     identifiers = ["vkDebugMessage"]
 
+    # GPU-AV compile-time advice is expected when instrumenting large Atom shaders.
+    performance_warnings = (
+        "GPUAV-Compile-time-general-buffer",
+        "GPUAV-Compile-time-texel-buffer",
+    )
+
     # List to add vulkan validation errors that will be ignored.
     # For example, to ignore the following error
     #
@@ -22,9 +28,12 @@ class VulkanValidationErrors:
 
     def CheckError(error_id, error_msg):
         if error_id in VulkanValidationErrors.identifiers:
+            if "[WARNING]" in error_msg and "[Performance]" in error_msg:
+                return False
+            if "[WARNING]" in error_msg and any(f"[{message_id}]" in error_msg for message_id in VulkanValidationErrors.performance_warnings):
+                return False
             for error_to_skip in VulkanValidationErrors.errors_to_skip:
                 if error_to_skip in error_msg:
                     return False # Skip error
             return True # Found error
         return False # Not a Vulkan error
-        

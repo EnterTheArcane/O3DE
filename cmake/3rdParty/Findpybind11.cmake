@@ -34,6 +34,7 @@ block()
         URL_HASH "eacf582fa8f696227988d08cfc46121770823839fe9e301a20fbce67e7cd70ec"
         GIT "https://github.com/pybind/pybind11.git"
         GIT_HASH "aa304c9c7d725ffb9d10af08a3b34cb372307020"
+        PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/pybind11.patch"
         SOURCE_SUBDIR "include"
     )
 

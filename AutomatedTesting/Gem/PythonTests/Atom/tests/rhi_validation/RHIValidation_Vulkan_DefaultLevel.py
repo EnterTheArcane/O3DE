@@ -41,7 +41,7 @@ def RHIValidation_Vulkan_DefaultLevel():
 
     # 5) Verify there are no rhi validation errors in the logs
     has_rhi_validation_errors = False
-    for error_msg in section_tracer.errors:
+    for error_msg in section_tracer.errors + section_tracer.warnings:
         if VulkanValidationErrors.CheckError(error_msg.window, f"{error_msg}"):
             has_rhi_validation_errors = True
             Report.info(f"RHI Validation error found: {error_msg}")

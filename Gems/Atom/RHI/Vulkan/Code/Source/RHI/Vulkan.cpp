@@ -311,6 +311,12 @@ namespace AZ
             VkDebugUtilsMessengerEXT s_messageCallback = VK_NULL_HANDLE;
             VKAPI_ATTR VkBool32 VKAPI_CALL MessageCallbak(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
             {
+                const char* messageId = "unknown";
+                if (pCallbackData->pMessageIdName)
+                {
+                    messageId = pCallbackData->pMessageIdName;
+                }
+
                 const char* severtityString = "";
                 if (RHI::CheckBitsAny(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))
                 {
@@ -345,15 +351,15 @@ namespace AZ
 
                 if (RHI::CheckBitsAny(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))
                 {
-                    AZ_Error(s_debugMessageLabel, false, "%s%s %s\n", severtityString, typeString, pCallbackData->pMessage);
+                    AZ_Error(s_debugMessageLabel, false, "%s%s [%s] %s\n", severtityString, typeString, messageId, pCallbackData->pMessage);
                 }
                 else if (RHI::CheckBitsAny(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))
                 {
-                    AZ_Warning(s_debugMessageLabel, false, "%s%s %s\n", severtityString, typeString, pCallbackData->pMessage);
+                    AZ_Warning(s_debugMessageLabel, false, "%s%s [%s] %s\n", severtityString, typeString, messageId, pCallbackData->pMessage);
                 }
                 else
                 {
-                    AZ_Printf(s_debugMessageLabel, "%s%s %s\n", severtityString, typeString, pCallbackData->pMessage);
+                    AZ_Printf(s_debugMessageLabel, "%s%s [%s] %s\n", severtityString, typeString, messageId, pCallbackData->pMessage);
                 }
 
                 return VK_FALSE;
@@ -424,10 +430,15 @@ namespace AZ
             {
                 if (Instance::GetInstance().GetValidationMode() != RHI::ValidationMode::Disabled)
                 {
-                    return
+                    RawStringList extensions
                     {
-                            VK_EXT_DEBUG_REPORT_EXTENSION_NAME
+                        VK_EXT_DEBUG_REPORT_EXTENSION_NAME
                     };
+                    if (Instance::GetInstance().GetValidationMode() == RHI::ValidationMode::GPU)
+                    {
+                        extensions.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
+                    }
+                    return extensions;
                 }
                 return RawStringList();
             }

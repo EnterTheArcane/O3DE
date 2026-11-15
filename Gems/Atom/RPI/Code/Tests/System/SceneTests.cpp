@@ -12,9 +12,11 @@
 #include <Atom/RPI.Public/Pass/RasterPass.h>
 #include <Atom/RPI.Public/RenderPipeline.h>
 #include <Atom/RPI.Public/Scene.h>
+#include <Atom/RPI.Public/Shader/ShaderSystemInterface.h>
 #include <Atom/RPI.Public/View.h>
 
 #include <Atom/RPI.Reflect/Pass/RasterPassData.h>
+#include <Atom/RPI.Reflect/Shader/ShaderCommonTypes.h>
 
 #include <AzFramework/Visibility/OctreeSystemComponent.h>
 
@@ -65,6 +67,87 @@ namespace UnitTest
             RPITestFixture::TearDown();
         }
     };
+
+    TEST_F(SceneTests, ApplicationMultisampleState_PropagatesSupportedCountAndShaderSupervariant)
+    {
+        auto* rhiSystem = RHI::RHISystemInterface::Get();
+        auto* device = static_cast<StubRHI::Device*>(rhiSystem->GetDevice());
+        device->SetSupportedMsaaSampleCounts(1 | 4);
+
+        RenderPipelineDescriptor pipelineDesc;
+        pipelineDesc.m_name = "MsaaTestPipeline";
+        RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(pipelineDesc);
+        ScenePtr scene = Scene::CreateScene(SceneDescriptor{});
+        scene->AddRenderPipeline(pipeline);
+
+        auto* rpiSystem = RPISystemInterface::Get();
+        rpiSystem->RegisterScene(scene);
+
+        struct SampleCountCase
+        {
+            uint16_t m_requested;
+            uint16_t m_expected;
+            uint32_t m_expectedCustomPositionsCount;
+            uint16_t m_expectedQuality;
+            const char* m_expectedSupervariant;
+            uint32_t m_expectedWarnings;
+        };
+        const SampleCountCase cases[] = {
+            { 2, 1, 0, 0, NoMsaaSupervariantName, 1 },
+            { 4, 4, 4, 3, "", 0 },
+            { 3, 1, 0, 0, NoMsaaSupervariantName, 1 },
+            { 0, 1, 0, 0, NoMsaaSupervariantName, 1 },
+            { 8, 4, 0, 0, "", 1 },
+        };
+
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(testCase.m_requested);
+
+            RHI::MultisampleState requestedState(testCase.m_requested, 3);
+            requestedState.m_customPositionsCount = 4;
+            requestedState.m_customPositions[0] = RHI::SamplePosition(1, 2);
+
+            ErrorMessageFinder warningFinder("MSAA sample count", testCase.m_expectedWarnings);
+            rpiSystem->SetApplicationMultisampleState(requestedState);
+
+            const auto& actualState = rpiSystem->GetApplicationMultisampleState();
+            EXPECT_EQ(actualState.m_samples, testCase.m_expected);
+            EXPECT_EQ(actualState.m_quality, testCase.m_expectedQuality);
+            EXPECT_EQ(actualState.m_customPositionsCount, testCase.m_expectedCustomPositionsCount);
+            if (testCase.m_expectedCustomPositionsCount == 0)
+            {
+                EXPECT_EQ(actualState.m_customPositions, RHI::MultisampleState{}.m_customPositions);
+            }
+            else
+            {
+                EXPECT_EQ(actualState.m_customPositions, requestedState.m_customPositions);
+            }
+            EXPECT_EQ(pipeline->GetRenderSettings().m_multisampleState, actualState);
+            EXPECT_EQ(ShaderSystemInterface::Get()->GetSupervariantName(), Name(testCase.m_expectedSupervariant));
+        }
+
+        rpiSystem->UnregisterScene(scene);
+    }
+
+    TEST_F(SceneTests, ApplicationMultisampleState_UsesSupportSharedByAllDevices)
+    {
+        auto* rhiSystem = RHI::RHISystemInterface::Get();
+        auto* firstDevice = static_cast<StubRHI::Device*>(rhiSystem->GetDevice());
+        firstDevice->SetSupportedMsaaSampleCounts(1 | 2 | 4);
+
+        const auto secondDeviceIndex = rhiSystem->AddVirtualDevice();
+        ASSERT_TRUE(secondDeviceIndex.has_value());
+        auto* secondDevice = static_cast<StubRHI::Device*>(rhiSystem->GetDevice(secondDeviceIndex.value()));
+        secondDevice->SetSupportedMsaaSampleCounts(1 | 4);
+
+        ErrorMessageFinder warningFinder("MSAA sample count", 1);
+        auto* rpiSystem = RPISystemInterface::Get();
+        rpiSystem->SetApplicationMultisampleState(RHI::MultisampleState(2, 0));
+
+        EXPECT_EQ(rpiSystem->GetApplicationMultisampleState().m_samples, 1);
+        EXPECT_EQ(ShaderSystemInterface::Get()->GetSupervariantName(), Name(NoMsaaSupervariantName));
+    }
 
     /**
     * Unit test to test RPI::Scene's feature processor management functions

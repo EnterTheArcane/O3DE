@@ -9,6 +9,7 @@
 #include "ScriptCanvasAutoGenRegistry.h"
 
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/ComponentApplicationLifecycle.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/std/string/fixed_string.h>
@@ -35,6 +36,8 @@ void ScriptCanvasModel::RemoveDescriptor(AZ::ComponentDescriptor* descriptor)
 
 void ScriptCanvasModel::Release()
 {
+    m_systemComponentsDeactivatedHandler = {};
+
     for (auto descriptor : m_descriptors)
     {
         descriptor->ReleaseDescriptor();
@@ -46,6 +49,8 @@ void ScriptCanvasModel::Release()
 
 void ScriptCanvasModel::Init()
 {
+    RegisterLifecycleHandler();
+
     for (auto descriptor : m_descriptors)
     {
         if (auto componentApplication = AZ::Interface<AZ::ComponentApplicationRequests>::Get())
@@ -63,6 +68,8 @@ void ScriptCanvasModel::Init()
 
 bool ScriptCanvasModel::RegisterReflection(const AZStd::string& name, ReflectFunction reflect, AZ::ComponentDescriptor* descriptor/* = nullptr*/)
 {
+    RegisterLifecycleHandler();
+
     if (AZStd::find(m_descriptors.begin(), m_descriptors.end(), descriptor) != m_descriptors.end())
     {
         if (m_verbose)
@@ -114,5 +121,27 @@ void ScriptCanvasModel::Reflect(AZ::ReflectContext* context)
         }
 
         reflection.second(context);
+    }
+}
+
+void ScriptCanvasModel::RegisterLifecycleHandler()
+{
+    if (m_systemComponentsDeactivatedHandler.IsConnected())
+    {
+        return;
+    }
+
+    if (auto* settingsRegistry = AZ::SettingsRegistry::Get())
+    {
+        // Tools can load node descriptors without activating the Script Canvas system component.
+        AZ::ComponentApplicationLifecycle::RegisterHandler(
+            *settingsRegistry,
+            m_systemComponentsDeactivatedHandler,
+            [this](const AZ::SettingsRegistryInterface::NotifyEventArgs&)
+            {
+                Release();
+            },
+            "SystemComponentsDeactivated",
+            true);
     }
 }

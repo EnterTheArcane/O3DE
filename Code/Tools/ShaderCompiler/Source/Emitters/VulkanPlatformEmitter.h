@@ -25,6 +25,14 @@ namespace AZ::ShaderCompiler
 
         SubpassInputSupportFlag GetSubpassInputSupport() const override;
 
+        std::pair<string, string> GetDataViewHeaderFooter(
+            const CodeEmitter& codeEmitter,
+            const IdentifierUID& symbol,
+            uint32_t bindInfoRegisterIndex,
+            string_view registerTypeLetter,
+            optional<string> stringifiedLogicalSpace,
+            const Options& options) const override;
+
     private:
         VulkanPlatformEmitter() : CommonVulkanPlatformEmitter {} {};
     };

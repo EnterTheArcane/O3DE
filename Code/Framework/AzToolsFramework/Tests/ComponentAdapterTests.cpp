@@ -92,7 +92,6 @@ namespace UnitTest
         : public CustomSerializeContextTestFixture
     {
 
-        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
         AZStd::unique_ptr<AZ::ComponentDescriptor> m_testRuntimeComponentDescriptor;
         AZStd::unique_ptr<AZ::ComponentDescriptor> m_testEditorComponentDescriptor;
 

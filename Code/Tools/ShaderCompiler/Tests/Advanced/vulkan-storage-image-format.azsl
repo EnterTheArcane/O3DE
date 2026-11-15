@@ -1,0 +1,31 @@
+// Copyright (c) Contributors to the Open 3D Engine Project.
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+ShaderResourceGroupSemantic PerPass
+{
+    FrequencyId = 0;
+};
+
+ShaderResourceGroup Images : PerPass
+{
+    RWTexture1D<float> image1D;
+    RWTexture1DArray<float2> image1DArray;
+    RWTexture2D<float4> image2D;
+    RWTexture2DArray<uint> image2DArray;
+    RWTexture3D<int> image3D;
+    [[verbatim("globallycoherent")]] RWTexture2D<float4> coherentImage;
+    RWBuffer<float4> texelBuffer;
+    Texture2D<float4> sampledImage;
+    Buffer<float4> sampledBuffer;
+    RWStructuredBuffer<float4> structuredBuffer;
+    [[vk::image_format("rgba16f")]] RWTexture2D<float4> explicitFormat;
+};
+
+[numthreads(1, 1, 1)]
+void MainCS(uint3 id : SV_DispatchThreadID)
+{
+    Images::image2D[id.xy] = 1.0;
+    uint previous;
+    InterlockedAdd(Images::image2DArray[uint3(id.xy, 0)], 1, previous);
+    Images::coherentImage[id.xy] = float4(previous, 0, 0, 1);
+}

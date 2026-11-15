@@ -35,6 +35,10 @@ namespace AZ::RHI
         //! Whether the adapter supports custom sample positions.
         bool m_customSamplePositions = false;
 
+        //! Supported MSAA sample counts, with each power-of-two count represented by its own value.
+        //! Backends can restrict this mask to their device limits.
+        uint32_t m_supportedMsaaSampleCounts = 0x7F;
+
         //! Supported query types
         AZStd::array<QueryTypeFlags, HardwareQueueClassCount> m_queryTypesMask = { { QueryTypeFlags::None, QueryTypeFlags::None, QueryTypeFlags::None } };
 

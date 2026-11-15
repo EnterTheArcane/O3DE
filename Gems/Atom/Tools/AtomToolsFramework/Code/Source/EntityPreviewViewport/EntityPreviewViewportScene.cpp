@@ -103,6 +103,10 @@ namespace AtomToolsFramework
             return m_renderPipelines.end();
         }
 
+        auto* rpiSystem = AZ::RPI::RPISystemInterface::Get();
+        rpiSystem->SetApplicationMultisampleState(pipelineDesc->m_renderSettings.m_multisampleState);
+        pipelineDesc->m_renderSettings.m_multisampleState = rpiSystem->GetApplicationMultisampleState();
+
         // Create a render pipeline from the specified asset for the window context and add the pipeline to the scene
         AZ::RPI::RenderPipelinePtr renderPipeline = AZ::RPI::RenderPipeline::CreateRenderPipelineForWindow(pipelineDesc.value(), *m_windowContext.get());
 
