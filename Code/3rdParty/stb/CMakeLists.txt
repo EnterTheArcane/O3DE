@@ -6,12 +6,12 @@
 #
 
 o3de_fetch_content(stb
-    VERSION "4e9b368"
+    VERSION "9600522"
     LICENSE "MIT OR Unlicense"
-    URL "https://github.com/nothings/stb/archive/4e9b368bfc071e97206ea5c6adba68dd0cbf8897.tar.gz"
-    URL_HASH "e60706ab084e0cae35ee7282deb4a7f283e4a28be1896d097437205da01a0683"
+    URL "https://github.com/nothings/stb/archive/9600522de53973336fa033a289858a4354cbb04c.tar.gz"
+    URL_HASH "8546b1281cf61e4b5229e9eb05055d765f1b076f6ba03aab377df09a20fb613b"
     GIT "https://github.com/nothings/stb.git"
-    GIT_HASH "4e9b368bfc071e97206ea5c6adba68dd0cbf8897"
+    GIT_HASH "9600522de53973336fa033a289858a4354cbb04c"
     PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/stb.patch"
     NO_ADD_SUBDIR
 )

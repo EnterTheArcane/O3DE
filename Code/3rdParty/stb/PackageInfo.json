@@ -1,12 +1,12 @@
 {
     "PackageName": "stb",
-    "Version": "4e9b368b",
+    "Version": "9600522",
     "URL": "https://github.com/nothings/stb",
     "License": "MIT OR Unlicense",
     "LicenseFile": "LICENSE.txt",
     "Source": {
-        "URL": "https://github.com/nothings/stb/archive/4e9b368bfc071e97206ea5c6adba68dd0cbf8897.tar.gz",
-        "Revision": "4e9b368bfc071e97206ea5c6adba68dd0cbf8897",
-        "SHA256": "e60706ab084e0cae35ee7282deb4a7f283e4a28be1896d097437205da01a0683"
+        "URL": "https://github.com/nothings/stb/archive/9600522de53973336fa033a289858a4354cbb04c.tar.gz",
+        "Revision": "9600522de53973336fa033a289858a4354cbb04c",
+        "SHA256": "8546b1281cf61e4b5229e9eb05055d765f1b076f6ba03aab377df09a20fb613b"
     }
 }
