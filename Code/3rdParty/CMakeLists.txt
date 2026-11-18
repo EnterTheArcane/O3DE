@@ -8,3 +8,4 @@
 add_subdirectory(antlr4)
 add_subdirectory(cli11)
 add_subdirectory(jsoncpp)
+add_subdirectory(pybind11)
