@@ -1,0 +1,12 @@
+{
+    "PackageName": "brotlig",
+    "Version": "1.1",
+    "URL": "https://github.com/GPUOpen-LibrariesAndSDKs/brotli_g_sdk",
+    "License": "MIT",
+    "LicenseFile": "LICENSE.txt",
+    "Source": {
+        "URL": "https://github.com/GPUOpen-LibrariesAndSDKs/brotli_g_sdk/archive/5a213b9609308ae652e6f2f3e58d036aea97584c.tar.gz",
+        "Revision": "5a213b9609308ae652e6f2f3e58d036aea97584c",
+        "SHA256": "e1f8dec05fed93c2dab8bcc7ca8f40a2dfbcba6533e81af5d383dacc8d9bcf52"
+    }
+}

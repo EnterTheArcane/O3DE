@@ -1,0 +1,187 @@
+--- a/inc/common/BrotligCommon.h
++++ b/inc/common/BrotligCommon.h
+@@ -39,9 +39,6 @@
+ #include <variant>
+ #include <queue>
+ #include <set>
+-#include <Windows.h>
+-
+-#include <d3d12.h>
+ 
+ #include "common/BrotligFlags.h"
+ #include "common/BrotligConstants.h"
+--- a/src/common/BrotligUtils.cpp
++++ b/src/common/BrotligUtils.cpp
+@@ -24,6 +24,11 @@
+ */
+ 
+ #include <cassert>
++#include <thread>
++
++#ifdef _WIN32
++#include <Windows.h>
++#endif
+ 
+ #include "common/BrotligConstants.h"
+ 
+--- a/src/common/BrotligDataConditioner.cpp
++++ b/src/common/BrotligDataConditioner.cpp
+@@ -16,6 +16,8 @@
+ // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ // THE SOFTWARE.
++
++#include <stdexcept>
+ 
+ #include "common/BrotligCommon.h"
+ #include "common/BrotligConstants.h"
+@@ -128,6 +130,6 @@
+     case BROTLIG_DATA_FORMAT_BC4:
+     case BROTLIG_DATA_FORMAT_BC5: return ConditionBC1_5(inSize, inData, params, outSize, outData);
+     default:
+-        throw std::exception("Brotli-G preconditioning unrecognized format");
++        throw std::runtime_error("Brotli-G preconditioning unrecognized format");
+     }
+ }
+--- a/src/decoder/BrotligHuffmanTable.cpp
++++ b/src/decoder/BrotligHuffmanTable.cpp
+@@ -18,2 +18,4 @@
+ // THE SOFTWARE.
++
++#include <stdexcept>
+ 
+@@ -202,3 +204,3 @@
+     default:
+-        throw std::exception("Error loading huffman table. Incorrect tree type.");
++        throw std::runtime_error("Error loading huffman table. Incorrect tree type.");
+     }
+--- a/src/encoder/BrotligHuffman.cpp
++++ b/src/encoder/BrotligHuffman.cpp
+@@ -23,6 +23,8 @@
+    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
+ */
+ 
++#include <stdexcept>
++
+ extern "C" {
+ #include "brotli/c/enc/entropy_encode.h"
+ }
+@@ -169,7 +171,10 @@
+     };
+ 
+     // Count the number for codes for each length
+-    for each (BrotligHuffmanNodePtr node in nodeList) ++blCounts[node->depth];
++    for (const BrotligHuffmanNodePtr& node : nodeList)
++    {
++        ++blCounts[node->depth];
++    }
+ 
+     // Find the numerical values of the smallest code for each code length
+     uint16_t code = 0;
+@@ -179,7 +184,7 @@
+ 
+     // Assign numerical values to all codes using consecutive values for all codes of the same length
+     // with the base values determined by the previous step.
+-    for each (BrotligHuffmanNodePtr node in nodeList)
++    for (const BrotligHuffmanNodePtr& node : nodeList)
+     {
+         codelens[node->symbol] = node->depth;
+         codes[node->symbol] = BrotligReverseBits(node->depth, next_code[node->depth]++);
+@@ -348,7 +353,7 @@
+             writer.Append((uint32_t)max_bits, (uint32_t)s4[3], true);
+             break;
+         default:
+-            throw std::exception("Incorrect num symbols for simple huffman tree.");
++            throw std::runtime_error("Incorrect num symbols for simple huffman tree.");
+         }
+ 
+         writer.BSReset();
+--- a/inc/encoder/PageEncoder.h
++++ b/inc/encoder/PageEncoder.h
+@@ -25,8 +25,6 @@
+ 
+ #pragma once
+ extern "C" {
+-#include "brotli/c/common/transform.h"
+-
+ #include "brotli/c/enc/command.h"
+ #include "brotli/c/enc/ringbuffer.h"
+ #include "brotli/c/enc/hash.h"
+@@ -165,18 +163,15 @@
+             DestroyHasher(m, &hasher_);
+         }
+ 
+-        void BrotligInitEncoderDictionary(BrotliEncoderDictionary* dict)
+-        {
+-            dict->words = BrotliGetDictionary();
+-            dict->num_transforms = (uint32_t)BrotliGetTransforms()->num_transforms;
+-
+-            dict->hash_table_words = gStaticDictionaryHashWords;
+-            dict->hash_table_lengths = gStaticDictionaryHashLengths;
+-            dict->buckets = gStaticDictionaryBuckets;
+-            dict->dict_words = kStaticDictionaryWords;
+-
+-            dict->cutoffTransformsCount = kCutoffTransformsCount;
+-            dict->cutoffTransforms = kCutoffTransforms;
++        void BrotligInitEncoderDictionary(SharedEncoderDictionary* dict)
++        {
++            BrotliInitSharedEncoderDictionary(dict);
++
++            // Keep the static dictionary lookup tables empty for Brotli-G pages.
++            BrotliEncoderDictionary& staticDictionary = dict->contextual.instance_;
++            staticDictionary.hash_table_words = gStaticDictionaryHashWords;
++            staticDictionary.hash_table_lengths = gStaticDictionaryHashLengths;
++            staticDictionary.buckets = gStaticDictionaryBuckets;
+         }
+ 
+         BROTLI_BOOL SetParameter(BrotliEncoderParameter p, uint32_t value)
+@@ -254,7 +249,11 @@
+             }
+ 
+             BrotliInitDistanceParams(
+-                &params, distance_postfix_bits, num_direct_distance_codes);
++                &params.dist,
++                distance_postfix_bits,
++                num_direct_distance_codes,
++                params.large_window
++            );
+         }
+ 
+         bool EnsureInitialized()
+--- a/src/encoder/PageEncoder.cpp
++++ b/src/encoder/PageEncoder.cpp
+@@ -76,7 +76,7 @@
+                 ++literal_histo[data[pos & mask]];
+                 pos += kSampleRate;
+             }
+-            if (BitsEntropy(literal_histo, 256) > bit_cost_threshold) {
++            if (BrotliBitsEntropy(literal_histo, 256) > bit_cost_threshold) {
+                 return BROTLI_FALSE;
+             }
+         }
+@@ -123,8 +123,9 @@
+ 
+     size_t endPos = 0, cmdIndex = 0;
+     while (cmdIndex < state->num_commands_) {
+-        assert((state->commands_[cmdIndex].copy_len_ & 0x1FFFFFF) < input_size);
+-        endPos += state->commands_[cmdIndex].insert_len_ + (state->commands_[cmdIndex++].copy_len_ & 0x1FFFFFF); 
++        const Command& command = state->commands_[cmdIndex++];
++        assert((command.copy_len_ & 0x1FFFFFF) < input_size);
++        endPos += command.insert_len_ + (command.copy_len_ & 0x1FFFFFF);
+     }
+ 
+     if (endPos < input_size)
+@@ -332,7 +333,12 @@
+         for (; ndirect_msb < 16; ++ndirect_msb)
+         {
+             ndirect = ndirect_msb << npostfix;
+-            BrotliInitDistanceParams(&new_params, npostfix, ndirect);
++            BrotliInitDistanceParams(
++                &new_params.dist,
++                npostfix,
++                ndirect,
++                new_params.large_window
++            );
+             if (npostfix == orig_params.dist.distance_postfix_bits
+                 && ndirect == orig_params.dist.num_direct_distance_codes)
+                 check_orig = false;
