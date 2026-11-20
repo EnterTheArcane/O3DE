@@ -2270,6 +2270,49 @@ TEST_F(SerializeBasicTest, BasicTypeTest_Succeed)
         };
     }
 
+    TEST_F(Serialization, BinaryVersionConversionRejectsMalformedChildAndAllowsDiscard)
+    {
+        using Deprecation::DeprecatedClass;
+        SerializeContext serializeContext;
+        serializeContext.Class<DeprecatedClass>()
+            ->Field("data", &DeprecatedClass::m_data);
+
+        const DeprecatedClass input;
+        AZStd::vector<char> buffer;
+        IO::ByteContainerStream<AZStd::vector<char>> outputStream(&buffer);
+        ASSERT_TRUE(Utils::SaveObjectToStream(outputStream, ObjectStream::ST_BINARY, &input, &serializeContext));
+
+        serializeContext.EnableRemoveReflection();
+        serializeContext.Class<DeprecatedClass>();
+        serializeContext.DisableRemoveReflection();
+        serializeContext.Class<DeprecatedClass>()
+            ->Version(1, [](SerializeContext&, SerializeContext::DataElementNode&)
+            {
+                return false;
+            })
+            ->Field("data", &DeprecatedClass::m_data);
+
+        ObjectStream::FilterDescriptor strictFilter;
+        strictFilter.m_flags = ObjectStream::FILTERFLAG_STRICT;
+        IO::MemoryStream validStream(buffer.data(), buffer.size());
+        EXPECT_TRUE(ObjectStream::LoadBlocking(&validStream, serializeContext, {}, strictFilter));
+
+        // Skip the stream tag/version and the version-zero root's tag/UUID.
+        constexpr size_t childTagOffset = sizeof(AZ::u8) + sizeof(AZ::u32) + sizeof(AZ::u8) + sizeof(AZ::Uuid);
+        constexpr size_t childValueOffset = childTagOffset + sizeof(AZ::u8) + sizeof(AZ::u32) + sizeof(AZ::Uuid);
+        ASSERT_GT(buffer.size(), childValueOffset);
+        ASSERT_EQ(static_cast<AZ::u8>(buffer[childTagOffset]), 0x5C); // Header, name, and four inline value bytes.
+        ASSERT_EQ(buffer[childValueOffset], '\0');
+        buffer[childTagOffset] = 0x7B; // Header, name, value, and an invalid three-byte size field.
+
+        // If preparsing failure is mistaken for converter-requested discard, the zero value byte
+        // is consumed as an end tag and the malformed stream incorrectly reports success.
+        IO::MemoryStream malformedStream(buffer.data(), buffer.size());
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_FALSE(ObjectStream::LoadBlocking(&malformedStream, serializeContext, {}, strictFilter));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+    }
+
     TEST_F(Serialization, TestDeprecatedClassAtRootLevel_Succeeds)
     {
         using namespace Deprecation;

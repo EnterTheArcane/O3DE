@@ -221,6 +221,7 @@ namespace AZ
             unsigned int                        m_version;
             SerializeContext::ErrorHandler      m_errorLogger;
             AZStd::atomic_int                   m_pending;
+            bool                                m_readError = false;
 
             // used for xml streams
             rapidxml::xml_document<char>*       m_xmlDoc;
@@ -1075,6 +1076,11 @@ namespace AZ
         ObjectStreamImpl::ReadElementResult
         ObjectStreamImpl::ReadElement(SerializeContext& sc, const SerializeContext::ClassData*& cd, SerializeContext::DataElement& element, const SerializeContext::ClassData* parent, bool nextLevel, bool isTopElement)
         {
+            if (m_readError)
+            {
+                return ReadElementResult::Error;
+            }
+
             AZ_Assert(element.m_stream != nullptr, "You must provide a stream to store the values!");
             element.m_version = 0;
             element.m_name = nullptr;
@@ -1136,6 +1142,12 @@ namespace AZ
                     }
                     else if (strcmp(attr->name(), "value") == 0)
                     {
+                        if (std::memchr(attr->value(), '\0', attr->value_size()) != nullptr)
+                        {
+                            m_readError = true;
+                            AZ_Error("Serialization", false, "ObjectStream XML values cannot contain embedded NUL characters. Loading aborted.");
+                            return ReadElementResult::Error;
+                        }
                         values = attr->value();
                     }
                     else if (strcmp(attr->name(), "version") == 0)
@@ -1288,18 +1300,21 @@ namespace AZ
                 {
                     if (!valueIt->value.IsString())
                     {
-                        AZ_Error("Serialization", false, "ObjectStream JSON values must be strings. Loading the value was skipped.");
+                        m_readError = true;
+                        AZ_Error("Serialization", false, "ObjectStream JSON values must be strings. Loading aborted.");
+                        return ReadElementResult::Error;
                     }
                     else
                     {
                         values = valueIt->value.GetString();
                         if (std::memchr(values, '\0', valueIt->value.GetStringLength()) != nullptr)
                         {
+                            m_readError = true;
                             AZ_Error(
                                 "Serialization",
                                 false,
-                                "ObjectStream JSON values cannot contain embedded NUL characters. Loading the value was skipped.");
-                            values = nullptr;
+                                "ObjectStream JSON values cannot contain embedded NUL characters. Loading aborted.");
+                            return ReadElementResult::Error;
                         }
                     }
                 }
@@ -1587,6 +1602,7 @@ namespace AZ
         //=========================================================================
         void ObjectStreamImpl::ReportBinaryReadError(const char* description)
         {
+            m_readError = true;
             const AZStd::string error = AZStd::string::format(
                 "Failed trying to read binary ObjectStream %s. File %s", description, GetStreamFilename());
             m_errorLogger.ReportError(error.c_str());
@@ -2331,7 +2347,7 @@ namespace AZ
                 }
             }
 
-            return result;
+            return result && !m_readError;
         }
 
         bool ObjectStreamImpl::Finalize()

@@ -188,6 +188,42 @@ namespace UnitTest
         AZStd::vector<bool> m_values;
     };
 
+    template <typename StringType>
+    struct StringWithSentinelValue final
+    {
+        bool Serialize(AzNetworking::ISerializer& serializer)
+        {
+            return serializer.Serialize(m_value, "Value")
+                && serializer.Serialize(m_sentinel, "Sentinel");
+        }
+
+        StringType m_value;
+        uint32_t m_sentinel = 0;
+    };
+
+    template <typename StringType>
+    void ExpectStringDeltaLengthBoundaryRoundTrip(size_t baseLength, size_t currentLength)
+    {
+        SCOPED_TRACE(baseLength);
+        SCOPED_TRACE(currentLength);
+        StringWithSentinelValue<StringType> base;
+        base.m_value.assign(baseLength, 'a');
+        base.m_sentinel = 0x12345678;
+        StringWithSentinelValue<StringType> current;
+        current.m_value.assign(currentLength, 'b');
+        current.m_sentinel = 0x87654321;
+
+        AzNetworking::SerializerDelta delta;
+        AzNetworking::DeltaSerializerCreate create(delta);
+        ASSERT_TRUE(create.CreateDelta(base, current));
+
+        StringWithSentinelValue<StringType> output = base;
+        AzNetworking::DeltaSerializerApply apply(delta);
+        ASSERT_TRUE(apply.ApplyDelta(output));
+        EXPECT_EQ(output.m_value, current.m_value);
+        EXPECT_EQ(output.m_sentinel, current.m_sentinel);
+    }
+
     float FloatFromBits(const uint32_t bits)
     {
         float value{};
@@ -342,6 +378,7 @@ namespace UnitTest
             Uint16Width,
             FloatKind,
             RawBytes,
+            RawBytesWide,
             StringBytes,
         };
 
@@ -360,6 +397,11 @@ namespace UnitTest
                 uint32_t size = 1;
                 return serializer.SerializeBytes(m_bytes.data(), 1, false, size, "Value");
             }
+            case Mode::RawBytesWide:
+            {
+                uint32_t size = 1;
+                return serializer.SerializeBytes(m_bytes.data(), 256, false, size, "Value");
+            }
             case Mode::StringBytes:
             {
                 uint32_t size = 1;
@@ -372,7 +414,7 @@ namespace UnitTest
         Mode m_mode = Mode::Uint8Width;
         uint32_t m_uint32 = 0;
         float m_float = 0.0f;
-        AZStd::array<uint8_t, 1> m_bytes{};
+        AZStd::array<uint8_t, 256> m_bytes{};
     };
 
     class DeltaSerializerTests
@@ -476,10 +518,12 @@ namespace UnitTest
 
     TEST_F(DeltaSerializerTests, CreateRejectsRecordKindWidthAndStringModeMismatches)
     {
-        const AZStd::array<AZStd::pair<VariantRecordValue::Mode, VariantRecordValue::Mode>, 3> mismatches = {
+        const AZStd::array<AZStd::pair<VariantRecordValue::Mode, VariantRecordValue::Mode>, 5> mismatches = {
             AZStd::pair{VariantRecordValue::Mode::Uint8Width, VariantRecordValue::Mode::Uint16Width},
             AZStd::pair{VariantRecordValue::Mode::Uint8Width, VariantRecordValue::Mode::FloatKind},
             AZStd::pair{VariantRecordValue::Mode::RawBytes, VariantRecordValue::Mode::StringBytes},
+            AZStd::pair{VariantRecordValue::Mode::RawBytes, VariantRecordValue::Mode::RawBytesWide},
+            AZStd::pair{VariantRecordValue::Mode::RawBytesWide, VariantRecordValue::Mode::RawBytes},
         };
 
         for (const auto& mismatch : mismatches)
@@ -740,6 +784,18 @@ namespace UnitTest
         AzNetworking::DeltaSerializerApply apply(delta);
         ASSERT_TRUE(apply.ApplyDelta(output));
         EXPECT_EQ(output.m_values, current.m_values);
+    }
+
+    TEST_F(DeltaSerializerTests, DynamicStringDeltaRoundTripsAcrossLengthPrefixBoundary)
+    {
+        ExpectStringDeltaLengthBoundaryRoundTrip<AZStd::string>(255, 256);
+        ExpectStringDeltaLengthBoundaryRoundTrip<AZStd::string>(256, 255);
+    }
+
+    TEST_F(DeltaSerializerTests, FixedStringDeltaRoundTripsAcrossLengthPrefixBoundary)
+    {
+        ExpectStringDeltaLengthBoundaryRoundTrip<AZStd::fixed_string<512>>(255, 256);
+        ExpectStringDeltaLengthBoundaryRoundTrip<AZStd::fixed_string<512>>(256, 255);
     }
 
     TEST_F(DeltaSerializerTests, DeltaSerializerCreateUnused)

@@ -166,9 +166,16 @@ namespace AzNetworking
 
         const uint32_t objectPosition = m_objectCounter;
         ++m_objectCounter;
+        // AZStd strings serialize their size before these bytes, so their prefix width can change with the value.
+        // This is comparison metadata only; actual wire encoding retains bufferCapacity.
+        WireWidth wireWidth = WireWidth::OneByte;
+        if (!isString)
+        {
+            wireWidth = GetWireWidth(bufferCapacity);
+        }
         const uint8_t metadata = MakeRecordMetadata(
             RecordKind::Bytes,
-            GetWireWidth(bufferCapacity),
+            wireWidth,
             isString);
 
         if (m_gatheringRecords)

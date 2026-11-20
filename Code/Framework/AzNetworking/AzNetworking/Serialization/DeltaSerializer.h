@@ -52,6 +52,7 @@ namespace AzNetworking
     //! This delta can be reapplied to the same base object to reconstruct the second object using 
     //! the DeltaSerializerApply serializer
     //! NOTE: The objects serialized must have a consistent serialization footprint i.e. no changes in branches during serialization
+    //! String byte capacities must be fixed or reconstructed from fields serialized before the string bytes.
     //! DeltaSerializerCreate instances are single-use.
     class DeltaSerializerCreate
         : public ISerializer

@@ -200,7 +200,8 @@ namespace UnitTest
                     EXPECT_EQ(truncatedOutput, unchangedValue) << "Truncated size " << truncatedSize;
                 }
             }
-            AZ_TEST_STOP_TRACE_SUPPRESSION(buffer.size() + 1);
+            // Each truncation reports one failure. Fatal read errors stop further parsing.
+            AZ_TEST_STOP_TRACE_SUPPRESSION(buffer.size());
         }
     } // namespace
 
@@ -624,7 +625,7 @@ namespace UnitTest
             embeddedNulOutput,
             &serializeContext,
             strictFilter));
-        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         EXPECT_EQ(embeddedNulOutput.GetStringView(), "UnchangedEmbeddedNulSymbol");
 
         AZStd::string nonStringJson = validJson;
@@ -637,8 +638,64 @@ namespace UnitTest
             nonStringOutput,
             &serializeContext,
             strictFilter));
-        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         EXPECT_EQ(nonStringOutput.GetStringView(), "UnchangedNonStringSymbol");
+    }
+
+    TEST_F(SymbolSerializerTests, JsonObjectStreamRejectsMalformedStringValuesWithoutAssignment)
+    {
+        AZ::SerializeContext serializeContext;
+        serializeContext.RegisterGenericType<AZStd::string>();
+        const AZStd::string input{"good"};
+        AZStd::vector<char> buffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char>> outputStream(&buffer);
+        ASSERT_TRUE(AZ::Utils::SaveObjectToStream(outputStream, AZ::ObjectStream::ST_JSON, &input, &serializeContext));
+
+        const AZStd::string validJson(buffer.begin(), buffer.end());
+        const size_t valuePosition = validJson.find("\"good\"");
+        ASSERT_NE(valuePosition, AZStd::string::npos);
+        AZ::ObjectStream::FilterDescriptor strictFilter;
+        strictFilter.m_flags = AZ::ObjectStream::FILTERFLAG_STRICT;
+
+        for (const char* invalidValue : {"\"good\\u0000evil\"", "17"})
+        {
+            AZStd::string invalidJson = validJson;
+            invalidJson.replace(valuePosition, 6, invalidValue);
+            AZStd::string output{"unchanged"};
+            AZ::IO::MemoryStream inputStream(invalidJson.data(), invalidJson.size());
+            AZ_TEST_START_TRACE_SUPPRESSION;
+            EXPECT_FALSE(AZ::Utils::LoadObjectFromStreamInPlace(inputStream, output, &serializeContext, strictFilter));
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+            EXPECT_EQ(output, "unchanged");
+        }
+    }
+
+    TEST_F(SymbolSerializerTests, XmlObjectStreamRejectsEmbeddedNulCharacterReferencesWithoutAssignment)
+    {
+        AZ::SerializeContext serializeContext;
+        AZ::Symbol::Reflect(&serializeContext);
+        const AZ::Symbol input{AZStd::string_view{"good"}};
+        AZStd::vector<char> buffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char>> outputStream(&buffer);
+        ASSERT_TRUE(AZ::Utils::SaveObjectToStream(outputStream, AZ::ObjectStream::ST_XML, &input, &serializeContext));
+
+        const AZStd::string validXml(buffer.begin(), buffer.end());
+        const size_t valuePosition = validXml.find("value=\"good\"");
+        ASSERT_NE(valuePosition, AZStd::string::npos);
+        AZ::ObjectStream::FilterDescriptor strictFilter;
+        strictFilter.m_flags = AZ::ObjectStream::FILTERFLAG_STRICT;
+
+        for (const char* invalidValue : {"good&#0;evil", "good&#x0;evil"})
+        {
+            AZStd::string invalidXml = validXml;
+            invalidXml.replace(valuePosition + 7, 4, invalidValue);
+            AZ::Symbol output{AZStd::string_view{"unchanged"}};
+            AZ::IO::MemoryStream inputStream(invalidXml.data(), invalidXml.size());
+            AZ_TEST_START_TRACE_SUPPRESSION;
+            EXPECT_FALSE(AZ::Utils::LoadObjectFromStreamInPlace(inputStream, output, &serializeContext, strictFilter));
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+            EXPECT_EQ(output.GetStringView(), "unchanged");
+        }
     }
 
     TEST_F(SymbolSerializerTests, ObjectStreamFormatsRoundTripCanonicalTextCodec)
