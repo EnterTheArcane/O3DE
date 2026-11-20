@@ -1,0 +1,12 @@
+{
+    "PackageName": "brotli",
+    "Version": "1.2.1",
+    "URL": "https://github.com/google/brotli",
+    "License": "MIT",
+    "LicenseFile": "LICENSE.txt",
+    "Source": {
+        "URL": "https://github.com/google/brotli/archive/refs/tags/v1.2.1.tar.gz",
+        "Revision": "db24a98aed38a16de78cc05ca15cdd8dc2a0d92d",
+        "SHA256": "98d35d11a78dc453aebb7d10c3748f3f73ff78c8267c0dc697b8631f67bf7e8f"
+    }
+}
