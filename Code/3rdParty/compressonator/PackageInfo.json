@@ -1,0 +1,12 @@
+{
+    "PackageName": "compressonator",
+    "Version": "4.6.0",
+    "URL": "https://github.com/GPUOpen-Tools/compressonator",
+    "License": "MIT and bundled third-party licenses",
+    "LicenseFile": "LICENSE.txt",
+    "Source": {
+        "URL": "https://github.com/GPUOpen-Tools/compressonator/archive/095a143ad8cfbf9ed5afa4ea63c735bfd0fd04dd.tar.gz",
+        "Revision": "095a143ad8cfbf9ed5afa4ea63c735bfd0fd04dd",
+        "SHA256": "182362fb92059a61d2d21a7899caee7788b88eb6e3743d16bf9a525678e8e2ff"
+    }
+}

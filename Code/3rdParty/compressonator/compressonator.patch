@@ -1,0 +1,186 @@
+--- a/applications/_plugins/cimage/exr/exr.cpp
++++ b/applications/_plugins/cimage/exr/exr.cpp
+@@ -103,46 +103,6 @@
+ }
+ #endif
+ 
+-#if defined(_WIN32)  // && !defined(NO_LEGACY_BEHAVIOR)
+-#ifdef _DEBUG
+-#pragma comment(lib, "zlibstaticd.lib")
+-#pragma comment(lib, "Imathd.lib")
+-#pragma comment(lib, "halfd.lib")
+-#pragma comment(lib, "IlmImfd.lib")
+-#pragma comment(lib, "IlmThreadd.lib")
+-#pragma comment(lib, "Iexd.lib")
+-#else
+-#pragma comment(lib, "zlibstatic.lib")
+-#pragma comment(lib, "Imath.lib")
+-#pragma comment(lib, "half.lib")
+-#pragma comment(lib, "IlmImf.lib")
+-#pragma comment(lib, "IlmThread.lib")
+-#pragma comment(lib, "Iex.lib")
+-#endif
+-#else
+-#include <OpenEXRConfig.h>
+-#ifdef _DEBUG
+-#define CMP_EXTERNAL_LibExt "_d.lib"
+-#else
+-#define CMP_EXTERNAL_LibExt ".lib"
+-#endif
+-
+-#define CMP_VAUX_STR_EXP(__A) #__A
+-#define CMP_VAUX_STR(__A) CMP_VAUX_STR_EXP(__A)
+-
+-#define OpenEXR_Imath_Lib "Imath-" CMP_VAUX_STR(OPENEXR_VERSION_MAJOR) "_" CMP_VAUX_STR(OPENEXR_VERSION_MINOR) CMP_EXTERNAL_LibExt
+-#define OpenEXR_half_Lib "half-" CMP_VAUX_STR(OPENEXR_VERSION_MAJOR) "_" CMP_VAUX_STR(OPENEXR_VERSION_MINOR) CMP_EXTERNAL_LibExt
+-#define OpenEXR_IlmImf_Lib "IlmImf-" CMP_VAUX_STR(OPENEXR_VERSION_MAJOR) "_" CMP_VAUX_STR(OPENEXR_VERSION_MINOR) CMP_EXTERNAL_LibExt
+-#define OpenEXR_IlmThread_Lib "IlmThread-" CMP_VAUX_STR(OPENEXR_VERSION_MAJOR) "_" CMP_VAUX_STR(OPENEXR_VERSION_MINOR) CMP_EXTERNAL_LibExt
+-#define OpenEXR_Iex_Lib "Iex-" CMP_VAUX_STR(OPENEXR_VERSION_MAJOR) "_" CMP_VAUX_STR(OPENEXR_VERSION_MINOR) CMP_EXTERNAL_LibExt
+-
+-#pragma comment(lib, OpenEXR_Imath_Lib)
+-#pragma comment(lib, OpenEXR_half_Lib)
+-#pragma comment(lib, OpenEXR_IlmImf_Lib)
+-#pragma comment(lib, OpenEXR_IlmThread_Lib)
+-#pragma comment(lib, OpenEXR_Iex_Lib)
+-#endif
+-
+ Plugin_EXR::Plugin_EXR()
+ {
+     //MessageBox(0,"Construct","Plugin_EXR",MB_OK);
+--- a/applications/_plugins/cimage/tga/tga.cpp
++++ b/applications/_plugins/cimage/tga/tga.cpp
+@@ -66,8 +66,6 @@
+ typedef CMP_DWORD* LPDWORD;
+ #endif
+ 
+-#pragma comment(lib, "advapi32.lib")  // for RegCloseKey and other Reg calls ...
+-
+ Plugin_TGA::Plugin_TGA()
+ {
+ }
+@@ -112,7 +110,7 @@
+ #ifndef STB_IMAGE_IMPLEMENTATION
+ #define STB_IMAGE_IMPLEMENTATION
+ #endif
+-#include "stb_image.h"
++#include <stb/stb_image.h>
+ 
+ int Plugin_TGA::TC_PluginFileLoadTexture(const char* pszFilename, MipSet* pMipSet)
+ {
+--- a/cmp_compressonatorlib/brotlig/BrotligCompute.h
++++ b/cmp_compressonatorlib/brotlig/BrotligCompute.h
+@@ -28,9 +28,10 @@
+ #include <dxgi1_4.h>
+ #include <wrl.h>
+ #include <cstdint>
++#include <list>
+ #include <unordered_map>
+ 
+-#include <d3dx12/d3dx12.h>
++#include <directx/d3dx12.h>
+ 
+ using Microsoft::WRL::ComPtr;
+ 
+--- a/cmp_core/source/cmp_core.h
++++ b/cmp_core/source/cmp_core.h
+@@ -26,6 +26,7 @@
+ #ifndef CMP_CORE_H
+ #define CMP_CORE_H
+ 
++#include <stddef.h>
+ #include <stdint.h>
+ #ifdef _WIN32
+ #ifndef CMP_CDECL
+--- a/cmp_framework/common/half/half.cpp
++++ b/cmp_framework/common/half/half.cpp
+@@ -233,7 +233,7 @@
+ //---------------------------------------
+ 
+ HALF_EXPORT void
+-printBits (ostream &os, half h) {
++CMP_PrintHalfBits (ostream &os, half h) {
+     unsigned short b = h.bits();
+ 
+     for (int i = 15; i >= 0; i--) {
+@@ -246,7 +246,7 @@
+ 
+ 
+ HALF_EXPORT void
+-printBits (ostream &os, float f) {
++CMP_PrintHalfBits (ostream &os, float f) {
+     half::uif x;
+     x.f = f;
+ 
+@@ -260,7 +260,7 @@
+ 
+ 
+ HALF_EXPORT void
+-printBits (char c[19], half h) {
++CMP_PrintHalfBits (char c[19], half h) {
+     unsigned short b = h.bits();
+ 
+     for (int i = 15, j = 0; i >= 0; i--, j++) {
+@@ -275,7 +275,7 @@
+ 
+ 
+ HALF_EXPORT void
+-printBits (char c[35], float f) {
++CMP_PrintHalfBits (char c[35], float f) {
+     half::uif x;
+     x.f = f;
+ 
+--- a/cmp_framework/common/half/half.h
++++ b/cmp_framework/common/half/half.h
+@@ -232,10 +232,10 @@
+ // Debugging
+ //----------
+ 
+-HALF_EXPORT void        printBits   (std::ostream &os, half  h);
+-HALF_EXPORT void        printBits   (std::ostream &os, float f);
+-HALF_EXPORT void        printBits   (char  c[19], half  h);
+-HALF_EXPORT void        printBits   (char  c[35], float f);
++HALF_EXPORT void        CMP_PrintHalfBits   (std::ostream &os, half  h);
++HALF_EXPORT void        CMP_PrintHalfBits   (std::ostream &os, float f);
++HALF_EXPORT void        CMP_PrintHalfBits   (char  c[19], half  h);
++HALF_EXPORT void        CMP_PrintHalfBits   (char  c[35], float f);
+ 
+ 
+ //-------------------------------------------------------------------------
+--- a/cmp_framework/compute_base.cpp
++++ b/cmp_framework/compute_base.cpp
+@@ -49,13 +49,13 @@
+ #ifndef STB_IMAGE_IMPLEMENTATION
+ #define STB_IMAGE_IMPLEMENTATION
+ #endif
+-#include "stb_image.h"
++#include <stb/stb_image.h>
+ 
+ #define STB_IMAGE_WRITE_STATIC
+ #ifndef STB_IMAGE_WRITE_IMPLEMENTATION
+ #define STB_IMAGE_WRITE_IMPLEMENTATION
+ #endif
+-#include "stb_image_write.h"
++#include <stb/stb_image_write.h>
+ 
+ #include <map>
+ #include <string>
+@@ -102,6 +102,9 @@
+ static int                startupreg    = false;
+ 
+ extern void* make_Plugin_DDS();
++extern void* make_Plugin_TGA();
++extern void* make_Plugin_ASTC();
++extern void* make_Plugin_EXR();
+ extern void* make_Plugin_HPC();
+ 
+ // CMP_Core Compression Codecs
+@@ -132,6 +135,9 @@
+     {
+         // Hosts
+         g_pluginManager.registerStaticPlugin("IMAGE", "DDS", (void*)make_Plugin_DDS);
++        g_pluginManager.registerStaticPlugin("IMAGE", "TGA", (void*)make_Plugin_TGA);
++        g_pluginManager.registerStaticPlugin("IMAGE", "ASTC", (void*)make_Plugin_ASTC);
++        g_pluginManager.registerStaticPlugin("IMAGE", "EXR", (void*)make_Plugin_EXR);
+         g_pluginManager.registerStaticPlugin("PIPELINE", "HPC", (void*)make_Plugin_HPC);
+         // Encoders
+         g_pluginManager.registerStaticPlugin("ENCODER", "BC1", (void*)make_Plugin_BC1);
