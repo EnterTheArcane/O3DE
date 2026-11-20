@@ -102,7 +102,6 @@ namespace PhysX
         Ragdoll* GetPhysXRagdoll();
         const Ragdoll* GetPhysXRagdollConst() const;
 
-        bool IsJointProjectionVisible() const;
         bool IsMaxMassRatioVisible() const;
 
         AzPhysics::SimulatedBodyHandle m_ragdollHandle = AzPhysics::InvalidSimulatedBodyHandle;
@@ -112,12 +111,14 @@ namespace PhysX
         AZ::u32 m_positionIterations = 16;
         /// Minimum number of velocity iterations to perform in the PhysX solver.
         AZ::u32 m_velocityIterations = 8;
-        /// Whether to use joint projection to preserve joint constraints in demanding
-        /// situations at the expense of potentially reducing physical correctness.
+        /// DEPRECATED: Projection enable flag retained for asset round trips. PhysX 5.12 has no joint projection.
+        /// Remove after legacy asset migration.
         bool m_enableJointProjection = true;
-        /// Linear joint error above which projection will be applied.
+        /// DEPRECATED: Linear projection tolerance retained for asset round trips. It has no simulation effect.
+        /// Remove after legacy asset migration.
         float m_jointProjectionLinearTolerance = 1e-3f;
-        /// Angular joint error (in degrees) above which projection will be applied.
+        /// DEPRECATED: Angular projection tolerance in degrees retained for asset round trips. It has no simulation effect.
+        /// Remove after legacy asset migration.
         float m_jointProjectionAngularToleranceDegrees = 1.0f;
         /// Allows ragdoll node mass values to be overridden to avoid unstable mass ratios.
         bool m_enableMassRatioClamping = false;

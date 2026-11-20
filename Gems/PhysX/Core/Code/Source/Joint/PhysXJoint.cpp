@@ -189,7 +189,7 @@ namespace PhysX
         const float swingAngleZ = joint->getSwingZAngle();
         const float swingLimitY = joint->getSwingLimit().yAngle;
         const float swingLimitZ = joint->getSwingLimit().zAngle;
-        const float twistAngle = joint->getTwist();
+        const float twistAngle = joint->getTwistAngle();
         const float twistLimitLower = joint->getTwistLimit().lower;
         const float twistLimitUpper = joint->getTwistLimit().upper;
 

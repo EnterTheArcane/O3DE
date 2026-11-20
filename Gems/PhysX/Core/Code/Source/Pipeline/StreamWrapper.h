@@ -26,8 +26,8 @@ namespace PhysX
     public:
         StreamWrapper(AZ::IO::GenericStream* stream);
 
-        uint32_t read(void* dest, uint32_t count) override;
-        uint32_t write(const void* src, uint32_t count) override;
+        uint64_t read(void* dest, uint64_t count) override;
+        uint64_t write(const void* src, uint64_t count) override;
 
     private:
         AZ::IO::GenericStream* m_stream;
@@ -43,7 +43,7 @@ namespace PhysX
     public:
         AssetDataStreamWrapper(AZStd::shared_ptr<AZ::Data::AssetDataStream> stream);
 
-        uint32_t read(void* dest, uint32_t count) override;
+        uint64_t read(void* dest, uint64_t count) override;
 
     private:
         AZStd::shared_ptr<AZ::Data::AssetDataStream> m_stream;

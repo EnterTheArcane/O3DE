@@ -129,11 +129,6 @@ namespace PhysX
 
         ResultType m_result;
 
-        const RequestType& GetRequest() const
-        {
-            return m_request;
-        }
-
     private:
         void Tick()
         {
@@ -221,7 +216,6 @@ namespace PhysX
             EXPECT_TRUE(caster->m_result);
             EXPECT_TRUE(caster->m_result.m_hits[0].m_entityId == m_boxes[boxTargetIdx]->GetId());
 
-            caster.release();
             i++;
         }
         rayCasters.clear();
@@ -303,7 +297,6 @@ namespace PhysX
             }
             EXPECT_TRUE(targetInList);
 
-            caster.release();
             i++;
         }
         rayCasters.clear();
@@ -375,7 +368,6 @@ namespace PhysX
              EXPECT_EQ(caster->m_result.m_hits.size(), 1);
              EXPECT_TRUE(caster->m_result.m_hits[0].m_entityId == m_boxes[boxTargetIdx]->GetId());
 
-             caster.release();
              i++;
          }
          shapeCasters.clear();
@@ -457,7 +449,6 @@ namespace PhysX
              }
              EXPECT_TRUE(targetInList);
 
-             caster.release();
              i++;
          }
          shapeCasters.clear();
@@ -538,176 +529,10 @@ namespace PhysX
              }
              EXPECT_TRUE(targetInList);
 
-             caster.release();
              i++;
          }
          overlapQuery.clear();
      }
-
-    struct ShapeLocalPoseSetterGetter
-        : public SceneQueryBase<AZStd::pair<AZ::Vector3, AZ::Quaternion>, AZStd::pair<AZ::Vector3, AZ::Quaternion>>
-    {
-        ShapeLocalPoseSetterGetter(const AZStd::thread_desc& threadDesc,
-            const AZStd::pair<AZ::Vector3, AZ::Quaternion>& request,
-            AZStd::shared_ptr<Physics::Shape> shape)
-            : SceneQueryBase(threadDesc, request, AzPhysics::InvalidSceneHandle)
-            , m_shape(shape)
-        {
-
-        }
-
-    private:
-
-        AZStd::shared_ptr<Physics::Shape> m_shape;
-
-        void RunRequest() override
-        {
-            m_shape->SetLocalPose(m_request.first, m_request.second);
-            m_result = m_shape->GetLocalPose();
-        }
-    };
-
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
-    // Double-buffering is removed in PhysX 5.
-    // It is not allowed to add, remove or modify scene objects while the simulation is running.
-    // If this functionality is desired, the application layer needs to implement the buffering of the changes and apply them after the fetchResults() call.
-    // Disabling this test until it is implemented in the PhysX gem.
-    TEST_P(PhysXMultithreadingTest, DISABLED_SetGetLocalShapeFromParallelThreads)
-#else
-    TEST_P(PhysXMultithreadingTest, SetGetLocalShapeFromParallelThreads)
-#endif
-    {
-        const int seed = GetParam();
-
-        //Local pose setter getter thread pool
-        AZStd::vector<AZStd::unique_ptr<ShapeLocalPoseSetterGetter>> setterGetterQueries;
-
-        AZStd::thread_desc threadDesc;
-        threadDesc.m_name = "SGLSFPThreads";  // SetGetLocalShapeFromParallelThreads
-
-        //create the local pose set request
-        for (int i = 0; i < Constants::NumThreads; i++)
-        {
-            //pick a box
-            const int boxTargetIdx = i % m_boxes.size();
-            const AZ::EntityId entityId = m_boxes[boxTargetIdx]->GetId();
-            const AZStd::pair<AZ::Vector3, AZ::Quaternion> pose = { Constants::BoxPositions[boxTargetIdx], AZ::Quaternion::CreateIdentity() };
-
-            AZStd::vector<AZStd::shared_ptr<Physics::Shape>> shapes;
-            PhysX::ColliderComponentRequestBus::EventResult(shapes, entityId, &PhysX::ColliderComponentRequests::GetShapes);
-
-            setterGetterQueries.emplace_back(AZStd::make_unique<ShapeLocalPoseSetterGetter>(threadDesc, pose, shapes[0]));
-        }
-
-        //start all threads
-        AZ::SimpleLcgRandom random(seed); //constant seed to have consistency.
-        for (auto& query : setterGetterQueries)
-        {
-            const int waitTimeMS = aznumeric_cast<int>((random.GetRandomFloat() + 0.25f) * 250.0f); //generate a time between 62.5 - 312.5 ms
-            query->Start(waitTimeMS);
-        }
-
-        //update the world
-        Log_Help("SetGetLocalShapeFromParallelThreads", "Start world Update\n");
-        UpdateTestSceneOverTime(m_defaultScene, 500);
-        Log_Help("SetGetLocalShapeFromParallelThreads", "End world Update\n");
-
-        //each request should have completed, join to be sure. Each request data should be == to result
-        for (auto& query : setterGetterQueries)
-        {
-            query->Join();
-            EXPECT_EQ(query->GetRequest(), query->m_result);
-        }
-        setterGetterQueries.clear();
-
-    }
-
-    struct RigidBodyRayCaster
-        : public SceneQueryBase<AzPhysics::RayCastRequest, AzPhysics::SceneQueryHit>
-    {
-        RigidBodyRayCaster(const AZStd::thread_desc& threadDesc,
-            const AzPhysics::RayCastRequest& request,
-            AzPhysics::RigidBody* rigidBody)
-            : SceneQueryBase(threadDesc, request, AzPhysics::InvalidSceneHandle)
-            , m_rigidBody(rigidBody)
-        {
-
-        }
-
-    private:
-
-        AzPhysics::RigidBody* m_rigidBody;
-
-        void RunRequest() override
-        {
-            m_result = m_rigidBody->RayCast(m_request);
-        }
-    };
-
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
-    // Double-buffering is removed in PhysX 5.
-    // It is not allowed to add, remove or modify scene objects while the simulation is running.
-    // If this functionality is desired, the application layer needs to implement the buffering of the changes and apply them after the
-    // fetchResults() call. Disabling this test until it is implemented in the PhysX gem.
-    TEST_P(PhysXMultithreadingTest, DISABLED_RigidBodyRayCaster)
-#else
-    TEST_P(PhysXMultithreadingTest, RigidBodyRayCaster)
-#endif
-    {
-        const int seed = GetParam();
-
-        //raycast thread pool
-        AZStd::vector<AZStd::unique_ptr<RigidBodyRayCaster>> rayCasters;
-
-        //common request data
-        AzPhysics::RayCastRequest request;
-        request.m_start = AZ::Vector3::CreateZero();
-        request.m_distance = 2000.0f;
-
-        AZStd::thread_desc threadDesc;
-        threadDesc.m_name = "RBRQFPThreads";  // RigidBodyRaycastsQueryFromParallelThreads
-
-        //create the raycasts
-        for (int i = 0; i < Constants::NumThreads; i++)
-        {
-            //pick a box to raycast against
-            const int boxTargetIdx = i % m_boxes.size();
-            request.m_direction = Constants::BoxPositions[boxTargetIdx].GetNormalized();
-            AzPhysics::RigidBody* rigidBody = nullptr;
-            Physics::RigidBodyRequestBus::EventResult(rigidBody, m_boxes[boxTargetIdx]->GetId(), &Physics::RigidBodyRequests::GetRigidBody);
-
-            rayCasters.emplace_back(AZStd::make_unique<RigidBodyRayCaster>(threadDesc, request, rigidBody));
-        }
-
-        //start all threads
-        AZ::SimpleLcgRandom random(seed); //constant seed to have consistency.
-        for (auto& caster : rayCasters)
-        {
-            const int waitTimeMS = aznumeric_cast<int>((random.GetRandomFloat() + 0.25f) * 250.0f); //generate a time between 62.5 - 312.5 ms
-            caster->Start(waitTimeMS);
-        }
-
-        //update the world
-        Log_Help("RaycastsQueryFromParallelThreads", "Start world Update\n");
-        UpdateTestSceneOverTime(m_defaultScene, 500);
-        Log_Help("RaycastsQueryFromParallelThreads", "End world Update\n");
-
-        //each request should have completed, join to be sure. and each request should have a result.
-        int i = 0;
-        for (auto& caster : rayCasters)
-        {
-            caster->Join();
-
-            const int boxTargetIdx = i % m_boxes.size();
-            EXPECT_TRUE(caster->m_result);
-            EXPECT_TRUE(caster->m_result.m_entityId == m_boxes[boxTargetIdx]->GetId());
-
-            caster.release();
-            i++;
-        }
-        rayCasters.clear();
-    }
-
 
     INSTANTIATE_TEST_SUITE_P(PhysXMultithreading, PhysXMultithreadingTest, ::testing::Values(1, 42, 123, 1337, 1403, 5317, 133987258));
 }

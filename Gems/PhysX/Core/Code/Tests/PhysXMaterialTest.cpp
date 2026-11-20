@@ -248,7 +248,6 @@ namespace UnitTest
         EXPECT_EQ(material->GetRestitutionCombineMode(), PhysX::CombineMode::Minimum);
     }
 
-#if (PX_PHYSICS_VERSION_MAJOR >= 5)
     TEST_F(PhysXMaterialFixture, Material_GetSet_CompliantContactMode_Enabled)
     {
         PhysX::MaterialConfiguration materialConfiguration;
@@ -260,8 +259,47 @@ namespace UnitTest
         material->EnableCompliantContactMode(true);
         EXPECT_TRUE(material->IsCompliantContactModeEnabled());
 
+        material->SetCompliantContactModeStiffness(0.0f);
+        EXPECT_FALSE(material->IsCompliantContactModeEnabled());
+        EXPECT_FLOAT_EQ(material->GetPxMaterial()->getRestitution(), 0.0f);
+        material->SetRestitution(0.75f);
+        EXPECT_FLOAT_EQ(material->GetPxMaterial()->getRestitution(), 0.75f);
+        material->SetCompliantContactModeStiffness(4.0f);
+        EXPECT_FALSE(material->IsCompliantContactModeEnabled());
+        EXPECT_FLOAT_EQ(material->GetPxMaterial()->getRestitution(), 0.75f);
+        material->EnableCompliantContactMode(true);
+        EXPECT_TRUE(material->IsCompliantContactModeEnabled());
+        EXPECT_FLOAT_EQ(material->GetPxMaterial()->getRestitution(), -4.0f);
+
         material->EnableCompliantContactMode(false);
         EXPECT_FALSE(material->IsCompliantContactModeEnabled());
+        EXPECT_FLOAT_EQ(material->GetPxMaterial()->getRestitution(), 0.75f);
+    }
+
+    TEST_F(PhysXMaterialFixture, Material_CompliantContactMode_AssetReloadFromZeroStiffness)
+    {
+        PhysX::MaterialConfiguration materialConfiguration;
+        materialConfiguration.m_restitution = 0.75f;
+        materialConfiguration.m_compliantContactMode.m_enabled = true;
+        materialConfiguration.m_compliantContactMode.m_stiffness = 0.0f;
+
+        auto materialAsset = materialConfiguration.CreateMaterialAsset();
+        auto material = PhysX::Material::FindOrCreateMaterial(materialAsset);
+        EXPECT_FALSE(material->IsCompliantContactModeEnabled());
+        EXPECT_FLOAT_EQ(material->GetPxMaterial()->getRestitution(), 0.0f);
+
+        for (float stiffness : { 4.0f, 0.0f, 8.0f })
+        {
+            materialConfiguration.m_compliantContactMode.m_stiffness = stiffness;
+            const auto updatedAsset = materialConfiguration.CreateMaterialAsset();
+            materialAsset->SetData(
+                updatedAsset->GetMaterialType(), updatedAsset->GetVersion(), updatedAsset->GetMaterialProperties());
+            AZ::Data::AssetBus::Event(materialAsset.GetId(), &AZ::Data::AssetBus::Events::OnAssetReloaded, materialAsset);
+
+            EXPECT_EQ(material->IsCompliantContactModeEnabled(), stiffness > 0.0f);
+            EXPECT_FLOAT_EQ(material->GetPxMaterial()->getRestitution(), -stiffness);
+            EXPECT_FLOAT_EQ(material->GetRestitution(), 0.75f);
+        }
     }
 
     TEST_F(PhysXMaterialFixture, Material_CompliantContactModeEnabled_RestitutionRemainsUnchanged)
@@ -351,7 +389,6 @@ namespace UnitTest
         material->SetCompliantContactModeStiffness(0.0f);
         EXPECT_NEAR(material->GetCompliantContactModeStiffness(), 0.0f, Tolerance);
     }
-#endif // (PX_PHYSICS_VERSION_MAJOR >= 5)
 
     TEST_F(PhysXMaterialFixture, Material_GetSet_DebugColor)
     {

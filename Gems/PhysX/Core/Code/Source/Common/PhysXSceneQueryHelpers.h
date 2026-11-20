@@ -11,7 +11,6 @@
 #include<AzFramework/Physics/Common/PhysicsSceneQueries.h>
 
 //physx sdk includes
-#include <PxPhysicsVersion.h>
 #include <PxQueryFiltering.h>
 #include <PxQueryReport.h>
 #include <PxRigidActor.h>
@@ -29,7 +28,14 @@ namespace PhysX
         physx::PxHitFlags GetPxHitFlags(AzPhysics::SceneQuery::HitFlags hitFlags);
 
         //! Helper function to convert AZ query hit type to PhysX.
-        physx::PxQueryHitType::Enum GetPxHitType(AzPhysics::SceneQuery::QueryHitType hitType);
+        constexpr physx::PxQueryHitType::Enum GetPxHitType(AzPhysics::SceneQuery::QueryHitType hitType)
+        {
+            static_assert(static_cast<int>(AzPhysics::SceneQuery::QueryHitType::None) == static_cast<int>(physx::PxQueryHitType::eNONE)
+                && static_cast<int>(AzPhysics::SceneQuery::QueryHitType::Touch) == static_cast<int>(physx::PxQueryHitType::eTOUCH)
+                && static_cast<int>(AzPhysics::SceneQuery::QueryHitType::Block) == static_cast<int>(physx::PxQueryHitType::eBLOCK),
+                "PhysX hit types do not match QueryHitTypes");
+            return static_cast<physx::PxQueryHitType::Enum>(hitType);
+        }
 
         //! Helper function to convert from PhysX hit to AZ.
         AzPhysics::SceneQueryHit GetHitFromPxHit(const physx::PxLocationHit& pxHit, const physx::PxActorShape& pxActorShape);
@@ -72,17 +78,12 @@ namespace PhysX
                 const physx::PxFilterData& queryFilterData, const physx::PxShape* pxShape,
                 const physx::PxRigidActor* actor, physx::PxHitFlags& queryTypes) override;
 
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
             // Unused, we're only pre-filtering at this time
             physx::PxQueryHitType::Enum postFilter(
                 const physx::PxFilterData& filterData,
                 const physx::PxQueryHit& hit,
                 const physx::PxShape* shape,
                 const physx::PxRigidActor* actor) override;
-#endif
-
-            // Unused, we're only pre-filtering at this time
-            physx::PxQueryHitType::Enum postFilter(const physx::PxFilterData& filterData, const physx::PxQueryHit& hit) override;
 
         private:
             AzPhysics::SceneQuery::FilterCallback m_filterCallback;

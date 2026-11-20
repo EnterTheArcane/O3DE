@@ -8,14 +8,15 @@
 
 #include <Source/Pipeline/HeightFieldAssetHandler.h>
 
-#include <Pipeline/HeightFieldAssetHandler.h>
-#include <Pipeline/StreamWrapper.h>
 #include <AzCore/Debug/Profiler.h>
-#include <AzCore/IO/GenericStreams.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/IO/GenericStreams.h>
+#include <AzCore/std/limits.h>
+#include <PhysX/ComponentTypeIds.h>
 #include <PhysX/HeightFieldAsset.h>
 #include <PhysX/SystemComponentBus.h>
-#include <PhysX/ComponentTypeIds.h>
+#include <Pipeline/HeightFieldAssetHandler.h>
+#include <Pipeline/StreamWrapper.h>
 #include <PxPhysicsAPI.h>
 
 #include <extensions/PxSerialization.h>
@@ -170,8 +171,6 @@ namespace PhysX::Pipeline
         }
 
         HeightFieldAssetHeader header;
-        physx::PxCooking* cooking = nullptr;
-        SystemRequestsBus::BroadcastResult(cooking, &SystemRequests::GetCooking);
 
         // Read samples from heightfield
         AZStd::vector<physx::PxHeightFieldSample> samples;
@@ -188,8 +187,16 @@ namespace PhysX::Pipeline
 
         // Cook description to file
         physx::PxDefaultMemoryOutputStream writer;
-        bool success = cooking->cookHeightField(heightFieldDesc, writer);
-        header.m_assetDataSize = writer.getSize() + 2 * sizeof(float);
+        if (!PxCookHeightField(heightFieldDesc, writer))
+        {
+            return false;
+        }
+        if (writer.getSize() > AZStd::numeric_limits<AZ::u32>::max() - 2 * sizeof(float))
+        {
+            AZ_Error("PhysX HeightField Asset", false, "Cooked heightfield exceeds the asset format's 32-bit size limit.");
+            return false;
+        }
+        header.m_assetDataSize = static_cast<AZ::u32>(writer.getSize() + 2 * sizeof(float));
 
         PhysX::StreamWrapper writerStream(stream);
         writerStream.write(&header, sizeof(header));
@@ -197,7 +204,7 @@ namespace PhysX::Pipeline
         writerStream.write(&physXHeightFieldAsset->m_maxHeight, sizeof(physXHeightFieldAsset->m_maxHeight));
         writerStream.write(writer.getData(), writer.getSize());
 
-        return success;
+        return true;
     }
 
     void HeightFieldAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)

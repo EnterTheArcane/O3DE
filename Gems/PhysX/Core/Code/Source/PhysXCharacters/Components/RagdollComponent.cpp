@@ -103,26 +103,10 @@ namespace PhysX
                         "performance. Very high values might introduce instability."))
                     ->Attribute(AZ::Edit::Attributes::Min, 1)
                     ->Attribute(AZ::Edit::Attributes::Max, 255)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &RagdollComponent::m_enableJointProjection, QT_TRANSLATE_NOOP("PhysX", "Enable Joint Projection"),
-                        QT_TRANSLATE_NOOP("PhysX", "When active, preserves joint constraints in volatile simulations. "
-                        "Might not be physically correct in all simulations."))
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &RagdollComponent::m_jointProjectionLinearTolerance,
-                        QT_TRANSLATE_NOOP("PhysX", "Joint Projection Linear Tolerance"),
-                        QT_TRANSLATE_NOOP("PhysX", "Maximum linear joint error. Projection is applied to linear joint errors above this value."))
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::Step, 1e-3f)
-                    ->Attribute(AZ::Edit::Attributes::Visibility, &RagdollComponent::IsJointProjectionVisible)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &RagdollComponent::m_jointProjectionAngularToleranceDegrees,
-                        QT_TRANSLATE_NOOP("PhysX", "Joint Projection Angular Tolerance"),
-                        QT_TRANSLATE_NOOP("PhysX", "Maximum angular joint error. Projection is applied to angular joint errors above this value."))
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
-                    ->Attribute(AZ::Edit::Attributes::Suffix, QT_TRANSLATE_NOOP("PhysX", " degrees"))
-                    ->Attribute(AZ::Edit::Attributes::Visibility, &RagdollComponent::IsJointProjectionVisible)
+                    ->UIElement(
+                        AZ::Edit::UIHandlers::Label,
+                        QT_TRANSLATE_NOOP("PhysX", "Joint projection is unavailable in PhysX 5.12. Legacy settings are preserved."))
+                    ->Attribute(AZ::Edit::Attributes::Visibility, &RagdollComponent::m_enableJointProjection)
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default, &RagdollComponent::m_enableMassRatioClamping, QT_TRANSLATE_NOOP("PhysX", "Enable Mass Ratio Clamping"),
                         QT_TRANSLATE_NOOP("PhysX", "When active, ragdoll node mass values may be overridden to avoid unstable mass ratios."))
@@ -136,11 +120,6 @@ namespace PhysX
                     ->Attribute(AZ::Edit::Attributes::Visibility, &RagdollComponent::IsMaxMassRatioVisible);
             }
         }
-    }
-
-    bool RagdollComponent::IsJointProjectionVisible() const
-    {
-        return m_enableJointProjection;
     }
 
     bool RagdollComponent::IsMaxMassRatioVisible() const
@@ -380,26 +359,6 @@ namespace PhysX
             if (physx::PxRigidDynamic* pxRigidBody = ragdoll->GetPxRigidDynamic(nodeIndex))
             {
                 pxRigidBody->setSolverIterationCounts(m_positionIterations, m_velocityIterations);
-            }
-        }
-
-        if (m_enableJointProjection)
-        {
-            const float linearTolerance = AZ::GetMax(0.0f, m_jointProjectionLinearTolerance);
-            const float angularTolerance = AZ::DegToRad(AZ::GetMax(0.0f, m_jointProjectionAngularToleranceDegrees));
-
-            for (size_t nodeIndex = 0; nodeIndex < numNodes; nodeIndex++)
-            {
-                if (const AzPhysics::Joint* joint = ragdoll->GetNode(nodeIndex)->GetJoint())
-                {
-                    if (auto* pxJoint = static_cast<physx::PxD6Joint*>(joint->GetNativePointer()))
-                    {
-                        pxJoint->setConstraintFlag(physx::PxConstraintFlag::ePROJECTION, true);
-                        pxJoint->setConstraintFlag(physx::PxConstraintFlag::ePROJECT_TO_ACTOR0, true);
-                        pxJoint->setProjectionLinearTolerance(linearTolerance);
-                        pxJoint->setProjectionAngularTolerance(angularTolerance);
-                    }
-                }
             }
         }
 

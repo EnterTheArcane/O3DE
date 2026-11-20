@@ -31,7 +31,6 @@ namespace physx
 {
     class PxFoundation;
     class PxPhysics;
-    class PxCooking;
     class PxCpuDispatcher;
 }
 
@@ -74,8 +73,8 @@ namespace PhysX
         const PhysXSettingsRegistryManager& GetSettingsRegistryManager() const;
 
         //TEMP -- until these are fully moved over here
-        physx::PxPhysics* GetPxPhysics() { return m_physXSdk.m_physics; }
-        physx::PxCooking* GetPxCooking() { return m_physXSdk.m_cooking; }
+        physx::PxPhysics* GetPxPhysics() { return m_physics; }
+        physx::PxCookingParams* GetPxCookingParams() { return &m_cookingParams; }
         physx::PxCpuDispatcher* GetPxCpuDispathcher()
         {
             AZ_Assert(m_cpuDispatcher, "PhysX CPU dispatcher was not created");
@@ -103,17 +102,12 @@ namespace PhysX
 
         float m_accumulatedTime = 0.0f;
 
-        struct PhysXSdk
-        {
-            physx::PxFoundation* m_foundation = nullptr;
-            physx::PxPhysics* m_physics = nullptr;
-            physx::PxCooking* m_cooking = nullptr;
-        };
-        PhysXSdk m_physXSdk;
-        PxAzAllocatorCallback m_physXAllocatorCallback;
-        PxAzErrorCallback m_physXErrorCallback;
-        PxAzProfilerCallback m_pxAzProfilerCallback;
-
+        physx::PxFoundation* m_foundation = nullptr;
+        physx::PxPhysics* m_physics = nullptr;
+        physx::PxCookingParams m_cookingParams{ physx::PxTolerancesScale() };
+        PxAzAllocatorCallback m_allocatorCallback;
+        PxAzErrorCallback m_errorCallback;
+        PxAzProfilerCallback m_profilerCallback;
         physx::PxCpuDispatcher* m_cpuDispatcher = nullptr;
 
         enum class State : AZ::u8
@@ -124,7 +118,7 @@ namespace PhysX
         };
         State m_state = State::Uninitialized;
 
-        Debug::PhysXDebug m_physXDebug; //! Handler for the PhysXDebug Interface.
+        Debug::PhysXDebug m_debug; //! Handler for the PhysXDebug Interface.
         AZStd::unique_ptr<PhysXSettingsRegistryManager> m_registryManager; //! Handles all settings registry interactions.
         PhysXSceneInterface m_sceneInterface; //! Implemented the Scene Az::Interface.
         PhysXJointHelpersInterface m_jointHelperInterface; //! Implementation of the JointHelpersInterface.

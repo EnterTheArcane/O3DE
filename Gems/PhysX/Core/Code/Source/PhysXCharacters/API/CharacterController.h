@@ -64,8 +64,11 @@ namespace PhysX
 
         /// Called after an exact intersection test has identified another object as obstructing the controller's path
         /// (if the ePOSTFILTER flag is set in the controller's filter flags).
-        using ObjectPostFilter = AZStd::function<physx::PxQueryHitType::Enum(const physx::PxFilterData&,
-            const physx::PxQueryHit&)>;
+        using ObjectPostFilter = AZStd::function<physx::PxQueryHitType::Enum(
+            const physx::PxFilterData&,
+            const physx::PxQueryHit&,
+            const physx::PxShape*,
+            const physx::PxRigidActor*)>;
 
         /// Called when the controller collides with another object.
         using OnShapeHit = AZStd::function<void(const physx::PxControllerShapeHit&)>;
@@ -125,15 +128,11 @@ namespace PhysX
         physx::PxQueryHitType::Enum preFilter(const physx::PxFilterData& filterData, const physx::PxShape* shape,
             const physx::PxRigidActor* actor, physx::PxHitFlags& queryFlags) override;
 
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
         physx::PxQueryHitType::Enum postFilter(
             const physx::PxFilterData& filterData,
             const physx::PxQueryHit& hit,
             const physx::PxShape* shape,
             const physx::PxRigidActor* actor) override;
-#endif
-
-        physx::PxQueryHitType::Enum postFilter(const physx::PxFilterData& filterData, const physx::PxQueryHit& hit) override;
 
         // physx::PxUserControllerHitReport
         void onShapeHit(const physx::PxControllerShapeHit& hit) override;

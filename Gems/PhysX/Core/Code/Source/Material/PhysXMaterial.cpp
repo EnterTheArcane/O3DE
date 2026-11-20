@@ -16,7 +16,7 @@
 
 namespace PhysX
 {
-    static CombineMode FromPxCombineMode(physx::PxCombineMode::Enum pxMode)
+    static constexpr CombineMode FromPxCombineMode(physx::PxCombineMode::Enum pxMode)
     {
         switch (pxMode)
         {
@@ -33,7 +33,7 @@ namespace PhysX
         }
     }
 
-    static physx::PxCombineMode::Enum ToPxCombineMode(CombineMode mode)
+    static constexpr physx::PxCombineMode::Enum ToPxCombineMode(CombineMode mode)
     {
         switch (mode)
         {
@@ -314,17 +314,11 @@ namespace PhysX
 
     bool Material::IsCompliantContactModeEnabled() const
     {
-#if (PX_PHYSICS_VERSION_MAJOR >= 5)
-        return m_pxMaterial->getFlags().isSet(physx::PxMaterialFlag::eCOMPLIANT_CONTACT);
-#else
-        return false;
-#endif
+        return m_pxMaterial->getRestitution() < 0.0f;
     }
 
-    void Material::EnableCompliantContactMode([[maybe_unused]] bool enabled)
+    void Material::EnableCompliantContactMode(bool enabled)
     {
-#if (PX_PHYSICS_VERSION_MAJOR >= 5)
-        m_pxMaterial->setFlag(physx::PxMaterialFlag::eCOMPLIANT_CONTACT, enabled);
         if (enabled)
         {
             m_pxMaterial->setDamping(m_compliantContactModeDamping);
@@ -337,7 +331,6 @@ namespace PhysX
             // Restores restitution value when Compliant Contact Modde is disabled
             m_pxMaterial->setRestitution(m_restitution);
         }
-#endif
     }
 
     float Material::GetCompliantContactModeDamping() const
@@ -345,9 +338,8 @@ namespace PhysX
         return m_compliantContactModeDamping;
     }
 
-    void Material::SetCompliantContactModeDamping([[maybe_unused]] float damping)
+    void Material::SetCompliantContactModeDamping(float damping)
     {
-#if (PX_PHYSICS_VERSION_MAJOR >= 5)
         AZ_Warning("PhysX Material", damping >= 0.0f, "Compliant Contact Mode Damping value %f is out of range, 0 will be used.", damping);
 
         m_compliantContactModeDamping = AZ::GetMax(0.0f, damping);
@@ -356,7 +348,6 @@ namespace PhysX
         {
             m_pxMaterial->setDamping(m_compliantContactModeDamping);
         }
-#endif
     }
 
     float Material::GetCompliantContactModeStiffness() const
@@ -364,9 +355,8 @@ namespace PhysX
         return m_compliantContactModeStiffness;
     }
 
-    void Material::SetCompliantContactModeStiffness([[maybe_unused]] float stiffness)
+    void Material::SetCompliantContactModeStiffness(float stiffness)
     {
-#if (PX_PHYSICS_VERSION_MAJOR >= 5)
         AZ_Warning(
             "PhysX Material", stiffness >= 0.0f, "Compliant Contact Mode Stiffness value %f is out of range, 0 will be used.", stiffness);
 
@@ -377,7 +367,6 @@ namespace PhysX
             // PxMaterial uses negative values in the restitution property for the stiffness of Compliant Contacts
             m_pxMaterial->setRestitution(-m_compliantContactModeStiffness);
         }
-#endif
     }
 
     const AZ::Color& Material::GetDebugColor() const
@@ -401,9 +390,19 @@ namespace PhysX
 
         MaterialConfiguration::ValidateMaterialAsset(m_materialAsset);
 
-        for (const auto& materialProperty : m_materialAsset->GetMaterialProperties())
+        const auto& materialProperties = m_materialAsset->GetMaterialProperties();
+        for (const auto& [propertyName, propertyValue] : materialProperties)
         {
-            SetProperty(materialProperty.first, materialProperty.second);
+            if (propertyName != MaterialConstants::CompliantContactModeEnabledName)
+            {
+                SetProperty(propertyName, propertyValue);
+            }
+        }
+
+        // Apply after stiffness, since zero stiffness disables compliant contacts.
+        if (const auto enabled = materialProperties.find(MaterialConstants::CompliantContactModeEnabledName); enabled != materialProperties.end())
+        {
+            EnableCompliantContactMode(enabled->second.GetValue<bool>());
         }
     }
 

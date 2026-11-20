@@ -309,8 +309,7 @@ namespace PhysX
                 constexpr bool shrinkBounds = false;
                 pxHeightfield->modifySamples(static_cast<physx::PxI32>(startCol), static_cast<physx::PxI32>(startRow), desc, shrinkBounds);
 
-                physx::PxHeightFieldGeometry hfGeom;
-                pxShape->getHeightFieldGeometry(hfGeom);
+                auto hfGeom = static_cast<const physx::PxHeightFieldGeometry&>(pxShape->getGeometry());
                 hfGeom.heightField = pxHeightfield;
                 pxShape->setGeometry(hfGeom);
             }
@@ -768,8 +767,13 @@ namespace PhysX
 
         bool CookConvexToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount, physx::PxOutputStream& stream)
         {
-            physx::PxCooking* cooking = nullptr;
-            SystemRequestsBus::BroadcastResult(cooking, &SystemRequests::GetCooking);
+            physx::PxCookingParams* defaultCookingParams = nullptr;
+            SystemRequestsBus::BroadcastResult(defaultCookingParams, &SystemRequests::GetCookingParams);
+            physx::PxCookingParams cookingParams{ physx::PxTolerancesScale() };
+            if (defaultCookingParams)
+            {
+                cookingParams = *defaultCookingParams;
+            }
 
             physx::PxConvexMeshDesc convexDesc;
             convexDesc.points.count = vertexCount;
@@ -779,7 +783,7 @@ namespace PhysX
 
             physx::PxConvexMeshCookingResult::Enum resultCode = physx::PxConvexMeshCookingResult::eSUCCESS;
 
-            bool result = cooking->cookConvexMesh(convexDesc, stream, &resultCode);
+            bool result = PxCookConvexMesh(cookingParams, convexDesc, stream, &resultCode);
 
             AZ_Error("PhysX", result,
                 "CookConvexToPxOutputStream: Failed to cook convex mesh. Please check the data is correct. Error: %s",
@@ -791,8 +795,13 @@ namespace PhysX
         bool CookTriangleMeshToToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount,
             const AZ::u32* indices, AZ::u32 indexCount, physx::PxOutputStream& stream)
         {
-            physx::PxCooking* cooking = nullptr;
-            SystemRequestsBus::BroadcastResult(cooking, &SystemRequests::GetCooking);
+            physx::PxCookingParams* defaultCookingParams = nullptr;
+            SystemRequestsBus::BroadcastResult(defaultCookingParams, &SystemRequests::GetCookingParams);
+            physx::PxCookingParams cookingParams{ physx::PxTolerancesScale() };
+            if (defaultCookingParams)
+            {
+                cookingParams = *defaultCookingParams;
+            }
 
             // Validate indices size
             AZ_Error("PhysX", indexCount % 3 == 0, "Number of indices must be a multiple of 3.");
@@ -808,7 +817,7 @@ namespace PhysX
 
             physx::PxTriangleMeshCookingResult::Enum resultCode = physx::PxTriangleMeshCookingResult::eSUCCESS;
 
-            bool result = cooking->cookTriangleMesh(meshDesc, stream, &resultCode);
+            bool result = PxCookTriangleMesh(cookingParams, meshDesc, stream, &resultCode);
 
             AZ_Error("PhysX", result,
                 "CookTriangleMeshToToPxOutputStream: Failed to cook triangle mesh. Please check the data is correct. Error: %s.",
@@ -978,9 +987,12 @@ namespace PhysX
             AZ::Transform overallTransformNoScale = GetColliderWorldTransform(worldTransform,
                 colliderConfiguration.m_position, colliderConfiguration.m_rotation);
             overallTransformNoScale.ExtractUniformScale();
-            const physx::PxBounds3 bounds = physx::PxGeometryQuery::getWorldBounds(geometryHolder.any(),
-                PxMathConvert(overallTransformNoScale),
-                boundsInflationFactor);
+            physx::PxBounds3 bounds = physx::PxBounds3::empty();
+            if (!physx::PxGeometryQuery::computeGeomBounds(bounds, geometryHolder.any(), PxMathConvert(overallTransformNoScale), 0.0f, boundsInflationFactor))
+            {
+                AZ_Error("PhysX", false, "Failed to compute collider geometry bounds.");
+                return AZ::Aabb::CreateNull();
+            }
             return PxMathConvert(bounds);
         }
 
@@ -1807,6 +1819,7 @@ namespace PhysX
             HingeJointConfiguration::Reflect(context);
             PrismaticJointConfiguration::Reflect(context);
             ArticulationSensorConfiguration::Reflect(context);
+            ArticulationJointFrictionProperties::Reflect(context);
             ArticulationJointMotorProperties::Reflect(context);
             ArticulationLinkConfiguration::Reflect(context);
 

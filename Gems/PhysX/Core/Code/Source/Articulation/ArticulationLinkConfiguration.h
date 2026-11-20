@@ -11,6 +11,7 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/optional.h>
 #include <AzFramework/Physics/Common/PhysicsTypes.h>
 #include <AzFramework/Physics/Configuration/SimulatedBodyConfiguration.h>
 
@@ -25,7 +26,8 @@ namespace AZ
 
 namespace PhysX
 {
-    //! Configuration used to describe force/torque sensors attached to articulation links.
+    //! DEPRECATED: Sensor settings retained for pre-5.12 asset round trips. They have no simulation effect.
+    //! Remove after legacy sensor assets have been migrated to incoming joint force/torque queries.
     struct ArticulationSensorConfiguration
     {
         AZ_CLASS_ALLOCATOR_DECL;
@@ -49,11 +51,15 @@ namespace PhysX
         static void Reflect(AZ::ReflectContext* context);
 
         ArticulationJointMotorProperties() = default;
+        bool HasLegacyDriveImpulseLimit() const;
 
         bool m_useMotor = false; //!< Enables joint actuation.
-        float m_driveForceLimit = 1.0f; //!< Force/torque limit applied by motor.
+        float m_driveForceLimit = 1.0f; //!< Motor force limit in newtons for prismatic joints, or torque limit in newton-meters for hinge joints.
         float m_driveStiffness = 1.0f; //!< Stiffness of motor servo.
         float m_driveDamping = 1.0f; //!< Damping of motor servo.
+        //! DEPRECATED: Original pre-5.12 impulse limit retained for serialization and retuning reference only.
+        //! Remove after legacy motor settings have been migrated to force/torque units.
+        AZStd::optional<float> m_legacyDriveImpulseLimit;
     };
 
     //! Configuration used to Add Articulations to a Scene.
@@ -117,7 +123,10 @@ namespace PhysX
         float m_angularLimitPositive = 45.0f;
         float m_angularLimitNegative = -45.0f;
 
+        //! DEPRECATED: Friction coefficient retained for asset round trips and retuning. It has no simulation effect.
+        //! Remove after legacy friction settings have been migrated to per-axis effort parameters.
         float m_jointFriction = 0.f;
+        ArticulationJointFrictionProperties m_jointFrictionParameters;
         AZ::Vector3 m_armature = AZ::Vector3::CreateZero();
 
         ArticulationJointMotorProperties m_motorConfiguration;
@@ -132,6 +141,8 @@ namespace PhysX
         AZ::Vector3 m_LeadLocalRotation =
             AZ::Vector3::CreateZero(); //!< Local rotation angles about X, Y, Z axes in degrees, relative to lead body.
 
+        //! DEPRECATED: Sensor settings retained for asset round trips. They have no simulation effect.
+        //! Remove after legacy sensor assets have been migrated to incoming joint force/torque queries.
         AZStd::vector<ArticulationSensorConfiguration> m_sensorConfigs;
 
         enum class DisplaySetupState : AZ::u8
@@ -149,5 +160,8 @@ namespace PhysX
         bool HingePropertiesVisible() const;
         bool PrismaticPropertiesVisible() const;
         bool IsSingleDofJointType() const;
+        bool HasLegacySettings() const;
+        AZ::u32 ClearLegacySettings();
+        void WarnLegacySettings(const AZStd::string& entityName, AZ::EntityId entityId) const;
     };
 } // namespace PhysX

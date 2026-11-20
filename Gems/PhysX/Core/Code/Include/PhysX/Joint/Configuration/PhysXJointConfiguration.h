@@ -76,12 +76,14 @@ namespace PhysX
             float damping, float limitFirst, float limitSecond, float stiffness, float tolerance);
 
         bool m_isLimited = true; ///< Specifies if limits are applied to the joint constraints. E.g. if the swing angles are limited.
-        bool m_isSoftLimit = false; ///< If limit is soft, spring and damping are used, otherwise tolerance is used. Converting between soft/hard limit at game time is allowed.
+        bool m_isSoftLimit = false; ///< If limit is soft, spring and damping are used. Converting between soft/hard limit at game time is allowed.
         float m_damping = 20.0f; ///< The damping strength of the drive, the force proportional to the velocity error. Used if limit is soft.
         float m_limitFirst = 45.0f; ///< Positive angle limit in the case of twist angle limits, Y-axis swing limit in the case of cone limits.
         float m_limitSecond = 45.0f; ///< Negative angle limit in the case of twist angle limits, Z-axis swing limit in the case of cone limits.
         float m_stiffness = 100.0f; ///< The spring strength of the drive, the force proportional to the position error. Used if limit is soft.
-        float m_tolerance = 0.1f; ///< Distance from the joint at which limits becomes enforced. Used if limit is hard.
+        //! DEPRECATED: Contact tolerance retained for serialization. PhysX 5.12 no longer applies this value.
+        //! Remove after legacy asset migration.
+        float m_tolerance = 0.1f;
     };
 
     struct JointMotorProperties

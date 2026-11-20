@@ -39,9 +39,14 @@ namespace PhysX
                                                                              physx::PxD6Axis::eSWING1, physx::PxD6Axis::eSWING2 };
 
         //! Maps a drive id, as used by the joint requests bus, to the corresponding PhysX drive.
-        constexpr AZStd::array<physx::PxD6Drive::Enum, 6> IdToPxD6DriveEnum = { physx::PxD6Drive::eX,     physx::PxD6Drive::eY,
-                                                                               physx::PxD6Drive::eZ,     physx::PxD6Drive::eTWIST,
-                                                                               physx::PxD6Drive::eSWING, physx::PxD6Drive::eSLERP };
+        constexpr AZStd::array<physx::PxD6Drive::Enum, 6> IdToPxD6DriveEnum = {
+            physx::PxD6Drive::eX,
+            physx::PxD6Drive::eY,
+            physx::PxD6Drive::eZ,
+            physx::PxD6Drive::eTWIST,
+            physx::PxD6Drive::eSWING1,
+            physx::PxD6Drive::eSLERP,
+        };
 
         //! Returns whether the given id can be used to index one of the id-to-PhysX enum tables above.
         template<typename EnumType, size_t Size>
@@ -50,7 +55,7 @@ namespace PhysX
             return id >= 0 && static_cast<size_t>(id) < table.size();
         }
 
-        physx::PxD6Motion::Enum ConvertD6JointAxisToPxD6Motion(D6JointAxis axis)
+        constexpr physx::PxD6Motion::Enum ConvertD6JointAxisToPxD6Motion(D6JointAxis axis)
         {
             switch (axis)
             {
@@ -332,61 +337,23 @@ namespace PhysX
             m_nativeD6Joint->setMotion(physx::PxD6Axis::eSWING2, ConvertD6JointAxisToPxD6Motion(m_d6Configuration.m_motionSwing2));
 
             // Set linear limits per axis
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
             if (m_d6Configuration.m_motionX == D6JointAxis::Limited)
             {
-                physx::PxJointLinearLimitPair limitX(m_d6Configuration.m_motionLimitsX.first, m_d6Configuration.m_motionLimitsX.second);
+                physx::PxJointLinearLimitPair limitX(physx::PxTolerancesScale(), m_d6Configuration.m_motionLimitsX.first, m_d6Configuration.m_motionLimitsX.second);
                 m_nativeD6Joint->setLinearLimit(physx::PxD6Axis::eX, limitX);
             }
 
             if (m_d6Configuration.m_motionY == D6JointAxis::Limited)
             {
-                physx::PxJointLinearLimitPair limitY(m_d6Configuration.m_motionLimitsY.first, m_d6Configuration.m_motionLimitsY.second);
+                physx::PxJointLinearLimitPair limitY(physx::PxTolerancesScale(), m_d6Configuration.m_motionLimitsY.first, m_d6Configuration.m_motionLimitsY.second);
                 m_nativeD6Joint->setLinearLimit(physx::PxD6Axis::eY, limitY);
             }
 
             if (m_d6Configuration.m_motionZ == D6JointAxis::Limited)
             {
-                physx::PxJointLinearLimitPair limitZ(m_d6Configuration.m_motionLimitsZ.first, m_d6Configuration.m_motionLimitsZ.second);
+                physx::PxJointLinearLimitPair limitZ(physx::PxTolerancesScale(), m_d6Configuration.m_motionLimitsZ.first, m_d6Configuration.m_motionLimitsZ.second);
                 m_nativeD6Joint->setLinearLimit(physx::PxD6Axis::eZ, limitZ);
             }
-#else
-            // PhysX 4 doesn't support per-axis linear limits, only a single spherical limit
-            // Calculate the maximum extent from all limited axes
-            if (m_d6Configuration.m_motionX == D6JointAxis::Limited || m_d6Configuration.m_motionY == D6JointAxis::Limited ||
-                m_d6Configuration.m_motionZ == D6JointAxis::Limited)
-            {
-                AZ_Warning(
-                    "PhysX",
-                    false,
-                    "Entity [%s] D6 Joint: PhysX 4 does not support per-axis linear limits. "
-                    "Converting to a single spherical limit using the maximum extent from all limited axes. "
-                    "Consider upgrading to PhysX 5 for full per-axis linear limit support.",
-                    GetEntity()->GetName().c_str());
-
-                float maxExtent = 0.0f;
-                if (m_d6Configuration.m_motionX == D6JointAxis::Limited)
-                {
-                    const float extentX = AZ::GetMax(
-                        AZ::GetAbs(m_d6Configuration.m_motionLimitsX.first), AZ::GetAbs(m_d6Configuration.m_motionLimitsX.second));
-                    maxExtent = AZ::GetMax(maxExtent, extentX);
-                }
-                if (m_d6Configuration.m_motionY == D6JointAxis::Limited)
-                {
-                    const float extentY = AZ::GetMax(
-                        AZ::GetAbs(m_d6Configuration.m_motionLimitsY.first), AZ::GetAbs(m_d6Configuration.m_motionLimitsY.second));
-                    maxExtent = AZ::GetMax(maxExtent, extentY);
-                }
-                if (m_d6Configuration.m_motionZ == D6JointAxis::Limited)
-                {
-                    const float extentZ = AZ::GetMax(
-                        AZ::GetAbs(m_d6Configuration.m_motionLimitsZ.first), AZ::GetAbs(m_d6Configuration.m_motionLimitsZ.second));
-                    maxExtent = AZ::GetMax(maxExtent, extentZ);
-                }
-                physx::PxJointLinearLimit linearLimit(physx::PxTolerancesScale(), maxExtent);
-                m_nativeD6Joint->setLinearLimit(linearLimit);
-            }
-#endif
 
             // Set twist limit
             if (m_d6Configuration.m_motionTwist == D6JointAxis::Limited)
@@ -434,17 +401,31 @@ namespace PhysX
             {
                 m_nativeD6Joint->setDrive(physx::PxD6Drive::eZ, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveZ));
             }
-            if (m_d6Configuration.m_driveTwist.m_driveType != D6JointDriveType::None)
+            // Preserve the SDK 5.1 fallback when SLERP is inactive or an angular axis is locked.
+            const auto& slerpDrive = m_d6Configuration.m_driveSlerp;
+            const bool useSlerp = slerpDrive.IsActive()
+                && (slerpDrive.m_stiffness != 0.0f || slerpDrive.m_damping != 0.0f)
+                && m_d6Configuration.m_motionTwist != D6JointAxis::Locked
+                && m_d6Configuration.m_motionSwing1 != D6JointAxis::Locked
+                && m_d6Configuration.m_motionSwing2 != D6JointAxis::Locked;
+            if (useSlerp)
             {
-                m_nativeD6Joint->setDrive(physx::PxD6Drive::eTWIST, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveTwist));
-            }
-            if (m_d6Configuration.m_driveSwing.m_driveType != D6JointDriveType::None)
-            {
-                m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveSwing));
-            }
-            if (m_d6Configuration.m_driveSlerp.m_driveType != D6JointDriveType::None)
-            {
+                m_nativeD6Joint->setAngularDriveConfig(physx::PxD6AngularDriveConfig::eSLERP);
                 m_nativeD6Joint->setDrive(physx::PxD6Drive::eSLERP, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveSlerp));
+            }
+            else
+            {
+                m_nativeD6Joint->setAngularDriveConfig(physx::PxD6AngularDriveConfig::eSWING_TWIST);
+                if (m_d6Configuration.m_driveTwist.IsActive())
+                {
+                    m_nativeD6Joint->setDrive(physx::PxD6Drive::eTWIST, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveTwist));
+                }
+                if (m_d6Configuration.m_driveSwing.IsActive())
+                {
+                    const auto drive = PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveSwing);
+                    m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING1, drive);
+                    m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING2, drive);
+                }
             }
         }
         const AZ::EntityComponentIdPair entityComponentIdPair(GetEntityId(), GetId());
@@ -558,8 +539,18 @@ namespace PhysX
         }
         PHYSX_SCENE_WRITE_LOCK(m_nativeD6Joint->getScene());
         const physx::PxD6Drive::Enum driveAxis = IdToPxD6DriveEnum[id];
+        const auto angularConfig = m_nativeD6Joint->getAngularDriveConfig();
+        if ((driveAxis == physx::PxD6Drive::eSLERP && angularConfig != physx::PxD6AngularDriveConfig::eSLERP)
+            || ((driveAxis == physx::PxD6Drive::eTWIST || driveAxis == physx::PxD6Drive::eSWING1) && angularConfig != physx::PxD6AngularDriveConfig::eSWING_TWIST))
+        {
+            return;
+        }
         physx::PxD6JointDrive drive = m_nativeD6Joint->getDrive(driveAxis);
         drive.forceLimit = force;
         m_nativeD6Joint->setDrive(driveAxis, drive);
+        if (driveAxis == physx::PxD6Drive::eSWING1)
+        {
+            m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING2, drive);
+        }
     }
 } // namespace PhysX

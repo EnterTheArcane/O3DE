@@ -241,7 +241,7 @@ namespace PhysX
         desc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
 
         //TEMP until this in moved over
-        physx::PxConvexMesh* convex = m_physXSystem->GetPxCooking()->createConvexMesh(desc,
+        physx::PxConvexMesh* convex = PxCreateConvexMesh(*m_physXSystem->GetPxCookingParams(), desc,
             m_physXSystem->GetPxPhysics()->getPhysicsInsertionCallback());
         AZ_Error("PhysX", convex, "Error. Unable to create convex mesh");
 
@@ -258,7 +258,7 @@ namespace PhysX
         desc.samples.stride = sizeof(physx::PxHeightFieldSample);
 
         physx::PxHeightField* heightfield =
-            m_physXSystem->GetPxCooking()->createHeightField(desc, m_physXSystem->GetPxPhysics()->getPhysicsInsertionCallback());
+            PxCreateHeightField(desc, m_physXSystem->GetPxPhysics()->getPhysicsInsertionCallback());
         AZ_Error("PhysX", heightfield, "Error. Unable to create heightfield");
 
         return heightfield;
@@ -434,10 +434,9 @@ namespace PhysX
         return PhysX::Collision::CreateFilterData(layer, group);
     }
 
-    physx::PxCooking* SystemComponent::GetCooking()
+    physx::PxCookingParams* SystemComponent::GetCookingParams()
     {
-        //TEMP until this in moved over
-        return m_physXSystem->GetPxCooking();
+        return m_physXSystem->GetPxCookingParams();
     }
 
     void SystemComponent::OnTick(float deltaTime, [[maybe_unused]] AZ::ScriptTimePoint time)

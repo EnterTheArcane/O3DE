@@ -219,19 +219,11 @@ namespace PhysX
 
     bool MaterialConfiguration::IsRestitutionReadOnly() const
     {
-#if (PX_PHYSICS_VERSION_MAJOR >= 5)
         return m_compliantContactMode.m_enabled;
-#else
-        return false;
-#endif
     }
 
     AZ::Crc32 MaterialConfiguration::GetCompliantConstantModeVisibility() const
     {
-#if (PX_PHYSICS_VERSION_MAJOR >= 5)
         return AZ::Edit::PropertyVisibility::Show;
-#else
-        return AZ::Edit::PropertyVisibility::Hide;
-#endif
     }
 } // namespace PhysX

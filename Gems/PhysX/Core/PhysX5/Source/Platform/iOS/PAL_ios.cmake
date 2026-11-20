@@ -8,4 +8,4 @@
 
 set(PAL_TRAIT_PHYSX_SUPPORTED TRUE)
 
-ly_associate_package(PACKAGE_NAME PhysX-5.1.1-rev4-ios TARGETS PhysX5 PACKAGE_HASH b75053fb88255f9fe40d1ce6c8aa3ae4ac00856d27ab4e1aaf4ef9e6f8a1bd85)
+ly_associate_package(PACKAGE_NAME PhysX-5.12.0-rev1-ios TARGETS PhysX5 PACKAGE_HASH 5b1929447a9e82c13b1eea21a07ececcb81aa40b4f8d4d4f24bceee3579dd76d)

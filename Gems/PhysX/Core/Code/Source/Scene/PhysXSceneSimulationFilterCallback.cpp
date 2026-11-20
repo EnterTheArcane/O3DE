@@ -93,11 +93,16 @@ namespace PhysX
     }
 
     physx::PxFilterFlags SceneSimulationFilterCallback::pairFound(
-        [[maybe_unused]] physx::PxU32 pairId, [[maybe_unused]] physx::PxFilterObjectAttributes attributes0,
-        [[maybe_unused]] physx::PxFilterData filterData0, const physx::PxActor* actor0,
-        [[maybe_unused]] const physx::PxShape* shape0, [[maybe_unused]] physx::PxFilterObjectAttributes attributes1,
-        [[maybe_unused]] physx::PxFilterData filterData1, const physx::PxActor* actor1,
-        [[maybe_unused]] const physx::PxShape* shape1, [[maybe_unused]] physx::PxPairFlags& pairFlags)
+        [[maybe_unused]] physx::PxU64 pairId,
+        [[maybe_unused]] physx::PxFilterObjectAttributes attributes0,
+        [[maybe_unused]] physx::PxFilterData filterData0,
+        const physx::PxActor* actor0,
+        [[maybe_unused]] const physx::PxShape* shape0,
+        [[maybe_unused]] physx::PxFilterObjectAttributes attributes1,
+        [[maybe_unused]] physx::PxFilterData filterData1,
+        const physx::PxActor* actor1,
+        [[maybe_unused]] const physx::PxShape* shape1,
+        [[maybe_unused]] physx::PxPairFlags& pairFlags)
     {
         if (FindSuppressedPair(actor0, actor1) != m_suppressedCollisionPairs.end())
         {
@@ -108,21 +113,27 @@ namespace PhysX
     }
 
     void SceneSimulationFilterCallback::pairLost(
-        [[maybe_unused]] physx::PxU32 pairId, [[maybe_unused]] physx::PxFilterObjectAttributes attributes0,
-        [[maybe_unused]] physx::PxFilterData filterData0, [[maybe_unused]] physx::PxFilterObjectAttributes attributes1,
-        [[maybe_unused]] physx::PxFilterData filterData1, [[maybe_unused]] bool objectRemoved)
+        [[maybe_unused]] physx::PxU64 pairId,
+        [[maybe_unused]] physx::PxFilterObjectAttributes attributes0,
+        [[maybe_unused]] physx::PxFilterData filterData0,
+        [[maybe_unused]] physx::PxFilterObjectAttributes attributes1,
+        [[maybe_unused]] physx::PxFilterData filterData1,
+        [[maybe_unused]] bool objectRemoved)
     {
 
     }
 
-    bool SceneSimulationFilterCallback::statusChange([[maybe_unused]] physx::PxU32& pairId, [[maybe_unused]] physx::PxPairFlags& pairFlags,
+    bool SceneSimulationFilterCallback::statusChange(
+        [[maybe_unused]] physx::PxU64& pairId,
+        [[maybe_unused]] physx::PxPairFlags& pairFlags,
         [[maybe_unused]] physx::PxFilterFlags& filterFlags)
     {
         return false;
     }
 
     SceneSimulationFilterCallback::CollisionPairSet::const_iterator SceneSimulationFilterCallback::FindSuppressedPair(
-        const physx::PxActor* actor0, const physx::PxActor* actor1) const
+        const physx::PxActor* actor0,
+        const physx::PxActor* actor1) const
     {
         return m_suppressedCollisionPairs.find(CollisionActorPair(actor0, actor1));
     }

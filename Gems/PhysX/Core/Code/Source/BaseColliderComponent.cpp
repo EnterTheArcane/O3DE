@@ -70,21 +70,25 @@ namespace PhysX
             auto pxShape = static_cast<physx::PxShape*>(shapes[0]->GetNativePointer());
             physx::PxTransform pxWorldTransform = PxMathConvert(m_worldTransform);
 
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
             const physx::PxGeometry& pxShapeGeom = pxShape->getGeometry();
-#else
-            const auto pxGeometryHolder = pxShape->getGeometry();
-            const physx::PxGeometry& pxShapeGeom = pxGeometryHolder.any();
-#endif
 
-            physx::PxBounds3 bounds = physx::PxGeometryQuery::getWorldBounds(pxShapeGeom,
-                pxWorldTransform * pxShape->getLocalPose(), 1.0f);
+            physx::PxBounds3 bounds = physx::PxBounds3::empty();
+            if (!physx::PxGeometryQuery::computeGeomBounds(bounds, pxShapeGeom, pxWorldTransform * pxShape->getLocalPose()))
+            {
+                AZ_Error("PhysX", false, "Failed to compute cached collider bounds.");
+                return;
+            }
 
             for (size_t shapeIndex = 1; shapeIndex < numShapes; ++shapeIndex)
             {
                 pxShape = static_cast<physx::PxShape*>(shapes[0]->GetNativePointer());
-                bounds.include(physx::PxGeometryQuery::getWorldBounds(pxShapeGeom,
-                    pxWorldTransform * pxShape->getLocalPose(), 1.0f));
+                physx::PxBounds3 shapeBounds = physx::PxBounds3::empty();
+                if (!physx::PxGeometryQuery::computeGeomBounds(shapeBounds, pxShapeGeom, pxWorldTransform * pxShape->getLocalPose()))
+                {
+                    AZ_Error("PhysX", false, "Failed to compute cached collider bounds.");
+                    return;
+                }
+                bounds.include(shapeBounds);
             }
 
             m_aabb = PxMathConvert(bounds);

@@ -361,10 +361,10 @@ namespace PhysXEditorTests
 
         physx::PxShape* shape = nullptr;
         pxRigidStatic->getShapes(&shape, 1, 0);
-        EXPECT_EQ(shape->getGeometryType(), physx::PxGeometryType::eHEIGHTFIELD);
+        EXPECT_EQ(shape->getGeometry().getType(), physx::PxGeometryType::eHEIGHTFIELD);
 
-        physx::PxHeightFieldGeometry heightfieldGeometry;
-        shape->getHeightFieldGeometry(heightfieldGeometry);
+        ASSERT_EQ(shape->getGeometry().getType(), physx::PxGeometryType::eHEIGHTFIELD);
+        const auto& heightfieldGeometry = static_cast<const physx::PxHeightFieldGeometry&>(shape->getGeometry());
 
         physx::PxHeightField* heightfield = heightfieldGeometry.heightField;
 
@@ -424,8 +424,8 @@ namespace PhysXEditorTests
         physx::PxShape* shape = nullptr;
         pxRigidStatic->getShapes(&shape, 1, 0);
 
-        physx::PxHeightFieldGeometry heightfieldGeometry;
-        shape->getHeightFieldGeometry(heightfieldGeometry);
+        ASSERT_EQ(shape->getGeometry().getType(), physx::PxGeometryType::eHEIGHTFIELD);
+        const auto& heightfieldGeometry = static_cast<const physx::PxHeightFieldGeometry&>(shape->getGeometry());
 
         physx::PxHeightField* heightfield = heightfieldGeometry.heightField;
 

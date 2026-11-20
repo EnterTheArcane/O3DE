@@ -9,6 +9,7 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Math/Vector3.h>
 #include <AzCore/std/utils.h>
 #include <PhysX/ArticulationTypes.h>
 
@@ -54,10 +55,10 @@ namespace PhysX
         //! velocity or angular velocity.
         virtual float GetDriveDamping(ArticulationJointAxis jointAxis) const = 0;
 
-        //! Set the maximum force for the joint drive for the motion associated with the given axis.
+        //! Set the drive force limit in newtons for a translational axis, or torque limit in newton-meters for a rotational axis.
         virtual void SetMaxForce(ArticulationJointAxis jointAxis, float maxForce) = 0;
 
-        //! Get the maximum force for the joint drive for the motion associated with the given axis.
+        //! Get the drive force limit in newtons for a translational axis, or torque limit in newton-meters for a rotational axis.
         virtual float GetMaxForce(ArticulationJointAxis jointAxis) const = 0;
 
         //! Set whether the joint drive for the motion associated with the given axis operates in terms of acceleration (true) or force
@@ -88,17 +89,23 @@ namespace PhysX
         //! radians per second for a rotational degree of freedom.
         virtual float GetDriveTargetVelocity(ArticulationJointAxis jointAxis) const = 0;
 
-        //! Set the joint friction coefficient for all the degrees of freedom of this joint.
-        virtual void SetFrictionCoefficient(float frictionCoefficient) = 0;
+        //! Sets the friction parameters for the specified axis.
+        virtual void SetFrictionParameters(ArticulationJointAxis jointAxis, const ArticulationJointFrictionProperties& friction) = 0;
 
-        //! Get the joint friction coefficient for all the degrees of freedom of this joint.
-        virtual float GetFrictionCoefficient() const = 0;
+        //! Gets the friction parameters for the specified axis.
+        virtual ArticulationJointFrictionProperties GetFrictionParameters(ArticulationJointAxis jointAxis) const = 0;
 
-        //! Set the maximum joint velocity for all the degrees of freedom of this joint.
-        virtual void SetMaxJointVelocity(float maxJointVelocity) = 0;
+        //! Sets the maximum joint velocity for the specified axis.
+        virtual void SetMaxJointVelocity(ArticulationJointAxis jointAxis, float maxJointVelocity) = 0;
 
-        //! Get the maximum joint velocity for all the degrees of freedom of this joint.
-        virtual float GetMaxJointVelocity() const = 0;
+        //! Gets the maximum joint velocity for the specified axis.
+        virtual float GetMaxJointVelocity(ArticulationJointAxis jointAxis) const = 0;
+
+        //! Gets the last completed simulation step's incoming joint force in the child joint frame. The root reports zero.
+        virtual AZ::Vector3 GetIncomingJointForce() const = 0;
+
+        //! Gets the last completed simulation step's incoming joint torque in the child joint frame. The root reports zero.
+        virtual AZ::Vector3 GetIncomingJointTorque() const = 0;
 
         //! Get the current joint position.
         virtual float GetJointPosition(ArticulationJointAxis jointAxis) const = 0;

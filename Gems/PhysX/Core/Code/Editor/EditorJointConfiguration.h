@@ -24,8 +24,8 @@ namespace PhysX
 
         static const float s_springMax; ///< Maximum value for spring stiffness and damping.
         static const float s_springMin; ///< Minimum value for spring stiffness and damping.
-        static const float s_toleranceMax; ///< Maximum value for limit tolerance, distance at which limit gets activated/enforced.
-        static const float s_toleranceMin; ///< Minimum value for limit tolerance, distance at which limit gets activated/enforced.
+        static const float s_toleranceMax; ///< DEPRECATED: Legacy contact tolerance bound. Remove with the deprecated tolerance fields.
+        static const float s_toleranceMin; ///< DEPRECATED: Legacy contact tolerance bound. Remove with the deprecated tolerance fields.
     };
 
     class EditorJointLimitConfig : public EditorJointLimitBase
@@ -41,7 +41,9 @@ namespace PhysX
         bool m_inComponentMode = false;
         bool m_isLimited = true; ///< Indicates if this joint has limits, e.g. maximum swing angles.
         bool m_isSoftLimit = false; ///< If limit is soft, spring and damping are taken into account.
-        float m_tolerance = 0.1f; ///< Field is not shown in the editor. May not be easy for users to utilize this value.
+        //! DEPRECATED: Contact tolerance retained for serialization. PhysX 5.12 no longer applies this value.
+        //! Remove after legacy asset migration.
+        float m_tolerance = 0.1f;
         float m_damping = 20.0f;
         float m_stiffness = 100.0f;
 

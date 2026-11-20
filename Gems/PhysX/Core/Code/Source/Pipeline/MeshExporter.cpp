@@ -138,8 +138,8 @@ namespace PhysX
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<MeshExporter, AZ::SceneAPI::SceneCore::ExportingComponent>()
-                    ->Version(8 + (1<<PX_PHYSICS_VERSION_MAJOR)); // Use PhysX version to trigger assets recompilation
+                serializeContext->Class<MeshExporter, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(
+                    8 + PX_PHYSICS_VERSION); // Recook assets when any part of the SDK version changes.
             }
         }
 
@@ -248,24 +248,30 @@ namespace PhysX
                 physicsMaterialSlots = AZStd::move(newSlots);
             }
 
-            bool ValidateCookedTriangleMesh(void* assetData, AZ::u32 assetDataSize)
+            bool ValidateCookedTriangleMesh(void* assetData, AZ::u64 assetDataSize)
             {
                 physx::PxDefaultMemoryInputData inpStream(static_cast<physx::PxU8*>(assetData), assetDataSize);
                 physx::PxTriangleMesh* triangleMesh = PxGetPhysics().createTriangleMesh(inpStream);
 
-                bool success = triangleMesh != nullptr;
+                if (!triangleMesh)
+                {
+                    return false;
+                }
                 triangleMesh->release();
-                return success;
+                return true;
             }
 
-            bool ValidateCookedConvexMesh(void* assetData, AZ::u32 assetDataSize)
+            bool ValidateCookedConvexMesh(void* assetData, AZ::u64 assetDataSize)
             {
                 physx::PxDefaultMemoryInputData inpStream(static_cast<physx::PxU8*>(assetData), assetDataSize);
                 physx::PxConvexMesh* convexMesh = PxGetPhysics().createConvexMesh(inpStream);
 
-                bool success = convexMesh != nullptr;
+                if (!convexMesh)
+                {
+                    return false;
+                }
                 convexMesh->release();
-                return success;
+                return true;
             }
 
             AZStd::vector<AZStd::string> GenerateLocalNodeMaterialMap(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex)
@@ -400,22 +406,6 @@ namespace PhysX
             }
         }
 
-        static physx::PxMeshMidPhase::Enum GetMidPhaseStructureType([[maybe_unused]] const AZStd::string& platformIdentifier)
-        {
-            // Use by default 3.4 since 3.3 is being deprecated (despite being default)
-            physx::PxMeshMidPhase::Enum ret = physx::PxMeshMidPhase::eBVH34;
-
-#if (PX_PHYSICS_VERSION_MAJOR < 5)
-            // Fallback to 3.3 on Android and iOS platforms since they don't support SSE2, which is required for 3.4
-            // Also fall back to 3.3 for Linux, since linux may support both x86 and arm64, and ARM64 does not support SSE2. 
-            if (platformIdentifier == "android" || platformIdentifier == "ios" || platformIdentifier == "linux")
-            {
-                ret = physx::PxMeshMidPhase::eBVH33;
-            }
-#endif
-            return ret;
-        }
-
         // Checks that the entire mesh is assigned (at most) one material (required for convexes and primitives).
         static void RequireSingleFaceMaterial(const AZStd::vector<AZ::u16>& faceMaterials)
         {
@@ -433,8 +423,7 @@ namespace PhysX
             const AZStd::vector<AZ::u32>& indices,
             const AZStd::vector<AZ::u16>& faceMaterials,
             AZStd::vector<AZ::u8>* output,
-            const MeshGroup& meshGroup,
-            const AZStd::string& platformIdentifier)
+            const MeshGroup& meshGroup)
         {
             bool cookingSuccessful = false;
             AZStd::string cookingResultErrorCodeString;
@@ -445,7 +434,7 @@ namespace PhysX
             physx::PxCookingParams pxCookingParams = physx::PxCookingParams(physx::PxTolerancesScale());
 
             pxCookingParams.buildGPUData = false;
-            pxCookingParams.midphaseDesc.setToDefault(GetMidPhaseStructureType(platformIdentifier));
+            pxCookingParams.midphaseDesc.setToDefault(physx::PxMeshMidPhase::eBVH34);
 
             if (shouldExportAsConvex)
             {
@@ -480,9 +469,6 @@ namespace PhysX
                 }
             }
 
-            physx::PxCooking* pxCooking = PxCreateCooking(PX_PHYSICS_VERSION, PxGetFoundation(), pxCookingParams);
-            AZ_Assert(pxCooking, "Failed to create PxCooking");
-
             physx::PxBoundedData strideData;
             strideData.count = static_cast<physx::PxU32>(vertices.size());
             strideData.stride = sizeof(AZ::Vector3);
@@ -500,13 +486,12 @@ namespace PhysX
                 SET_BITS(convexDesc.flags, convexAssetParams.GetCheckZeroAreaTriangles(), physx::PxConvexFlag::eCHECK_ZERO_AREA_TRIANGLES);
                 SET_BITS(convexDesc.flags, convexAssetParams.GetQuantizeInput(), physx::PxConvexFlag::eQUANTIZE_INPUT);
                 SET_BITS(convexDesc.flags, convexAssetParams.GetUsePlaneShifting(), physx::PxConvexFlag::ePLANE_SHIFTING);
-                SET_BITS(convexDesc.flags, convexAssetParams.GetBuildGpuData(), physx::PxConvexFlag::eGPU_COMPATIBLE);
+                pxCookingParams.buildGPUData = convexAssetParams.GetBuildGpuData();
                 SET_BITS(convexDesc.flags, convexAssetParams.GetShiftVertices(), physx::PxConvexFlag::eSHIFT_VERTICES);
 
                 physx::PxConvexMeshCookingResult::Enum convexCookingResultCode = physx::PxConvexMeshCookingResult::eSUCCESS;
 
-                cookingSuccessful =
-                    pxCooking->cookConvexMesh(convexDesc, cookedMeshData, &convexCookingResultCode)
+                cookingSuccessful = PxCookConvexMesh(pxCookingParams, convexDesc, cookedMeshData, &convexCookingResultCode)
                     && Utils::ValidateCookedConvexMesh(cookedMeshData.getData(), cookedMeshData.getSize());
 
                 cookingResultErrorCodeString = PhysX::Utils::ConvexCookingResultToString(convexCookingResultCode);
@@ -529,8 +514,7 @@ namespace PhysX
 
                 physx::PxTriangleMeshCookingResult::Enum trimeshCookingResultCode = physx::PxTriangleMeshCookingResult::eSUCCESS;
 
-                cookingSuccessful =
-                    pxCooking->cookTriangleMesh(meshDesc, cookedMeshData, &trimeshCookingResultCode)
+                cookingSuccessful = PxCookTriangleMesh(pxCookingParams, meshDesc, cookedMeshData, &trimeshCookingResultCode)
                     && Utils::ValidateCookedTriangleMesh(cookedMeshData.getData(), cookedMeshData.getSize());
 
                 cookingResultErrorCodeString = PhysX::Utils::TriMeshCookingResultToString(trimeshCookingResultCode);
@@ -545,7 +529,6 @@ namespace PhysX
                 AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Cooking Mesh failed: %s", cookingResultErrorCodeString.c_str());
             }
 
-            pxCooking->release();
             return cookingSuccessful;
         }
 
@@ -597,7 +580,7 @@ namespace PhysX
                     // Cook the mesh into a binary buffer.
                     AZStd::vector<AZ::u8> physxData;
                     bool success = CookPhysXMesh(subMesh.m_vertices, subMesh.m_indices, subMesh.m_perFaceMaterialIndices,
-                        &(physxData), meshGroup, context.GetPlatformIdentifier());
+                &(physxData), meshGroup);
 
                     if (success)
                     {

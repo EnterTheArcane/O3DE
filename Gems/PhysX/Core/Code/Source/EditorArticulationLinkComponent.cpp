@@ -212,7 +212,7 @@ namespace PhysX
                         nullptr, &ArticulationLinkConfiguration::m_motorConfiguration, QT_TRANSLATE_NOOP("PhysX", "Motor Configuration"), QT_TRANSLATE_NOOP("PhysX", "Joint's motor configuration."))
                     ->Attribute(AZ::Edit::Attributes::Visibility, &ArticulationLinkConfiguration::IsSingleDofJointType)
 
-                    ->DataElement(nullptr, &ArticulationLinkConfiguration::m_jointFriction, QT_TRANSLATE_NOOP("PhysX", "Joint Friction"), QT_TRANSLATE_NOOP("PhysX", "Joint's friction coefficient."))
+                    ->DataElement(nullptr, &ArticulationLinkConfiguration::m_jointFrictionParameters, QT_TRANSLATE_NOOP("PhysX", "Joint Friction"), QT_TRANSLATE_NOOP("PhysX", "Friction effort parameters for this joint's active axis."))
                     ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                     ->Attribute(AZ::Edit::Attributes::Visibility, &ArticulationLinkConfiguration::IsSingleDofJointType)
 
@@ -220,21 +220,42 @@ namespace PhysX
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->Attribute(AZ::Edit::Attributes::Visibility, &ArticulationLinkConfiguration::IsSingleDofJointType)
 
-                    ->ClassElement(AZ::Edit::ClassElements::Group, QT_TRANSLATE_NOOP("PhysX", "Sensors"))
-
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(nullptr, &ArticulationLinkConfiguration::m_sensorConfigs, "Sensor Configurations", "Sensor configurations")
-                    ->EndGroup()
-                    ->ClassElement(AZ::Edit::ClassElements::Group, "Joint Offset")
+                    ->ClassElement(AZ::Edit::ClassElements::Group, QT_TRANSLATE_NOOP("PhysX", "Joint Offset"))
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(
                            AZ::Edit::UIHandlers::Default,
                            &ArticulationLinkConfiguration::m_offset,
-                           "Offset",
-                           "Zero-position offset for the joint. For hinge joints the value is in degrees; "
-                           "for prismatic joints the value is in meters. Limits, drive targets, and reported "
-                           "positions are all expressed relative to this offset.")
+                           QT_TRANSLATE_NOOP("PhysX", "Offset"),
+                           QT_TRANSLATE_NOOP(
+                               "PhysX",
+                               "Zero-position offset for the joint. For hinge joints the value is in degrees; "
+                               "for prismatic joints the value is in meters. Limits, drive targets, and reported "
+                               "positions are all expressed relative to this offset."))
                     ->Attribute(AZ::Edit::Attributes::Visibility, &ArticulationLinkConfiguration::IsSingleDofJointType)
+                    ->EndGroup()
+                    ->ClassElement(AZ::Edit::ClassElements::Group, QT_TRANSLATE_NOOP("PhysX", "Legacy PhysX Settings"))
+                    ->Attribute(AZ::Edit::Attributes::Visibility, &ArticulationLinkConfiguration::HasLegacySettings)
+                    ->DataElement(
+                        nullptr,
+                        &ArticulationLinkConfiguration::m_jointFriction,
+                        QT_TRANSLATE_NOOP("PhysX", "Legacy Friction Coefficient"),
+                        QT_TRANSLATE_NOOP("PhysX", "Original coefficient retained for reference. It is not applied by PhysX 5.12."))
+                    ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                    ->DataElement(
+                        nullptr,
+                        &ArticulationLinkConfiguration::m_sensorConfigs,
+                        QT_TRANSLATE_NOOP("PhysX", "Legacy Sensors"),
+                        QT_TRANSLATE_NOOP("PhysX", "Original sensor settings retained for reference. Use incoming joint force and torque instead."))
+                    ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                    ->UIElement(
+                        AZ::Edit::UIHandlers::Button,
+                        QT_TRANSLATE_NOOP("PhysX", "Clear Legacy Settings"),
+                        QT_TRANSLATE_NOOP(
+                            "PhysX",
+                            "After retuning motor and friction parameters and updating sensor callers, discard the retained legacy settings. "
+                            "Current SDK parameters are unchanged."))
+                    ->Attribute(AZ::Edit::Attributes::ButtonText, QT_TRANSLATE_NOOP("PhysX", "Clear Legacy Settings"))
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &ArticulationLinkConfiguration::ClearLegacySettings)
                     ->EndGroup();
             }
         }
@@ -313,6 +334,8 @@ namespace PhysX
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();
         m_config.m_isRootArticulation = IsRootArticulation();
+
+        m_config.WarnLegacySettings(GetEntity()->GetName(), GetEntityId());
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());

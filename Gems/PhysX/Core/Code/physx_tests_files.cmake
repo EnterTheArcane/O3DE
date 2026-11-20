@@ -26,6 +26,7 @@ set(FILES
     Tests/PhysXSceneTests.cpp
     Tests/PhysXSceneQueryTests.cpp
     Tests/PhysXSystemTests.cpp
+    Tests/PhysXUpgradeTests.cpp
     Tests/PhysXTestFixtures.h
     Tests/PhysXTestFixtures.cpp
     Tests/PhysXTestUtil.h

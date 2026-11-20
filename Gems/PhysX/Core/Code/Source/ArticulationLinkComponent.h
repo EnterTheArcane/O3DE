@@ -15,7 +15,6 @@
 #include <AzFramework/Physics/RigidBodyBus.h>
 #include <AzFramework/Physics/Shape.h>
 #include <PhysX/ArticulationJointBus.h>
-#include <PhysX/ArticulationSensorBus.h>
 #include <PhysX/ComponentTypeIds.h>
 #include <PhysX/Joint/Configuration/PhysXJointConfiguration.h>
 #include <PhysX/UserDataTypes.h>
@@ -28,6 +27,8 @@ namespace physx
 {
     class PxArticulationReducedCoordinate;
     class PxArticulationJointReducedCoordinate;
+    class PxArticulationCache;
+    struct PxSpatialForce;
 } // namespace physx
 
 namespace PhysX
@@ -36,11 +37,8 @@ namespace PhysX
     class ArticulationLinkComponent final
         : public AZ::Component
         , private AZ::TransformNotificationBus::Handler
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
         , public AzPhysics::SimulatedBodyComponentRequestsBus::Handler
         , public PhysX::ArticulationJointRequestBus::Handler
-        , public PhysX::ArticulationSensorRequestBus::Handler
-#endif
     {
     public:
         AZ_COMPONENT(ArticulationLinkComponent, ArticulationLinkComponentTypeId);
@@ -56,7 +54,6 @@ namespace PhysX
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
         // ArticulationJointRequestBus overrides ...
         void SetMotion(ArticulationJointAxis jointAxis, ArticulationJointMotionType jointMotionType) override;
         ArticulationJointMotionType GetMotion(ArticulationJointAxis jointAxis) const override;
@@ -74,18 +71,15 @@ namespace PhysX
         float GetDriveTarget(ArticulationJointAxis jointAxis) const override;
         void SetDriveTargetVelocity(ArticulationJointAxis jointAxis, float targetVelocity) override;
         float GetDriveTargetVelocity(ArticulationJointAxis jointAxis) const override;
-        void SetFrictionCoefficient(float frictionCoefficient) override;
-        float GetFrictionCoefficient() const override;
-        void SetMaxJointVelocity(float maxJointVelocity) override;
-        float GetMaxJointVelocity() const override;
+        void SetFrictionParameters(ArticulationJointAxis jointAxis, const ArticulationJointFrictionProperties& friction) override;
+        ArticulationJointFrictionProperties GetFrictionParameters(ArticulationJointAxis jointAxis) const override;
+        void SetMaxJointVelocity(ArticulationJointAxis jointAxis, float maxJointVelocity) override;
+        float GetMaxJointVelocity(ArticulationJointAxis jointAxis) const override;
         float GetJointPosition(ArticulationJointAxis jointAxis) const override;
         float GetJointVelocity(ArticulationJointAxis jointAxis) const override;
         bool IsRootArticulation() const override;
-        // ArticulationSensorRequestBus overrides ...
-        AZ::Transform GetSensorTransform(AZ::u32 sensorIndex) const override;
-        void SetSensorTransform(AZ::u32 sensorIndex, const AZ::Transform& sensorTransform) override;
-        AZ::Vector3 GetForce(AZ::u32 sensorIndex) const override;
-        AZ::Vector3 GetTorque(AZ::u32 sensorIndex) const override;
+        AZ::Vector3 GetIncomingJointForce() const override;
+        AZ::Vector3 GetIncomingJointTorque() const override;
         const AzPhysics::SimulatedBody* GetSimulatedBodyConst() const;
         void FillSimulatedBodyHandle();
 
@@ -97,10 +91,8 @@ namespace PhysX
         bool IsPhysicsEnabled() const override;
         AZ::Aabb GetAabb() const override;
         AzPhysics::SceneQueryHit RayCast(const AzPhysics::RayCastRequest& request) override;
-#endif
 
         physx::PxArticulationLink* GetArticulationLink(const AZ::EntityId entityId);
-        const AZStd::vector<AZ::u32> GetSensorIndices(const AZ::EntityId entityId);
         const physx::PxArticulationJointReducedCoordinate* GetDriveJoint() const;
         physx::PxArticulationJointReducedCoordinate* GetDriveJoint();
         AZStd::vector<AzPhysics::SimulatedBodyHandle> GetSimulatedBodyHandles() const;
@@ -113,10 +105,8 @@ namespace PhysX
         void CreateArticulation();
         void DestroyArticulation();
         void InitPhysicsTickHandler();
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
 
-        const physx::PxArticulationSensor* GetSensor(AZ::u32 sensorIndex) const;
-        physx::PxArticulationSensor* GetSensor(AZ::u32 sensorIndex);
+        physx::PxSpatialForce GetIncomingJointSpatialForce() const;
 
         void SetRootSpecificProperties(const ArticulationLinkConfiguration& rootLinkConfiguration);
 
@@ -125,7 +115,6 @@ namespace PhysX
         void AddCollisionShape(const ArticulationLinkData& thisLinkData, ArticulationLink* articulationLink);
 
         void PostPhysicsTick(float fixedDeltaTime);
-#endif
 
         // AZ::Component overrides ...
         void Activate() override;
@@ -134,11 +123,10 @@ namespace PhysX
         // AZ::TransformNotificationsBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
         physx::PxArticulationReducedCoordinate* m_articulation = nullptr;
+        physx::PxArticulationCache* m_articulationCache = nullptr;
 
         physx::PxArticulationLink* m_link = nullptr;
         physx::PxArticulationJointReducedCoordinate* m_driveJoint = nullptr;
-
-        AZStd::vector<AZ::u32> m_sensorIndices;
 
         AzPhysics::SceneHandle m_attachedSceneHandle = AzPhysics::InvalidSceneHandle;
         AZStd::vector<AzPhysics::SimulatedBodyHandle> m_articulationLinks;
@@ -148,8 +136,6 @@ namespace PhysX
 
         using EntityIdArticulationLinkPair = AZStd::pair<AZ::EntityId, physx::PxArticulationLink*>;
         AZStd::unordered_map<AZ::EntityId, physx::PxArticulationLink*> m_articulationLinksByEntityId;
-        using EntityIdSensorIndexListPair = AZStd::pair<AZ::EntityId, AZStd::vector<AZ::u32>>;
-        AZStd::unordered_map<AZ::EntityId, AZStd::vector<AZ::u32>> m_sensorIndicesByEntityId;
         bool m_enabled = true;
         float m_offsetInCorrectUnits = 0.0f;
     };

@@ -392,6 +392,13 @@ namespace PhysX
 
     void PhysXSystem::RemoveAllScenes()
     {
+        for (size_t index = 0; index < m_sceneList.size(); ++index)
+        {
+            if (m_sceneList[index])
+            {
+                RemoveScene(AzPhysics::SceneHandle(m_sceneList[index]->GetId(), aznumeric_cast<AzPhysics::SceneIndex>(index)));
+            }
+        }
         m_sceneList.clear();
 
         //clear the free slots queue
@@ -440,25 +447,24 @@ namespace PhysX
 
     void PhysXSystem::InitializePhysXSdk(const physx::PxCookingParams& cookingParams)
     {
-        m_physXSdk.m_foundation = PxCreateFoundation(PX_PHYSICS_VERSION, m_physXAllocatorCallback, m_physXErrorCallback);
+        m_foundation = PxCreateFoundation(PX_PHYSICS_VERSION, m_allocatorCallback, m_errorCallback);
 
-        physx::PxPvd* pvd = m_physXDebug.InitializePhysXPvd(m_physXSdk.m_foundation);
+        physx::PxPvd* pvd = m_debug.InitializePhysXPvd(m_foundation);
 
         // create PhysX basis
         bool physXTrackOutstandingAllocations = false;
 #ifdef AZ_PHYSICS_DEBUG_ENABLED
         physXTrackOutstandingAllocations = true;
 #endif
-        m_physXSdk.m_physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_physXSdk.m_foundation, physx::PxTolerancesScale(), physXTrackOutstandingAllocations, pvd);
-        PxInitExtensions(*m_physXSdk.m_physics, pvd);
+        m_physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_foundation, physx::PxTolerancesScale(), physXTrackOutstandingAllocations, pvd);
+        PxInitExtensions(*m_physics, pvd);
 
-        // set up cooking for height fields, meshes etc.
-        m_physXSdk.m_cooking = PxCreateCooking(PX_PHYSICS_VERSION, *m_physXSdk.m_foundation, cookingParams);
+        m_cookingParams = cookingParams;
 
         // Set up CPU dispatcher
         m_cpuDispatcher = PhysXCpuDispatcherCreate();
 
-        PxSetProfilerCallback(&m_pxAzProfilerCallback);
+        PxSetProfilerCallback(&m_profilerCallback);
     }
 
     void PhysXSystem::ShutdownPhysXSdk()
@@ -466,18 +472,15 @@ namespace PhysX
         delete m_cpuDispatcher;
         m_cpuDispatcher = nullptr;
 
-        m_physXSdk.m_cooking->release();
-        m_physXSdk.m_cooking = nullptr;
-
         PxCloseExtensions();
 
-        m_physXSdk.m_physics->release();
-        m_physXSdk.m_physics = nullptr;
+        m_physics->release();
+        m_physics = nullptr;
 
-        m_physXDebug.ShutdownPhysXPvd();
+        m_debug.ShutdownPhysXPvd();
 
-        m_physXSdk.m_foundation->release();
-        m_physXSdk.m_foundation = nullptr;
+        m_foundation->release();
+        m_foundation = nullptr;
     }
 
     const PhysXSystemConfiguration& PhysXSystem::GetPhysXConfiguration() const

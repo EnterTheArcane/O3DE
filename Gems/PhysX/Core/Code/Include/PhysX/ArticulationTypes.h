@@ -7,10 +7,31 @@
  */
 
 #pragma once
+
+#include <AzCore/RTTI/TypeInfoSimple.h>
 #include <AzCore/base.h>
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace PhysX
 {
+    //! Friction efforts are forces for linear axes and torques for angular axes.
+    struct ArticulationJointFrictionProperties
+    {
+        AZ_TYPE_INFO(ArticulationJointFrictionProperties, "{0B2C42F7-E93B-4D52-A101-01646585CCB1}");
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        bool IsValid() const;
+
+        float m_staticFrictionEffort = 0.0f;
+        float m_dynamicFrictionEffort = 0.0f;
+        float m_viscousFrictionCoefficient = 0.0f;
+    };
+
     //! Joint type, which determines which degrees of freedom the joint has.
     //! This is just a wrapper for a PhysX SDK enum, to allow using the O3DE integration without including PhysX headers.
     enum class ArticulationJointType : AZ::u8

@@ -362,7 +362,9 @@ namespace PhysX
                     float forceLimit = std::numeric_limits<float>::max();
                     physx::PxD6JointDrive jointDrive = Utils::Characters::CreateD6JointDrive(nodeState.m_strength,
                         nodeState.m_dampingRatio, forceLimit);
-                    pxJoint->setDrive(physx::PxD6Drive::eSWING, jointDrive);
+                    pxJoint->setAngularDriveConfig(physx::PxD6AngularDriveConfig::eSWING_TWIST);
+                    pxJoint->setDrive(physx::PxD6Drive::eSWING1, jointDrive);
+                    pxJoint->setDrive(physx::PxD6Drive::eSWING2, jointDrive);
                     pxJoint->setDrive(physx::PxD6Drive::eTWIST, jointDrive);
                     physx::PxQuat targetRotation = pxJoint->getLocalPose(physx::PxJointActorIndex::eACTOR0).q.getConjugate() *
                         PxMathConvert(nodeState.m_orientation) * pxJoint->getLocalPose(physx::PxJointActorIndex::eACTOR1).q;

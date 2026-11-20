@@ -26,7 +26,7 @@ namespace physx
     class PxHeightField;
     class PxTriangleMesh;
     class PxShape;
-    class PxCooking;
+    struct PxCookingParams;
     class PxControllerManager;
     struct PxFilterData;
     struct PxHeightFieldSample;
@@ -79,12 +79,9 @@ namespace PhysX
         /// @param group The set of collision layers the object will interact with.
         virtual physx::PxFilterData CreateFilterData(const AzPhysics::CollisionLayer& layer, const AzPhysics::CollisionGroup& group) = 0;
 
-        /// Gets the cooking object.
-        /// It is possible to update the current cooking params with setParams on PxCooking,
-        /// this way the default cooking params can be overridden if required.
-        /// References: https://docs.nvidia.com/gameworks/content/gameworkslibrary/physx/guide/Manual/Geometry.html#triangle-meshes,
-        /// https://docs.nvidia.com/gameworks/content/gameworkslibrary/physx/guide/Manual/Startup.html#cooking
-        virtual physx::PxCooking* GetCooking() = 0;
+        //! Gets mutable default runtime cooking parameters, or nullptr when unavailable.
+        //! The implementation owns the parameters. Copy them for per-operation overrides.
+        virtual physx::PxCookingParams* GetCookingParams() = 0;
     };
 
     using SystemRequestsBus = AZ::EBus<SystemRequests>;

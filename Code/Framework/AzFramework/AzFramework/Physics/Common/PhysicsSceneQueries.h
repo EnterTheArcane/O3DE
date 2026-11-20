@@ -77,7 +77,7 @@ namespace AzPhysics
             MeshMultiple = (1 << 6), //!< Report all hits for meshes rather than just the first. Not applicable to ShapeCast queries.
             //! Report any first hit for meshes. If neither MeshMultiple nor MeshAny is specified,
             //! a single closest hit will be reported for meshes.
-            MeshAny = AnyHit, //!< @deprecated Deprecated, please use AnyHit instead.
+            MeshAny = AnyHit, //!< @deprecated DEPRECATED: Use AnyHit. Remove after callers migrate.
             MeshBothSides = (1 << 7),
             PreciseSweep = (1 << 8), //!< Use more accurate but slower narrow phase sweep tests.
             MTD = (1 << 9), //!< Report the minimum translation depth, normal and contact point.

@@ -680,10 +680,10 @@ namespace PhysX
             for (const auto& shape : shapes)
             {
                 auto current_shape = AZStd::rtti_pointer_cast<PhysX::Shape>(shape);
-                if (current_shape &&
-                    current_shape->GetPxShape()->getGeometryType() == physx::PxGeometryType::eTRIANGLEMESH &&
-                    entityRigidbody->GetRigidBody() &&
-                    entityRigidbody->GetRigidBody()->IsKinematic() == false)
+                if (current_shape
+                    && current_shape->GetPxShape()->getGeometry().getType() == physx::PxGeometryType::eTRIANGLEMESH
+                    && entityRigidbody->GetRigidBody()
+                    && !entityRigidbody->GetRigidBody()->IsKinematic())
                 {
                     shapeIsTriangleMesh = true;
                     break;

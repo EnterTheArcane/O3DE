@@ -101,7 +101,7 @@ namespace PhysX
     {
         return m_articulationLinks;
     }
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
+
     void ArticulationLinkComponent::Activate()
     {
         m_offsetInCorrectUnits = m_config.HingePropertiesVisible() ? AZ::DegToRad(m_config.m_offset) : m_config.m_offset;
@@ -142,7 +142,6 @@ namespace PhysX
 
                 CreateArticulation();
                 m_link = GetArticulationLink(GetEntityId());
-                m_sensorIndices = GetSensorIndices(GetEntityId());
             }
         }
         else
@@ -169,14 +168,12 @@ namespace PhysX
                     m_driveJoint = m_link->getInboundJoint()->is<physx::PxArticulationJointReducedCoordinate>();
                 }
 
-                m_sensorIndices = rootArticulationLinkComponent->GetSensorIndices(GetEntityId());
             }
         }
 
         FillSimulatedBodyHandle();
 
         ArticulationJointRequestBus::Handler::BusConnect(GetEntityId());
-        ArticulationSensorRequestBus::Handler::BusConnect(GetEntityId());
         AzPhysics::SimulatedBodyComponentRequestsBus::Handler::BusConnect(GetEntityId());
 
         Physics::RigidBodyNotificationBus::Event(
@@ -186,12 +183,12 @@ namespace PhysX
     void ArticulationLinkComponent::Deactivate()
     {
         AzPhysics::SimulatedBodyComponentRequestsBus::Handler::BusDisconnect();
-        ArticulationSensorRequestBus::Handler::BusDisconnect();
         ArticulationJointRequestBus::Handler::BusDisconnect();
 
         if (IsRootArticulation())
         {
             m_sceneRemovedHandler.Disconnect();
+            m_sceneFinishSimHandler.Disconnect();
 
             if (m_articulation)
             {
@@ -206,7 +203,6 @@ namespace PhysX
         }
 
         m_link = nullptr;
-        m_sensorIndices.clear();
 
         // set the behavior when the parent's transform changes back to default, since physics is no longer controlling the transform
         GetEntity()->GetTransform()->SetOnParentChangedBehavior(AZ::OnParentChangedBehavior::Update);
@@ -214,12 +210,10 @@ namespace PhysX
         Physics::RigidBodyNotificationBus::Event(
             GetEntityId(), &Physics::RigidBodyNotificationBus::Events::OnPhysicsDisabled, GetEntityId());
     }
-#endif
 
     void ArticulationLinkComponent::OnTransformChanged(
         [[maybe_unused]] const AZ::Transform& local, [[maybe_unused]] const AZ::Transform& world)
     {
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
         if (m_enabled)
         {
             return;
@@ -233,10 +227,8 @@ namespace PhysX
             m_articulation->setRootGlobalPose(PxMathConvert(world));
             m_articulation->updateKinematic(kinematicFlag);
         }
-#endif
     }
 
-#if (PX_PHYSICS_VERSION_MAJOR == 5)
     void ArticulationLinkComponent::CreateArticulation()
     {
         AzPhysics::SceneInterface* sceneInterface = AZ::Interface<AzPhysics::SceneInterface>::Get();
@@ -261,24 +253,11 @@ namespace PhysX
         PHYSX_SCENE_WRITE_LOCK(pxScene);
         pxScene->addArticulation(*m_articulation);
 
-        const AZ::u32 numSensors = m_articulation->getNbSensors();
-        for (AZ::u32 sensorIndex = 0; sensorIndex < numSensors; sensorIndex++)
+        m_articulationCache = m_articulation->createCache();
+        AZ_Assert(m_articulationCache, "Failed to allocate articulation force cache");
+        if (m_articulationCache)
         {
-            physx::PxArticulationSensor* sensor = nullptr;
-            m_articulation->getSensors(&sensor, 1, sensorIndex);
-            ActorData* linkActorData = Utils::GetUserData(sensor->getLink());
-            if (linkActorData)
-            {
-                const auto entityId = linkActorData->GetEntityId();
-                if (auto iterator = m_sensorIndicesByEntityId.find(entityId); iterator != m_sensorIndicesByEntityId.end())
-                {
-                    iterator->second.push_back(sensor->getIndex());
-                }
-                else
-                {
-                    m_sensorIndicesByEntityId.insert(EntityIdSensorIndexListPair({ entityId, { sensor->getIndex() } }));
-                }
-            }
+            m_articulation->zeroCache(*m_articulationCache);
         }
     }
 
@@ -307,9 +286,6 @@ namespace PhysX
 
         m_articulation->setSolverIterationCounts(
             rootLinkConfiguration.m_solverPositionIterations, rootLinkConfiguration.m_solverVelocityIterations);
-        // TODO: Expose these in the configuration
-        //      eDRIVE_LIMITS_ARE_FORCES //!< Limits for drive effort are forces and torques rather than impulses
-        //      eCOMPUTE_JOINT_FORCES //!< Enable in order to be able to query joint solver .
     }
 
     void setInboundJointDriveParams(
@@ -319,7 +295,7 @@ namespace PhysX
     {
         physx::PxArticulationDrive drive;
         drive.driveType = physx::PxArticulationDriveType::eFORCE;
-        drive.maxForce = motorProperties.m_driveForceLimit;
+        drive.envelope.maxEffort = motorProperties.m_driveForceLimit;
         drive.damping = motorProperties.m_driveDamping;
         drive.stiffness = motorProperties.m_driveStiffness;
         inboundJoint->setDriveParams(physx::PxArticulationAxis::eTWIST, drive);
@@ -392,6 +368,7 @@ namespace PhysX
             inboundJoint->setParentPose(PxMathConvert(thisLinkData.m_jointLeadLocalFrame* offsetTransform));
 
             inboundJoint->setChildPose(PxMathConvert(thisLinkData.m_jointFollowerLocalFrame ) );
+            const auto& friction = articulationLinkConfiguration.m_jointFrictionParameters;
             // Sets the joint type and limits.
             switch (articulationLinkConfiguration.m_articulationJointType)
             {
@@ -446,12 +423,21 @@ namespace PhysX
                 {
                     physx::PxArticulationDrive drive;
                     drive.driveType = physx::PxArticulationDriveType::eFORCE;
-                    drive.maxForce = articulationLinkConfiguration.m_motorConfiguration.m_driveForceLimit;
+                    drive.envelope.maxEffort = articulationLinkConfiguration.m_motorConfiguration.m_driveForceLimit;
                     drive.damping = articulationLinkConfiguration.m_motorConfiguration.m_driveDamping;
                     drive.stiffness = articulationLinkConfiguration.m_motorConfiguration.m_driveStiffness;
                     inboundJoint->setDriveParams(physx::PxArticulationAxis::eTWIST, drive);
                 }
-                inboundJoint->setFrictionCoefficient(articulationLinkConfiguration.m_jointFriction);
+                if (friction.IsValid())
+                {
+                    inboundJoint->setFrictionParams(
+                        physx::PxArticulationAxis::eTWIST,
+                        physx::PxJointFrictionParams(friction.m_staticFrictionEffort, friction.m_dynamicFrictionEffort, friction.m_viscousFrictionCoefficient));
+                }
+                else
+                {
+                    AZ_Error("PhysX", false, "Invalid articulation friction parameters.");
+                }
                 if (articulationLinkConfiguration.m_armature.GetX() > AZ::Constants::FloatEpsilon)
                 {
                     inboundJoint->setArmature(physx::PxArticulationAxis::eTWIST, articulationLinkConfiguration.m_armature.GetX());
@@ -497,12 +483,21 @@ namespace PhysX
                 {
                     physx::PxArticulationDrive drive;
                     drive.driveType = physx::PxArticulationDriveType::eFORCE;
-                    drive.maxForce = articulationLinkConfiguration.m_motorConfiguration.m_driveForceLimit;
+                    drive.envelope.maxEffort = articulationLinkConfiguration.m_motorConfiguration.m_driveForceLimit;
                     drive.damping = articulationLinkConfiguration.m_motorConfiguration.m_driveDamping;
                     drive.stiffness = articulationLinkConfiguration.m_motorConfiguration.m_driveStiffness;
                     inboundJoint->setDriveParams(physx::PxArticulationAxis::eX, drive);
                 }
-                inboundJoint->setFrictionCoefficient(articulationLinkConfiguration.m_jointFriction);
+                if (friction.IsValid())
+                {
+                    inboundJoint->setFrictionParams(
+                        physx::PxArticulationAxis::eX,
+                        physx::PxJointFrictionParams(friction.m_staticFrictionEffort, friction.m_dynamicFrictionEffort, friction.m_viscousFrictionCoefficient));
+                }
+                else
+                {
+                    AZ_Error("PhysX", false, "Invalid articulation friction parameters.");
+                }
                 if (articulationLinkConfiguration.m_armature.GetX() > AZ::Constants::FloatEpsilon)
                 {
                     inboundJoint->setArmature(physx::PxArticulationAxis::eX, articulationLinkConfiguration.m_armature.GetX());
@@ -522,16 +517,7 @@ namespace PhysX
             }
         }
 
-        // set up sensors
-        for (const auto& sensorConfig : articulationLinkConfiguration.m_sensorConfigs)
-        {
-            const AZ::Transform sensorTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
-                AZ::Quaternion::CreateFromEulerAnglesDegrees(sensorConfig.m_localRotation), sensorConfig.m_localPosition);
-            auto* sensor = thisPxLink->getArticulation().createSensor(thisPxLink, PxMathConvert(sensorTransform));
-            sensor->setFlag(physx::PxArticulationSensorFlag::eFORWARD_DYNAMICS_FORCES, sensorConfig.m_includeForwardDynamicsForces);
-            sensor->setFlag(physx::PxArticulationSensorFlag::eCONSTRAINT_SOLVER_FORCES, sensorConfig.m_includeConstraintSolverForces);
-            sensor->setFlag(physx::PxArticulationSensorFlag::eWORLD_FRAME, sensorConfig.m_useWorldFrame);
-        }
+        articulationLinkConfiguration.WarnLegacySettings(articulationLinkConfiguration.m_debugName, articulationLinkConfiguration.m_entityId);
 
         m_articulationLinksByEntityId.insert(EntityIdArticulationLinkPair{ articulationLinkConfiguration.m_entityId, thisPxLink });
 
@@ -555,9 +541,16 @@ namespace PhysX
 
         physx::PxScene* pxScene = static_cast<physx::PxScene*>(scene->GetNativePointer());
         PHYSX_SCENE_WRITE_LOCK(pxScene);
+        if (m_articulationCache)
+        {
+            m_articulationCache->release();
+            m_articulationCache = nullptr;
+        }
         m_articulation->release();
         m_articulation = nullptr;
-        m_sensorIndicesByEntityId.clear();
+        m_articulationLinksByEntityId.clear();
+        m_link = nullptr;
+        m_driveJoint = nullptr;
     }
 
     void ArticulationLinkComponent::InitPhysicsTickHandler()
@@ -579,9 +572,17 @@ namespace PhysX
         // transform change handlers may lock the scene for write, and PhysX can't upgrade a read lock.
         AZStd::fixed_vector<AZStd::pair<AZ::EntityId, AZ::Transform>, MaxArticulationLinks> linkTransforms;
         {
-            PHYSX_SCENE_READ_LOCK(pxScene);
+            PHYSX_SCENE_WRITE_LOCK(pxScene);
 
-            if (!m_articulation || m_articulation->isSleeping())
+            if (!m_articulation)
+            {
+                return;
+            }
+            if (m_articulationCache)
+            {
+                m_articulation->copyInternalStateToCache(*m_articulationCache, physx::PxArticulationCacheFlag::eLINK_INCOMING_JOINT_FORCE);
+            }
+            if (m_articulation->isSleeping())
             {
                 return;
             }
@@ -622,18 +623,6 @@ namespace PhysX
         else
         {
             return nullptr;
-        }
-    }
-
-    const AZStd::vector<AZ::u32> ArticulationLinkComponent::GetSensorIndices(const AZ::EntityId entityId)
-    {
-        if (const auto iterator = m_sensorIndicesByEntityId.find(entityId); iterator != m_sensorIndicesByEntityId.end())
-        {
-            return iterator->second;
-        }
-        else
-        {
-            return {};
         }
     }
 
@@ -745,7 +734,7 @@ namespace PhysX
             PHYSX_SCENE_WRITE_LOCK(m_link->getScene());
             const auto articulationAxis = GetPxArticulationAxis(jointAxis);
             auto driveParams = joint->getDriveParams(articulationAxis);
-            driveParams.maxForce = maxForce;
+            driveParams.envelope.maxEffort = maxForce;
             joint->setDriveParams(articulationAxis, driveParams);
         }
     }
@@ -756,7 +745,7 @@ namespace PhysX
         {
             PHYSX_SCENE_READ_LOCK(m_link->getScene());
             auto driveParams = joint->getDriveParams(GetPxArticulationAxis(jointAxis));
-            return driveParams.maxForce;
+            return driveParams.envelope.maxEffort;
         }
         return AZ::Constants::FloatMax;
     }
@@ -843,40 +832,50 @@ namespace PhysX
         return 0.0f;
     }
 
-    void ArticulationLinkComponent::SetFrictionCoefficient(float frictionCoefficient)
+    void ArticulationLinkComponent::SetFrictionParameters(
+        ArticulationJointAxis jointAxis,
+        const ArticulationJointFrictionProperties& friction)
     {
+        if (!friction.IsValid())
+        {
+            AZ_Error("PhysX", false, "Articulation friction parameters must be finite and nonnegative, with static effort >= dynamic effort.");
+            return;
+        }
         if (auto* joint = GetDriveJoint())
         {
             PHYSX_SCENE_WRITE_LOCK(m_link->getScene());
-            joint->setFrictionCoefficient(frictionCoefficient);
+            joint->setFrictionParams(
+                GetPxArticulationAxis(jointAxis),
+                physx::PxJointFrictionParams(friction.m_staticFrictionEffort, friction.m_dynamicFrictionEffort, friction.m_viscousFrictionCoefficient));
         }
     }
 
-    float ArticulationLinkComponent::GetFrictionCoefficient() const
+    ArticulationJointFrictionProperties ArticulationLinkComponent::GetFrictionParameters(ArticulationJointAxis jointAxis) const
     {
         if (auto* joint = GetDriveJoint())
         {
             PHYSX_SCENE_READ_LOCK(m_link->getScene());
-            return joint->getFrictionCoefficient();
+            const auto friction = joint->getFrictionParams(GetPxArticulationAxis(jointAxis));
+            return { friction.staticFrictionEffort, friction.dynamicFrictionEffort, friction.viscousFrictionCoefficient };
         }
-        return 0.0f;
+        return {};
     }
 
-    void ArticulationLinkComponent::SetMaxJointVelocity(float maxJointVelocity)
+    void ArticulationLinkComponent::SetMaxJointVelocity(ArticulationJointAxis jointAxis, float maxJointVelocity)
     {
         if (auto* joint = GetDriveJoint())
         {
             PHYSX_SCENE_WRITE_LOCK(m_link->getScene());
-            joint->setMaxJointVelocity(maxJointVelocity);
+            joint->setMaxJointVelocity(GetPxArticulationAxis(jointAxis), maxJointVelocity);
         }
     }
 
-    float ArticulationLinkComponent::GetMaxJointVelocity() const
+    float ArticulationLinkComponent::GetMaxJointVelocity(ArticulationJointAxis jointAxis) const
     {
         if (auto* joint = GetDriveJoint())
         {
             PHYSX_SCENE_READ_LOCK(m_link->getScene());
-            return joint->getMaxJointVelocity();
+            return joint->getMaxJointVelocity(GetPxArticulationAxis(jointAxis));
         }
         return 0.0f;
     }
@@ -886,87 +885,30 @@ namespace PhysX
         return IsRootArticulationEntity<ArticulationLinkComponent>(GetEntity());
     }
 
-    const physx::PxArticulationSensor* ArticulationLinkComponent::GetSensor(AZ::u32 sensorIndex) const
+    physx::PxSpatialForce ArticulationLinkComponent::GetIncomingJointSpatialForce() const
     {
-        if (sensorIndex >= m_sensorIndices.size())
+        const auto* rootEntity = GetArticulationRootEntity();
+        const auto* root = rootEntity->FindComponent<ArticulationLinkComponent>();
+        if (root && root->m_articulation && root->m_articulationCache)
         {
-            AZ_ErrorOnce(
-                "Articulation Link Component",
-                false,
-                "Invalid sensor index (%i) for entity %s",
-                sensorIndex,
-                GetEntity()->GetName().c_str());
-            return nullptr;
+            PHYSX_SCENE_READ_LOCK(root->m_articulation->getScene());
+            const auto link = root->m_articulationLinksByEntityId.find(GetEntityId());
+            if (link != root->m_articulationLinksByEntityId.end())
+            {
+                return root->m_articulationCache->linkIncomingJointForce[link->second->getLinkIndex()];
+            }
         }
-
-        if (!m_link)
-        {
-            AZ_ErrorOnce("Articulation Link Component", false, "Invalid link pointer for entity %s", GetEntity()->GetName().c_str());
-            return nullptr;
-        }
-
-        AZ::u32 internalIndex = m_sensorIndices[sensorIndex];
-        PHYSX_SCENE_READ_LOCK(m_link->getScene());
-        auto& articulation = m_link->getArticulation();
-        const auto numSensors = articulation.getNbSensors();
-        if (internalIndex >= numSensors)
-        {
-            AZ_ErrorOnce(
-                "Articulation Link Component",
-                false,
-                "Invalid internal sensor index (%i) for entity %s",
-                sensorIndex,
-                GetEntity()->GetName().c_str());
-            return nullptr;
-        }
-
-        physx::PxArticulationSensor* sensor;
-        articulation.getSensors(&sensor, 1, internalIndex);
-        return sensor;
+        return { physx::PxVec3(0.0f), 0.0f, physx::PxVec3(0.0f), 0.0f };
     }
 
-    physx::PxArticulationSensor* ArticulationLinkComponent::GetSensor(AZ::u32 sensorIndex)
+    AZ::Vector3 ArticulationLinkComponent::GetIncomingJointForce() const
     {
-        return const_cast<physx::PxArticulationSensor*>(static_cast<const ArticulationLinkComponent&>(*this).GetSensor(sensorIndex));
+        return PxMathConvert(GetIncomingJointSpatialForce().force);
     }
 
-    AZ::Transform ArticulationLinkComponent::GetSensorTransform(AZ::u32 sensorIndex) const
+    AZ::Vector3 ArticulationLinkComponent::GetIncomingJointTorque() const
     {
-        if (auto* sensor = GetSensor(sensorIndex))
-        {
-            PHYSX_SCENE_READ_LOCK(m_link->getScene());
-            return PxMathConvert(sensor->getRelativePose());
-        }
-        return AZ::Transform::CreateIdentity();
-    }
-
-    void ArticulationLinkComponent::SetSensorTransform(AZ::u32 sensorIndex, const AZ::Transform& sensorTransform)
-    {
-        if (auto* sensor = GetSensor(sensorIndex))
-        {
-            PHYSX_SCENE_WRITE_LOCK(m_link->getScene());
-            sensor->setRelativePose(PxMathConvert(sensorTransform));
-        }
-    }
-
-    AZ::Vector3 ArticulationLinkComponent::GetForce(AZ::u32 sensorIndex) const
-    {
-        if (auto* sensor = GetSensor(sensorIndex))
-        {
-            PHYSX_SCENE_READ_LOCK(m_link->getScene());
-            return PxMathConvert(sensor->getForces().force);
-        }
-        return AZ::Vector3::CreateZero();
-    }
-
-    AZ::Vector3 ArticulationLinkComponent::GetTorque(AZ::u32 sensorIndex) const
-    {
-        if (auto* sensor = GetSensor(sensorIndex))
-        {
-            PHYSX_SCENE_READ_LOCK(m_link->getScene());
-            return PxMathConvert(sensor->getForces().torque);
-        }
-        return AZ::Vector3::CreateZero();
+        return PxMathConvert(GetIncomingJointSpatialForce().torque);
     }
 
     const AzPhysics::SimulatedBody* ArticulationLinkComponent::GetSimulatedBodyConst() const
@@ -1053,21 +995,4 @@ namespace PhysX
         return GetSimulatedBody()->RayCast(request);
     }
 
-#else
-    void ArticulationLinkComponent::Activate()
-    {
-    }
-    void ArticulationLinkComponent::Deactivate()
-    {
-    }
-    void ArticulationLinkComponent::CreateArticulation()
-    {
-    }
-    void ArticulationLinkComponent::DestroyArticulation()
-    {
-    }
-    void ArticulationLinkComponent::InitPhysicsTickHandler()
-    {
-    }
-#endif
 } // namespace PhysX
