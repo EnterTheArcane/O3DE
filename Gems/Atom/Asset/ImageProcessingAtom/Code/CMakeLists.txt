@@ -126,6 +126,7 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
             PRIVATE
                 AZ::AzTest
                 Gem::${gem_name}.Editor.Static
+                3rdParty::compressonator
     )
     ly_add_googletest(
         NAME Gem::${gem_name}.Editor.Tests

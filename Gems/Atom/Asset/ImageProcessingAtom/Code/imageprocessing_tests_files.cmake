@@ -7,5 +7,7 @@
 #
 
 set(FILES
+    Source/Compressors/CompressonatorCompressor.cpp
+    Source/Compressors/CompressonatorCompressor.h
     Tests/ImageProcessing_Test.cpp
 )

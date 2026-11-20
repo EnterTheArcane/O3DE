@@ -1,0 +1,204 @@
+--- a/cmp_core/shaders/bc1_cmp.h
++++ b/cmp_core/shaders/bc1_cmp.h
+@@ -31,7 +31,8 @@
+ #include "bcn_common_kernel.h"
+ #include "bcn_common_api.h"
+
+-#ifndef ASPM_GPU
++#if !defined(ASPM_GPU) && !defined(CMP_DISABLE_X86_SIMD)
++#include <atomic>
+ #include "cpu_extensions.h"
+ #include "core_simd.h"
+ #endif
+@@ -82,15 +83,13 @@
+ #define EPS (2.f / 255.f) * (2.f / 255.f)
+ #define EPS2 3.f * (2.f / 255.f) * (2.f / 255.f)
+
+-// Disable SIMD code during GPU builds
+-#if !defined(ASPM_GPU)
+-CMP_STATIC CGU_BOOL g_bc1FunctionPointersSet = false;
++#if !defined(ASPM_GPU) && !defined(CMP_DISABLE_X86_SIMD)
+
+ // declarations for SIMD function variations
+ CMP_STATIC CGU_FLOAT _cpu_bc1ComputeBestEndpoints(CGU_FLOAT*, CGU_FLOAT*, CGU_FLOAT*, CGU_FLOAT*, CGU_FLOAT*, int, int);
+
+ // function pointers
+-CMP_STATIC CGU_FLOAT (*cpu_bc1ComputeBestEndpoints)(CGU_FLOAT*, CGU_FLOAT*, CGU_FLOAT*, CGU_FLOAT*, CGU_FLOAT*, int, int) = 0;
++CMP_STATIC std::atomic<decltype(&_cpu_bc1ComputeBestEndpoints)> cpu_bc1ComputeBestEndpoints{nullptr};
+
+ // Toggle which SIMD instruction set extensions to use. Setting this to EXTENSION_COUNT will enable auto-detection of supported extensions.
+ // NOTE: The requested extension will only be enabled if it is supported by the current CPU.
+@@ -125,8 +124,6 @@
+     {
+         cpu_bc1ComputeBestEndpoints = _cpu_bc1ComputeBestEndpoints;
+     }
+-
+-    g_bc1FunctionPointersSet = true;
+
+     bool result = true;
+
+@@ -2612,8 +2609,8 @@
+                                       CMP_IN CGU_UINT8  nBlueBits,
+                                       CMP_IN CGU_FLOAT  fquality)
+ {
+-#if !defined(ASPM_GPU)
+-    if (!g_bc1FunctionPointersSet)
++#if !defined(ASPM_GPU) && !defined(CMP_DISABLE_X86_SIMD)
++    if (!cpu_bc1ComputeBestEndpoints.load(std::memory_order_relaxed))
+     {
+         bc1ToggleSIMD(EXTENSION_COUNT);
+     }
+@@ -2765,10 +2762,10 @@
+
+             // find the best endpoints
+             CGU_FLOAT Pos[NUM_ENDPOINTS];
+-#if defined(ASPM_GPU)
++#if defined(ASPM_GPU) || defined(CMP_DISABLE_X86_SIMD)
+             CGU_FLOAT StepErr = _cpu_bc1ComputeBestEndpoints(Pos, PrjBnd, Prj, PrjErr, PreMRep, dwUniqueColors, dwNumPoints);
+ #else
+-            CGU_FLOAT StepErr = cpu_bc1ComputeBestEndpoints(Pos, PrjBnd, Prj, PrjErr, PreMRep, dwUniqueColors, dwNumPoints);
++            CGU_FLOAT StepErr = cpu_bc1ComputeBestEndpoints.load(std::memory_order_relaxed)(Pos, PrjBnd, Prj, PrjErr, PreMRep, dwUniqueColors, dwNumPoints);
+ #endif
+
+             // inverse the scaling
+--- a/cmp_core/shaders/bc1_encode_kernel.cpp
++++ b/cmp_core/shaders/bc1_encode_kernel.cpp
+@@ -56,7 +56,7 @@
+ #include "externcodec.h"  // Use external codec for testing
+ #endif
+
+-#if !defined(ASPM_GPU)
++#if !defined(ASPM_GPU) && !defined(CMP_DISABLE_X86_SIMD)
+ int BC1EnableSSE4()
+ {
+     bool result = bc1ToggleSIMD(EXTENSION_SSE42);
+@@ -85,15 +85,15 @@
+ #else
+ int BC1EnableSSE4()
+ {
+-    return 0;
++    return 1;
+ }
+ int BC1EnableAVX2()
+ {
+-    return 0;
++    return 1;
+ }
+ int BC1EnableAVX512()
+ {
+-    return 0;
++    return 1;
+ }
+ void BC1DisableSIMD()
+ {
+--- a/applications/_libs/cmp_math/cpu_extensions.cpp
++++ b/applications/_libs/cmp_math/cpu_extensions.cpp
+@@ -21,7 +21,7 @@
+ //
+ //=====================================================================
+
+-#ifdef _WIN32
++#if defined(_WIN32) && !defined(CMP_DISABLE_X86_SIMD)
+ #include <intrin.h>
+ #endif
+
+@@ -31,7 +31,7 @@
+ void GetCPUID(int outInfo[4], int functionID)
+ {
+     // subfunction_id = 0
+-#ifdef _WIN32
++#if defined(_WIN32) && !defined(CMP_DISABLE_X86_SIMD)
+     __cpuidex(outInfo, functionID, 0);  // defined in intrin.h
+ #else
+     // To Do
+@@ -46,24 +46,29 @@
+
+ bool IsAvailableAVX2(CPUExtensions extensions)
+ {
+-    return extensions.extensionList[EXTENSION_AVX2] > 0;
++    return extensions.extensionList[EXTENSION_AVX2] != 0
++        && extensions.extensionList[EXTENSION_FMA3] != 0
++        && extensions.extensionList[EXTENSION_BMI1] != 0
++        && extensions.extensionList[EXTENSION_BMI2] != 0;
+ }
+
+ bool IsAvailableAVX512(CPUExtensions extensions)
+ {
+-    return ((extensions.extensionList[EXTENSION_AVX512_F] | extensions.extensionList[EXTENSION_AVX512_CD] | extensions.extensionList[EXTENSION_AVX512_PF] |
+-             extensions.extensionList[EXTENSION_AVX512_ER] | extensions.extensionList[EXTENSION_AVX512_VL] | extensions.extensionList[EXTENSION_AVX512_BW] |
+-             extensions.extensionList[EXTENSION_AVX512_DQ] | extensions.extensionList[EXTENSION_AVX512_IFMA] |
+-             extensions.extensionList[EXTENSION_AVX512_VBMI]) != 0);
++    return IsAvailableAVX2(extensions)
++        && extensions.extensionList[EXTENSION_AVX512_F] != 0
++        && extensions.extensionList[EXTENSION_AVX512_CD] != 0
++        && extensions.extensionList[EXTENSION_AVX512_VL] != 0
++        && extensions.extensionList[EXTENSION_AVX512_BW] != 0
++        && extensions.extensionList[EXTENSION_AVX512_DQ] != 0;
+ }
+
+ CPUExtensions GetCPUExtensions()
+ {
+     CPUExtensions result = {};
+
++#if defined(_WIN32) && !defined(CMP_DISABLE_X86_SIMD)
+     int cpuInfo[4];
+-
+-#ifndef __linux__
++    unsigned long long xcr0 = 0;
+
+     GetCPUID(cpuInfo, 0);
+
+@@ -72,6 +77,11 @@
+     if (nIds >= 0x00000001)
+     {
+         GetCPUID(cpuInfo, 0x00000001);
++        constexpr int osXsaveAndAvx = (1 << 27) | CMP_CPU_AVX_MASK;
++        if ((cpuInfo[2] & osXsaveAndAvx) == osXsaveAndAvx)
++        {
++            xcr0 = _xgetbv(0);
++        }
+
+         result.extensionList[EXTENSION_SSE3]  = (cpuInfo[2] & CMP_CPU_SSE3_MASK);
+         result.extensionList[EXTENSION_SSSE3] = (cpuInfo[2] & CMP_CPU_SSSE3_MASK);
+@@ -111,6 +121,19 @@
+         result.extensionList[EXTENSION_PREFETCHWT1] = (cpuInfo[2] & CMP_CPU_PREFETCHWT1_MASK);
+     }
+
++    // XCR0 must enable XMM and YMM state before AVX instructions can execute.
++    if ((xcr0 & 0x06) != 0x06)
++    {
++        result.extensionList[EXTENSION_AVX] = 0;
++        result.extensionList[EXTENSION_FMA3] = 0;
++        result.extensionList[EXTENSION_AVX2] = 0;
++    }
++    // AVX-512 also needs opmask and ZMM state.
++    if ((xcr0 & 0xe6) != 0xe6)
++    {
++        result.extensionList[EXTENSION_AVX512_F] = 0;
++    }
++
+     GetCPUID(cpuInfo, 0x80000000);
+
+     if ((unsigned int)cpuInfo[0] >= 0x80000001)
+--- a/cmp_core/shaders/bcn_common_kernel.h
++++ b/cmp_core/shaders/bcn_common_kernel.h
+@@ -899,5 +899,5 @@
+         }
+         {
+-            cmpBlock.x |= (pcIndices[5] << 31);
++            cmpBlock.x |= ((CGU_UINT32)pcIndices[5] << 31);
+             cmpBlock.y |= (pcIndices[5] >> 1);
+         }
+--- a/cmp_core/shaders/bc7_encode_kernel.cpp
++++ b/cmp_core/shaders/bc7_encode_kernel.cpp
+@@ -471,9 +471,7 @@
+     packed_index[0] = 0x0000;
+     packed_index[1] = 0x0000;
+-    CGV_UINT8 shift = 0;  // was CGV_UINT8
+     for (CGU_INT k = 0; k < 16; k++)
+     {
+-        packed_index[k / 8] |= (CGV_UINT32)(src_index[k] & 0x0F) << shift;
+-        shift += 4;
++        packed_index[k / 8] |= (CGV_UINT32)(src_index[k] & 0x0F) << (4 * (k % 8));
+     }
+ }

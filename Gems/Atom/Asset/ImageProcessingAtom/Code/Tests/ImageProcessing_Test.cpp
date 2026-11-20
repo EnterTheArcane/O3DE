@@ -31,6 +31,7 @@
 #include <AzCore/Settings/SettingsRegistryImpl.h>
 #include <AzCore/Settings/SettingsRegistryMergeUtils.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/parallel/thread.h>
 
 #include <AzFramework/IO/LocalFileIO.h>
 
@@ -44,8 +45,10 @@
 #include <ImageLoader/ImageLoaders.h>
 
 #include <Compressors/Compressor.h>
+#include <Compressors/CompressonatorCompressor.h>
 
 #include <Converters/Cubemap.h>
+#include <Converters/PixelOperation.h>
 
 #include <BuilderSettings/BuilderSettingManager.h>
 #include <BuilderSettings/CubemapSettings.h>
@@ -836,6 +839,94 @@ namespace UnitTest
 
         ASSERT_TRUE(dstImage2->CompareImage(dstImage1));
         ASSERT_TRUE(dstImage3->CompareImage(dstImage1));
+    }
+
+    TEST_F(ImageProcessingTest, CompressonatorEncodesAllIspcFormats)
+    {
+        const CompressonatorCompressor compressor;
+        struct FormatCase
+        {
+            EPixelFormat compressed;
+            EPixelFormat source;
+            float red;
+            bool discardAlpha;
+        };
+        const FormatCase formats[] = {
+            { ePixelFormat_BC3, ePixelFormat_R8G8B8A8, 0.125f, false },
+            { ePixelFormat_BC6UH, ePixelFormat_R16G16B16A16F, 4.0f, false },
+            { ePixelFormat_BC7, ePixelFormat_R8G8B8A8, 0.125f, true },
+            { ePixelFormat_BC7t, ePixelFormat_R8G8B8A8, 0.125f, false },
+        };
+        const IPixelOperationPtr decodedPixels = CreatePixelOperation(ePixelFormat_R32G32B32A32F);
+        for (const FormatCase& test : formats)
+        {
+            SCOPED_TRACE(test.compressed);
+            EXPECT_EQ(compressor.GetSuggestedUncompressedFormat(test.compressed, ePixelFormat_R8), test.source);
+            IImageObjectPtr source(IImageObject::CreateImage(8, 8, 2, test.source));
+            source->ClearColor(test.red, 0.5f, 0.75f, 0.25f);
+
+            ICompressor::CompressOption option;
+            option.discardAlpha = test.discardAlpha;
+            const IImageObjectPtr encoded = compressor.CompressImage(source, test.compressed, &option);
+            ASSERT_NE(encoded, nullptr);
+            EXPECT_EQ(encoded->GetPixelFormat(), test.compressed);
+            ASSERT_EQ(encoded->GetMipCount(), 2);
+            EXPECT_EQ(encoded->GetMipBufSize(0), 64);
+            EXPECT_EQ(encoded->GetMipBufSize(1), 16);
+
+            ImageToProcess decoded(encoded);
+            decoded.ConvertFormat(ePixelFormat_R32G32B32A32F);
+            ASSERT_NE(decoded.Get(), nullptr);
+            ASSERT_EQ(decoded.Get()->GetPixelFormat(), ePixelFormat_R32G32B32A32F);
+            for (AZ::u32 mip = 0; mip < encoded->GetMipCount(); ++mip)
+            {
+                AZ::u8* data = nullptr;
+                AZ::u32 pitch = 0;
+                decoded.Get()->GetImagePointer(mip, data, pitch);
+                float red, green, blue, alpha;
+                decodedPixels->GetRGBA(data, red, green, blue, alpha);
+                EXPECT_NEAR(red, test.red, 0.10f);
+                EXPECT_NEAR(green, 0.5f, 0.08f);
+                EXPECT_NEAR(blue, 0.75f, 0.08f);
+                if (test.discardAlpha)
+                {
+                    EXPECT_FLOAT_EQ(alpha, 1.0f);
+                }
+                else if (test.compressed != ePixelFormat_BC6UH)
+                {
+                    EXPECT_NEAR(alpha, 0.25f, 0.08f);
+                }
+            }
+        }
+    }
+
+    TEST_F(ImageProcessingTest, CompressonatorRejectsUnsupportedInputs)
+    {
+        const CompressonatorCompressor compressor;
+        const IImageObjectPtr source(IImageObject::CreateImage(4, 4, 1, ePixelFormat_R8G8B8A8));
+        EXPECT_EQ(compressor.CompressImage(source, ePixelFormat_BC1, nullptr), nullptr);
+        EXPECT_EQ(compressor.CompressImage(source, ePixelFormat_BC6UH, nullptr), nullptr);
+        EXPECT_TRUE(CompressonatorCompressor::IsSourceColorSpaceSupported(ColorSpace::sRGB, ePixelFormat_BC3));
+        EXPECT_FALSE(CompressonatorCompressor::IsSourceColorSpaceSupported(ColorSpace::linear, ePixelFormat_BC3));
+        EXPECT_EQ(compressor.CompressImage(nullptr, ePixelFormat_BC3, nullptr), nullptr);
+    }
+
+    TEST_F(ImageProcessingTest, CompressonatorSupportsConcurrentBc3Calls)
+    {
+        const IImageObjectPtr source(LoadImageFromFile(m_imagFileNameMap[Image_20X16_RGBA8_Png]));
+        ASSERT_NE(source, nullptr);
+        ASSERT_EQ(source->GetPixelFormat(), ePixelFormat_R8G8B8A8);
+        const CompressonatorCompressor compressor;
+        IImageObjectPtr first;
+        AZStd::thread worker([&]()
+        {
+            first = compressor.CompressImage(source, ePixelFormat_BC3, nullptr);
+        });
+        const IImageObjectPtr second = compressor.CompressImage(source, ePixelFormat_BC3, nullptr);
+        worker.join();
+        ASSERT_NE(first, nullptr);
+        ASSERT_NE(second, nullptr);
+        EXPECT_TRUE(first->CompareImage(second));
     }
 
     TEST_F(ImageProcessingTest, TestConvertFormatCompressed)

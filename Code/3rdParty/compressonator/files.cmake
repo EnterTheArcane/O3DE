@@ -322,10 +322,15 @@ set(FILES
     "${compressonator_SOURCE_DIR}/cmp_core/source/cmp_math_func.h"
     "${compressonator_SOURCE_DIR}/cmp_core/source/cmp_math_vec4.h"
     "${compressonator_SOURCE_DIR}/cmp_core/source/core_simd.h"
-    "${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_avx.cpp"
-    "${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_avx512.cpp"
-    "${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_sse.cpp"
 )
+
+if(cmp_x86_simd)
+    list(APPEND cmp_framework_files
+        "${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_avx.cpp"
+        "${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_avx512.cpp"
+        "${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_sse.cpp"
+    )
+endif()
 
 if(WIN32)
     list(APPEND cmp_sdk_files
@@ -343,7 +348,7 @@ if(WIN32)
         USE_LOSSLESS_COMPRESSION_BINARY
     )
     set_property(SOURCE ${cmp_framework_files} APPEND PROPERTY COMPILE_DEFINITIONS
-        CMP_USE_XMMINTRIN
+        "$<$<BOOL:${cmp_x86_simd}>:CMP_USE_XMMINTRIN>"
         DLL_SECURITY_CHECK_ALL_DLLS
     )
 endif()

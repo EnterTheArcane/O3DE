@@ -12,7 +12,9 @@ o3de_fetch_content(compressonator
     URL_HASH "182362fb92059a61d2d21a7899caee7788b88eb6e3743d16bf9a525678e8e2ff"
     GIT "https://github.com/GPUOpen-Tools/compressonator.git"
     GIT_HASH "095a143ad8cfbf9ed5afa4ea63c735bfd0fd04dd"
-    PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/compressonator.patch"
+    PATCH_FILES
+        "${CMAKE_CURRENT_LIST_DIR}/compressonator.patch"
+        "${CMAKE_CURRENT_LIST_DIR}/compressonator-core.patch"
     NO_ADD_SUBDIR
 )
 FetchContent_MakeAvailable(compressonator)
@@ -22,6 +24,11 @@ file(COPY
     "${compressonator_SOURCE_DIR}/cmp_core/source/cmp_core.h"
     DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Include"
 )
+
+set(cmp_x86_simd TRUE)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64|ARM64)$" OR CMAKE_OSX_ARCHITECTURES MATCHES "(^|;)arm64(;|$)")
+    set(cmp_x86_simd FALSE)
+endif()
 
 o3de_disable_warnings()
 
@@ -65,6 +72,7 @@ ly_add_target(
             USE_ETCPACK
             ENABLE_MAKE_COMPATIBLE_API
             USE_OLD_SWIZZLE
+            $<$<NOT:$<BOOL:${cmp_x86_simd}>>:CMP_DISABLE_X86_SIMD>
             $<$<PLATFORM_ID:Linux>:_LINUX>
             $<$<PLATFORM_ID:Windows>:NOMINMAX;_CRT_SECURE_NO_WARNINGS>
     BUILD_DEPENDENCIES
@@ -85,14 +93,14 @@ target_compile_options(compressonator PRIVATE
 )
 
 # Keep higher ISA instructions in dedicated translation units for runtime dispatch.
-if(MSVC)
+if(cmp_x86_simd AND MSVC)
     set_source_files_properties("${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_avx.cpp" PROPERTIES
         COMPILE_OPTIONS /arch:AVX2
     )
     set_source_files_properties("${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_avx512.cpp" PROPERTIES
-        COMPILE_OPTIONS /arch:AVX-512
+        COMPILE_OPTIONS /arch:AVX512
     )
-else()
+elseif(cmp_x86_simd)
     set_source_files_properties("${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_sse.cpp" PROPERTIES
         COMPILE_OPTIONS -march=nehalem
     )
@@ -100,7 +108,7 @@ else()
         COMPILE_OPTIONS -march=haswell
     )
     set_source_files_properties("${compressonator_SOURCE_DIR}/cmp_core/source/core_simd_avx512.cpp" PROPERTIES
-        COMPILE_OPTIONS -march=knl
+        COMPILE_OPTIONS -mavx512f
     )
 endif()
 
