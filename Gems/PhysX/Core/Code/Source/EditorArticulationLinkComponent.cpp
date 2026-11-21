@@ -239,7 +239,7 @@ namespace PhysX
                         nullptr,
                         &ArticulationLinkConfiguration::m_jointFriction,
                         QT_TRANSLATE_NOOP("PhysX", "Legacy Friction Coefficient"),
-                        QT_TRANSLATE_NOOP("PhysX", "Original coefficient retained for reference. It is not applied by PhysX 5.12."))
+                        QT_TRANSLATE_NOOP("PhysX", "Original coefficient retained for reference. It is not applied during simulation."))
                     ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
                     ->DataElement(
                         nullptr,

@@ -120,7 +120,7 @@ namespace AzToolsFramework
                 return false;
             }
 
-            auto [handlerIt, inserted] = m_templateFileHandlers.insert_or_assign(
+            [[maybe_unused]] auto [handlerIt, inserted] = m_templateFileHandlers.insert_or_assign(
                 AZStd::move(normalizedExtension), TemplateFileHandlers{ AZStd::move(loadHandler), AZStd::move(saveHandler) });
             AZ_Warning(
                 "Prefab",

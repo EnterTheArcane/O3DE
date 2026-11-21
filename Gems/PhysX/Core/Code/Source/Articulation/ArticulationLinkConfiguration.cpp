@@ -41,7 +41,7 @@ namespace PhysX
 
             AZ::JsonSerializationResult::Result Load(
                 void* output,
-                const AZ::Uuid& typeId,
+                [[maybe_unused]] const AZ::Uuid& typeId,
                 const rapidjson::Value& input,
                 AZ::JsonDeserializerContext& context) override
             {
@@ -90,7 +90,7 @@ namespace PhysX
                 rapidjson::Value& output,
                 const void* input,
                 const void* defaults,
-                const AZ::Uuid& typeId,
+                [[maybe_unused]] const AZ::Uuid& typeId,
                 AZ::JsonSerializerContext& context) override
             {
                 AZ_Assert(typeId == azrtti_typeid<ArticulationJointMotorProperties>(), "Unexpected motor configuration type.");
@@ -317,8 +317,11 @@ namespace PhysX
         return AZ::Edit::PropertyRefreshLevels::EntireTree;
     }
 
-    void ArticulationLinkConfiguration::WarnLegacySettings(const AZStd::string& entityName, AZ::EntityId entityId) const
+    void ArticulationLinkConfiguration::WarnLegacySettings(
+        [[maybe_unused]] const AZStd::string& entityName,
+        [[maybe_unused]] AZ::EntityId entityId) const
     {
+#if defined(AZ_ENABLE_TRACING)
         const auto id = entityId.ToString();
         AZ_Warning("PhysX", m_sensorConfigs.empty(),
             "Articulation link '%s' (%s) retains obsolete sensor settings. Update callers to incoming joint force/torque, then clear Legacy PhysX Settings.",
@@ -332,6 +335,7 @@ namespace PhysX
                 "Articulation link '%s' (%s) retains motor impulse limit %g. Motor limits now use force/torque units. Retune the motor, then clear Legacy PhysX Settings.",
                 entityName.c_str(), id.c_str(), *m_motorConfiguration.m_legacyDriveImpulseLimit);
         }
+#endif
     }
 
     bool ArticulationLinkConfiguration::HingePropertiesVisible() const

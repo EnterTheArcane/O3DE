@@ -105,7 +105,7 @@ namespace PhysX
                     ->Attribute(AZ::Edit::Attributes::Max, 255)
                     ->UIElement(
                         AZ::Edit::UIHandlers::Label,
-                        QT_TRANSLATE_NOOP("PhysX", "Joint projection is unavailable in PhysX 5.12. Legacy settings are preserved."))
+                        QT_TRANSLATE_NOOP("PhysX", "Joint projection is unavailable. Legacy settings are preserved."))
                     ->Attribute(AZ::Edit::Attributes::Visibility, &RagdollComponent::m_enableJointProjection)
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default, &RagdollComponent::m_enableMassRatioClamping, QT_TRANSLATE_NOOP("PhysX", "Enable Mass Ratio Clamping"),
