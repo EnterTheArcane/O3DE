@@ -11,7 +11,12 @@ from pathlib import Path
 from conan import ConanFile
 from conan.tools.build import cross_building
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
-from conan.tools.files import copy, get
+from conan.tools.files import (
+    apply_conandata_patches,
+    copy,
+    export_conandata_patches,
+    get,
+)
 
 
 class Recipe(ConanFile):
@@ -26,6 +31,9 @@ class Recipe(ConanFile):
 
     def layout(self):
         cmake_layout(self, src_folder="src")
+
+    def export_sources(self):
+        export_conandata_patches(self)
 
     def build_requirements(self):
         if cross_building(self):
@@ -43,6 +51,7 @@ class Recipe(ConanFile):
                 destination=(external / name).as_posix(),
                 strip_root=True,
             )
+        apply_conandata_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -64,6 +73,8 @@ class Recipe(ConanFile):
         tc.variables["CLANG_INCLUDE_TESTS"] = False
         tc.variables["LIBCLANG_BUILD_STATIC"] = True
         tc.variables["SPIRV_SKIP_TESTS"] = True
+        if self.settings.os == "Windows":
+            tc.variables["SPIRV_WERROR"] = False
         if cross_building(self):
             tools = Path(self.dependencies.build[self.name].package_folder) / "bin"
             suffix = ".exe" if self.settings_build.os == "Windows" else ""

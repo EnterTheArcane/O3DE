@@ -13,3 +13,9 @@ extra_sources:
     SPIRV-Tools:
       url: "https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.357.0.tar.gz"
       sha256: "d31e7109b6ef3559067e53e520870eafed7c9534d00db9728814b6df03fa4a5e"
+patches:
+  "1.9.2609":
+    - patch_file: "patches/spirv-tools-msvc-werror.patch"
+      base_path: "external/SPIRV-Tools"
+      patch_description: Respect SPIRV_WERROR when using the MSVC driver
+      patch_type: portability

@@ -53,7 +53,7 @@
         "fmt/12.2.0#b445244e6d0151a425e229248cd2bed8%1785754552.386",
         "expat/2.10.0#93425119c70db4e470b3d7d9b5daf3e6%1793616949.505",
         "dlfcn-win32/1.4.2#78dfb1c9ad90f18aa70ce3ee6cd228fb",
-        "directxshadercompiler/1.9.2609#d1086aecaa6141b0ae6b000d5ec2913a",
+        "directxshadercompiler/1.9.2609#b90b53bddd66f0f16163b39f44f8d804",
         "dcmtk/3.7.1#4eaccd06d30a79ea83e9b3653fab43e7%1793185237.45",
         "crashpad/2026.10.01#38a77ab810d754c250912ce1dafea5c3",
         "c-blosc/1.21.5#faf01d4fdbdf0911a1340e060484ef52%1760422815.204",
@@ -76,7 +76,7 @@
         "jom/1.1.7#e2f375eea4562dd5806564cc352ce8fd%1792571976.277",
         "ispc/1.32.0#0bc73eaa999e95f0b1f5ec25e00554a6",
         "gn/2022.12.12#26f6cfa5ab4753a75063b5d67bf7de35",
-        "directxshadercompiler/1.9.2609#d1086aecaa6141b0ae6b000d5ec2913a",
+        "directxshadercompiler/1.9.2609#b90b53bddd66f0f16163b39f44f8d804",
         "cmake/4.5.0#24bd34291eb0f81c64854389dd6a216f%1794652026.685",
         "b2/5.6.1#41ae5699a0588de1202afe5b675cc86d%1793034698.727"
     ],
