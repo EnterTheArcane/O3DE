@@ -71,7 +71,8 @@ endif()
 # If both are requested, incremental linking takes priority for Debug builds.
 
 get_property(o3de_caching_compiler_launcher GLOBAL PROPERTY O3DE_CACHING_COMPILER_LAUNCHER_ENABLED)
-if(o3de_caching_compiler_launcher)
+# Wine builds embed debug info to avoid relying on the compiler's PDB server.
+if(o3de_caching_compiler_launcher OR (CMAKE_CROSSCOMPILING AND CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux"))
     set(O3DE_MSVC_DEBUG_INFORMATION_FORMAT /Z7)
 else()
     set(O3DE_MSVC_DEBUG_INFORMATION_FORMAT /Zi)

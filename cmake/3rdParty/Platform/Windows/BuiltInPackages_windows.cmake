@@ -8,6 +8,20 @@
 
 # this file allows you to specify all 3p packages (provided by O3DE or the operating system) for Windows.
 
+if(PAL_HOST_PLATFORM_NAME STREQUAL "Linux" AND CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    include(${CMAKE_CURRENT_LIST_DIR}/../Linux/Qt_linux_x86_64.cmake)
+    block(PROPAGATE CMAKE_PROGRAM_PATH AUTORCC_EXECUTABLE)
+        ly_associate_linux_x86_64_qt(QtHost)
+        ly_download_associated_package(QtHost)
+        ly_get_package_association(QtHost qt_host_package)
+        ly_package_get_target_folder(${qt_host_package} qt_host_dir)
+        set(qt_host_path "${qt_host_dir}/${qt_host_package}/qt")
+        list(PREPEND CMAKE_PROGRAM_PATH "${qt_host_path}/bin" "${qt_host_path}/libexec")
+        # Match the resource compression supported by the Windows Qt package.
+        set(AUTORCC_EXECUTABLE "${qt_host_path}/libexec/rcc" --no-zstd)
+    endblock()
+endif()
+
 ly_associate_package(PACKAGE_NAME OpenEXR-3.1.3-rev5-windows                            TARGETS OpenEXR Imath               PACKAGE_HASH bff6dc78412bb1b04ded243753bee36e9229fdaf9a9e1fa85b1059238fba4c9b)
 ly_associate_package(PACKAGE_NAME DirectXShaderCompilerDxc-1.8.2505.1-o3de-rev3-windows TARGETS DirectXShaderCompilerDxc    PACKAGE_HASH 224a34691a17234c2294202368d9756635f11d66ac9bc528f929d84cf4acac8e)
 ly_associate_package(PACKAGE_NAME d3dx12-headers-rev1-windows                           TARGETS d3dx12                      PACKAGE_HASH 088c637159fba4a3e4c0cf08fb4921906fd4cca498939bd239db7c54b5b2f804)

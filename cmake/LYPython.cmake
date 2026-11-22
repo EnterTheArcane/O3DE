@@ -219,6 +219,13 @@ endfunction()
 # the pip_package_name should be the name given to the package in setup.py so that
 # any old versions may be uninstalled using setuptools before we install the new one.
 function(ly_pip_install_local_package_editable package_folder_path pip_package_name)
+    if(PAL_HOST_PLATFORM_NAME STREQUAL "Linux"
+        AND PAL_PLATFORM_NAME STREQUAL "Windows"
+        AND pip_package_name STREQUAL "PySide6")
+        # The Linux build interpreter cannot load the Windows PySide6 extensions.
+        return()
+    endif()
+
     set(stamp_file ${LY_PYTHON_VENV_PATH}/packages/pip_installs/${pip_package_name}.stamp)
     get_filename_component(stamp_file_directory ${stamp_file} DIRECTORY)
     file(MAKE_DIRECTORY ${stamp_file_directory})
@@ -336,11 +343,16 @@ endfunction()
 
 
 # We need to download the associated Python package early and install the venv 
-ly_associate_package(PACKAGE_NAME ${LY_PYTHON_PACKAGE_NAME} TARGETS "Python" PACKAGE_HASH ${LY_PYTHON_PACKAGE_HASH})
+set(python_host_association Python)
+if(PAL_HOST_PLATFORM_NAME STREQUAL "Linux" AND PAL_PLATFORM_NAME STREQUAL "Windows")
+    set(python_host_association PythonHost)
+endif()
+ly_associate_package(PACKAGE_NAME ${LY_PYTHON_PACKAGE_NAME} TARGETS ${python_host_association} PACKAGE_HASH ${LY_PYTHON_PACKAGE_HASH})
 ly_set_package_download_location(${LY_PYTHON_PACKAGE_NAME} ${PYTHON_PACKAGES_ROOT_PATH})
 ly_set_package_download_cache_location(${LY_PYTHON_PACKAGE_NAME} ${PYTHON_PACKAGE_CACHE_ROOT_PATH})
-ly_download_associated_package(Python)
+ly_download_associated_package(${python_host_association})
 ly_setup_python_venv()
+set(LY_PYTHON_TARGET_VENV_SITE_PACKAGES "${LY_PYTHON_VENV_SITE_PACKAGES}")
 
 if (NOT CMAKE_SCRIPT_MODE_FILE)
 
@@ -349,6 +361,24 @@ if (NOT CMAKE_SCRIPT_MODE_FILE)
     # you may have to declare the below variables after find_package, as the project scripts are 
     # looking for the below variables specifically.
     find_package(Python ${LY_PYTHON_VERSION} REQUIRED)
+
+    if(python_host_association STREQUAL "PythonHost")
+        block(SCOPE_FOR VARIABLES PROPAGATE LY_PYTHON_TARGET_VENV_SITE_PACKAGES)
+            set(LY_PARENT_SCOPE "")
+            include(${LY_ROOT_FOLDER}/cmake/3rdParty/Platform/Windows/Python_windows.cmake)
+            set(LY_PYTHON_TARGET_VENV_SITE_PACKAGES "${LY_PYTHON_VENV_SITE_PACKAGES}")
+            ly_associate_package(
+                PACKAGE_NAME ${LY_PYTHON_PACKAGE_NAME}
+                TARGETS Python
+                PACKAGE_HASH ${LY_PYTHON_PACKAGE_HASH}
+            )
+            ly_set_package_download_location(${LY_PYTHON_PACKAGE_NAME} ${PYTHON_PACKAGES_ROOT_PATH})
+            ly_set_package_download_cache_location(${LY_PYTHON_PACKAGE_NAME} ${PYTHON_PACKAGE_CACHE_ROOT_PATH})
+            ly_download_associated_package(Python)
+            set(Python_DIR "${PYTHON_PACKAGES_ROOT_PATH}/${LY_PYTHON_PACKAGE_NAME}")
+            find_package(Python ${LY_PYTHON_VERSION} REQUIRED CONFIG NO_DEFAULT_PATH)
+        endblock()
+    endif()
 
     # verify the required variables are present:
     if (NOT EXISTS "${PYTHON_VENV_PATH}/" OR NOT Python_EXECUTABLE OR NOT Python_HOME OR NOT Python_PATHS)

@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../automatedtesti
 
 from base import TestAutomationBase
 import ly_test_tools.environment.file_system as file_system
-import hydra_test_utils as hydra
+import editor_python_test_tools.hydra_test_utils as hydra
 
 TEST_DIRECTORY = os.path.dirname(__file__)
 

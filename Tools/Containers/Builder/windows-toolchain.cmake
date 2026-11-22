@@ -1,0 +1,43 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR AMD64)
+set(CMAKE_SYSTEM_VERSION 10.0.26100.0)
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_CROSSCOMPILING_EMULATOR bash "${CMAKE_CURRENT_LIST_DIR}/wine-test.sh")
+set(CMAKE_TRY_COMPILE_CONFIGURATION profile)
+list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_CONFIGURATION_TYPES)
+
+if("$ENV{O3DE_WINDOWS_COMPILER}" STREQUAL "clang-cl")
+    set(xwin_crt "/opt/xwin/VC/Tools/MSVC/14.44.17.14")
+    set(xwin_sdk "/opt/xwin/Windows Kits/10")
+    set(xwin_sdk_version 10.0.26100)
+    set(xwin_sdk_include "${xwin_sdk}/Include/${xwin_sdk_version}")
+    set(xwin_sdk_lib "${xwin_sdk}/Lib/${xwin_sdk_version}")
+    set(CMAKE_C_COMPILER clang-cl /winsysroot /opt/xwin)
+    set(CMAKE_CXX_COMPILER clang-cl /winsysroot /opt/xwin)
+    set(CMAKE_C_COMPILER_TARGET x86_64-pc-windows-msvc)
+    set(CMAKE_CXX_COMPILER_TARGET x86_64-pc-windows-msvc)
+    set(CMAKE_LINKER lld-link)
+    set(CMAKE_AR llvm-lib)
+    set(CMAKE_RC_COMPILER llvm-rc)
+    set(CMAKE_MT llvm-mt)
+    set(CMAKE_RC_FLAGS_INIT "/I\"${xwin_sdk_include}/ucrt\" /I\"${xwin_sdk_include}/shared\" /I\"${xwin_sdk_include}/um\"")
+    set(xwin_lib_paths "/LIBPATH:\"${xwin_crt}/lib/x64\" /LIBPATH:\"${xwin_sdk_lib}/ucrt/x64\" /LIBPATH:\"${xwin_sdk_lib}/um/x64\"")
+    set(CMAKE_EXE_LINKER_FLAGS_INIT "${xwin_lib_paths}")
+    set(CMAKE_SHARED_LINKER_FLAGS_INIT "${xwin_lib_paths}")
+    set(CMAKE_MODULE_LINKER_FLAGS_INIT "${xwin_lib_paths}")
+elseif("$ENV{O3DE_WINDOWS_COMPILER}" STREQUAL "msvc")
+    set(CMAKE_C_COMPILER /opt/msvc/bin/x64/cl)
+    set(CMAKE_CXX_COMPILER /opt/msvc/bin/x64/cl)
+    set(CMAKE_LINKER /opt/msvc/bin/x64/link)
+    set(CMAKE_AR /opt/msvc/bin/x64/lib)
+    set(CMAKE_RC_COMPILER /opt/msvc/bin/x64/rc)
+    set(CMAKE_MT /opt/msvc/bin/x64/mt)
+else()
+    message(FATAL_ERROR "Set O3DE_WINDOWS_COMPILER to clang-cl or msvc")
+endif()

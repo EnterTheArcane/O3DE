@@ -9,7 +9,7 @@
 //
 #include "winres.h"
 #include "colordlg.h"
-#include "Dlgs.h"
+#include "dlgs.h"
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 

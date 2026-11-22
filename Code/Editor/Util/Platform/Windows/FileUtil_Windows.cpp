@@ -9,7 +9,7 @@
 
 #include "../../FileUtil_Common.h"
 
-#include <Shellapi.h>
+#include <shellapi.h>
 
 
 namespace Platform

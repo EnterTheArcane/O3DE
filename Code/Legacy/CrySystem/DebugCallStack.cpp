@@ -24,7 +24,7 @@
 #include <AzCore/std/parallel/spin_mutex.h>
 
 #include <DbgHelp.h>
-#include <Shellapi.h>
+#include <shellapi.h>
 
 #define MAX_PATH_LENGTH 1024
 

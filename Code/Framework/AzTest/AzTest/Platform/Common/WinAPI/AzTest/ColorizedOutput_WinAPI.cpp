@@ -7,7 +7,7 @@
  */
 
 #include <AzCore/PlatformIncl.h>
-#include <ConsoleApi.h>
+#include <consoleapi.h>
 
 namespace UnitTest
 {

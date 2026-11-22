@@ -88,13 +88,18 @@ def test_get_gem_names_set(gems, include_optional, expected_result):
     pytest.param(['cmake', '-B'], 1)
 ])
 def test_cli_command(args, expected_return_code):
-    process = mock.Mock()
+    process = mock.MagicMock()
+    process.args = args
+    process.__enter__.return_value = process
     process.returncode = expected_return_code
     process.poll.return_value = expected_return_code
-    with patch("subprocess.Popen", return_value = process) as subproc_popen_patch:
+    process.stdout.read.return_value = b"mock output"
+    with patch.object(utils, "Popen", return_value=process) as popen:
         new_command = utils.CLICommand(args, None, logging.getLogger())
         result = new_command.run()
+        popen.assert_called_once()
         assert result == expected_return_code
+        assert new_command.stdout == "mock output"
 
 @pytest.mark.parametrize("test_path", [
     pytest.param(__file__),

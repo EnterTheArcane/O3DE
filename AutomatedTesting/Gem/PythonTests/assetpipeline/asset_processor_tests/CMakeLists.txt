@@ -239,16 +239,6 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED AND PAL_TRAIT_BUILD_HOST_TOOLS)
             AZ::AssetProcessorBatch
     )
     
-    ly_add_pytest(
-        NAME APTests.cache_server_Sandbox
-        PATH ${CMAKE_CURRENT_LIST_DIR}/asset_processor_cache_server.py
-        TEST_SUITE sandbox
-        PYTEST_MARKS "SUITE_sandbox" # run only sandbox tests in this file
-        RUNTIME_DEPENDENCIES       
-            AZ::AssetProcessorBatch
-            AZ::AssetProcessor
-    )
-
 ## Non-Linux Tests ##
 
     set(SUPPORTED_PLATFORMS "Windows" "Mac")

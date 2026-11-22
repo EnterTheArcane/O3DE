@@ -9,7 +9,7 @@
 #include "Random_Windows.h"
 
 #include <AzCore/PlatformIncl.h>
-#include <Wincrypt.h>
+#include <wincrypt.h>
 
 namespace AZ
 {

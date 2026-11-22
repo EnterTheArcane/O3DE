@@ -48,7 +48,7 @@ ly_add_target(
         PRIVATE
             AZTF_EXPORTS
             $<$<CONFIG:debug>:ENABLE_UNDOCACHE_CONSISTENCY_CHECKS>
-            O3DE_PYTHON_SITE_PACKAGE_SUBPATH="${LY_PYTHON_VENV_SITE_PACKAGES}"
+            O3DE_PYTHON_SITE_PACKAGE_SUBPATH="${LY_PYTHON_TARGET_VENV_SITE_PACKAGES}"
     BUILD_DEPENDENCIES
         PRIVATE
             3rdParty::sqlite
@@ -99,7 +99,7 @@ if(PAL_TRAIT_TEST_GOOGLE_TEST_SUPPORTED)
                     Tests
             COMPILE_DEFINITIONS
                 PRIVATE
-                    O3DE_PYTHON_SITE_PACKAGE_SUBPATH="${LY_PYTHON_VENV_SITE_PACKAGES}"
+                    O3DE_PYTHON_SITE_PACKAGE_SUBPATH="${LY_PYTHON_TARGET_VENV_SITE_PACKAGES}"
             BUILD_DEPENDENCIES
                 PUBLIC
                     AZ::AzTestShared

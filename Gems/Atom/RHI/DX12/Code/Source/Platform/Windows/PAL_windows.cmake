@@ -6,16 +6,22 @@
 #
 #
 
-# win2012 nodes can build DX11/DX12, but can't run. Disable runtime support if d3d12.dll/d3d11.dll is not available
-set(PAL_TRAIT_ATOM_RHI_DX12_SUPPORTED FALSE)
-find_file(d3d12_dll
-    d3d12.dll
-    PATHS
-        "$ENV{SystemRoot}\\System32"
-)
-mark_as_advanced(d3d12_dll)
-if(d3d12_dll)
+# Use the target Windows SDK to build DX12 when cross-compiling.
+if(CMAKE_CROSSCOMPILING)
     set(PAL_TRAIT_ATOM_RHI_DX12_SUPPORTED TRUE)
+else()
+    # Probe the native host before enabling DX12 on legacy Windows CI nodes.
+    find_file(d3d12_dll
+        d3d12.dll
+        PATHS
+            "$ENV{SystemRoot}\\System32"
+    )
+    mark_as_advanced(d3d12_dll)
+    if(d3d12_dll)
+        set(PAL_TRAIT_ATOM_RHI_DX12_SUPPORTED TRUE)
+    else()
+        set(PAL_TRAIT_ATOM_RHI_DX12_SUPPORTED FALSE)
+    endif()
 endif()
 
 unset(pix3_header CACHE)

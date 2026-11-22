@@ -35,7 +35,7 @@
 #include <float.h>
 #include <shellapi.h> // Needed for ShellExecute.
 #include <Psapi.h>
-#include <Aclapi.h>
+#include <AclAPI.h>
 
 #include <shlobj.h>
 #endif
@@ -52,7 +52,7 @@
 
 #if defined(WIN32)
 __pragma(comment(lib, "wininet.lib"))
-__pragma(comment(lib, "Winmm.lib"))
+__pragma(comment(lib, "winmm.lib"))
 #endif
 
 #if defined(APPLE)

@@ -33,7 +33,7 @@
 #include <time.h>
 #include <QTime>
 #else
-#include <Wbemidl.h>
+#include <WbemIdl.h>
 #pragma comment(lib, "wbemuuid.lib")
 #endif
 

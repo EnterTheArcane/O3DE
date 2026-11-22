@@ -17,7 +17,11 @@ set(LY_GOOGLETEST_EXTRA_PARAMS CACHE STRING "Allows injection of additional opti
 
 find_package(Python REQUIRED MODULE)
 
-ly_set(LY_PYTEST_EXECUTABLE ${LY_PYTHON_CMD} -B -m pytest -v --tb=short --show-capture=stdout -c ${LY_ROOT_FOLDER}/pytest.ini --build-directory "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>")
+set(pytest_python_command ${LY_PYTHON_CMD})
+if(CMAKE_CROSSCOMPILING AND LY_PYTEST_PYTHON_COMMAND)
+    set(pytest_python_command ${LY_PYTEST_PYTHON_COMMAND})
+endif()
+ly_set(LY_PYTEST_EXECUTABLE ${pytest_python_command} -B -m pytest -v --tb=short --show-capture=stdout -c ${LY_ROOT_FOLDER}/pytest.ini --build-directory "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>")
 ly_set(LY_TEST_GLOBAL_KNOWN_SUITE_NAMES "smoke" "main" "periodic" "benchmark" "sandbox" "awsi")
 ly_set(LY_TEST_GLOBAL_KNOWN_REQUIREMENTS "gpu")
 
@@ -145,9 +149,17 @@ function(ly_add_test)
     endif()
     include(${wrapper_file})
 
+    # These test commands use executable paths, so add_test does not infer an emulator.
+    if(CMAKE_CROSSCOMPILING AND PAL_HOST_PLATFORM_NAME STREQUAL "Linux" AND PAL_PLATFORM_NAME STREQUAL "Windows"
+        AND ly_add_test_TEST_LIBRARY MATCHES "^(googletest|googlebenchmark)$")
+        set(test_launcher ${CMAKE_CROSSCOMPILING_EMULATOR})
+    else()
+        set(test_launcher)
+    endif()
+
     add_test(
         NAME ${qualified_test_run_name_with_suite}::TEST_RUN
-        COMMAND ${test_command} ${test_arguments} ${ly_add_test_NON_IDE_PARAMS} ${PAL_TEST_COMMAND_ARGS}
+        COMMAND ${test_launcher} ${test_command} ${test_arguments} ${ly_add_test_NON_IDE_PARAMS} ${PAL_TEST_COMMAND_ARGS}
     )
 
     set(LY_ADDED_TEST_NAME ${qualified_test_run_name_with_suite}::TEST_RUN)

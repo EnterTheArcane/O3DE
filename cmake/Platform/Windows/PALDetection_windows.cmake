@@ -7,4 +7,8 @@
 #
 
 ly_set(LY_PLATFORM_DETECTION_Windows Windows)
-ly_set(LY_HOST_PLATFORM_DETECTION_Windows Windows)
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+    ly_set(LY_HOST_PLATFORM_DETECTION_Windows Linux)
+else()
+    ly_set(LY_HOST_PLATFORM_DETECTION_Windows Windows)
+endif()

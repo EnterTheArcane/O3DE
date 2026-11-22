@@ -7,6 +7,6 @@
 #
 
 set(lrelease_files
-    ${QT_LRELEASE_EXECUTABLE}
+    ${QT_PATH}/bin/lrelease.exe
     ${QT_PATH}/bin/Qt6Core.dll # this is a dependency of lrelease. Even in debug we use the release version
 )
