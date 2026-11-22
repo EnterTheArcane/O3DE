@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   build:
+    name: Build (${{ matrix.profile }})
     strategy:
       fail-fast: false
       matrix: &package_matrix
@@ -152,6 +153,7 @@ jobs:
             build/imaging/debug/packages/packages.json
 
   publish:
+    name: Publish
     if: github.event_name == 'workflow_dispatch' && inputs.publish
     needs: build
     runs-on: ubuntu-26.04
@@ -195,6 +197,7 @@ jobs:
           path: build/imaging-catalog.json
 
   consume:
+    name: Consume
     needs: publish
     strategy:
       fail-fast: false
@@ -223,6 +226,7 @@ jobs:
         run: ./Tools/Conan/scripts/ci.ps1 -Profile $env:PACKAGE_PROFILE -Registry ghcr.io -PublishedCatalog build/catalog/imaging-catalog.json
 
   promote:
+    name: Promote
     needs: consume
     runs-on: ubuntu-26.04
     timeout-minutes: 300
