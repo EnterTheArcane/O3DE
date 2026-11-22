@@ -12,6 +12,7 @@ from conan import ConanFile
 from conan.errors import ConanException
 from conan.tools.cmake import CMake, CMakeToolchain
 from conan.tools.files import copy, get
+from conan.tools.scm import Version
 
 
 CONFIGURATIONS = ("debug", "checked", "profile", "release")
@@ -63,6 +64,18 @@ class Recipe(ConanFile):
             "iOS": "ios",
             "Emscripten": "linux",
         }[os_name]
+        if (
+            os_name == "Linux"
+            and self.settings.compiler == "clang"
+            and Version(str(self.settings.compiler.version)) >= "23"
+        ):
+            # PhysX enables -Weverything and treats new Clang diagnostics as errors.
+            tc.extra_cxxflags.extend(
+                [
+                    "-Wno-unique-object-duplication",
+                    "-Wno-lifetime-safety-intra-tu-suggestions",
+                ]
+            )
         if os_name == "Emscripten":
             wasm64 = self.settings.arch == "wasm64"
             tc.cache_variables["PHYSX_EMSCRIPTEN_ARCH"] = (

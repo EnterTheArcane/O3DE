@@ -22,6 +22,8 @@ if [[ ${1:-native} == cross ]]; then
     # Multiarch libraries need matching versions across the runner's two mirrors.
     if [[ ${GITHUB_ACTIONS:-} == true ]]; then
         apt_options+=(--allow-downgrades --no-remove)
+        # libxtst-dev ships different compressed man pages for amd64 and arm64.
+        apt_options+=(-o 'Dpkg::Options::=--path-exclude=/usr/share/man/*')
     fi
     sudo dpkg --add-architecture arm64
     ubuntu_sources=/etc/apt/sources.list.d/ubuntu.sources
