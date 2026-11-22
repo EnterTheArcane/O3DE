@@ -675,6 +675,12 @@ bool {{ ClassName }}::Serialize{{ AutoComponentMacros.GetNetPropertiesSetName(Re
                 static_cast<Multiplayer::PropertyIndex>({{ UpperFirst(Component.attrib['Name']) }}Internal::NetworkProperties::{{ UpperFirst(Property.attrib['Name']) }}),
                 stats
             );
+{%       if Property.attrib['Container'] == 'Vector' %}
+            if (!serializer.IsValid())
+            {
+                return false;
+            }
+{%       endif %}
         }
     }
 {%     else %}
@@ -1793,25 +1799,24 @@ namespace {{ Component.attrib['Namespace'] }}
 
         {{ RecordName }} record = {{ RecordName }}::AttachRecord(replicationRecord);
 
-        serializer.BeginObject("{{ ComponentBaseName }}");
-        if (replicationRecord.ContainsAuthorityToClientBits())
+        bool success = serializer.BeginObject("{{ ComponentBaseName }}");
+        if (success && replicationRecord.ContainsAuthorityToClientBits())
         {
-            SerializeAuthorityToClientProperties(record, serializer);
+            success = SerializeAuthorityToClientProperties(record, serializer);
         }
-        if (replicationRecord.ContainsAuthorityToServerBits())
+        if (success && replicationRecord.ContainsAuthorityToServerBits())
         {
-            SerializeAuthorityToServerProperties(record, serializer);
+            success = SerializeAuthorityToServerProperties(record, serializer);
         }
-        if (replicationRecord.ContainsAuthorityToAutonomousBits())
+        if (success && replicationRecord.ContainsAuthorityToAutonomousBits())
         {
-            SerializeAuthorityToAutonomousProperties(record, serializer);
+            success = SerializeAuthorityToAutonomousProperties(record, serializer);
         }
-        if (replicationRecord.ContainsAutonomousToAuthorityBits())
+        if (success && replicationRecord.ContainsAutonomousToAuthorityBits())
         {
-            SerializeAutonomousToAuthorityProperties(record, serializer);
+            success = SerializeAutonomousToAuthorityProperties(record, serializer);
         }
-        serializer.EndObject("{{ ComponentBaseName }}");
-        return serializer.IsValid();
+        return serializer.EndObject("{{ ComponentBaseName }}") && success && serializer.IsValid();
     }
 
     void {{ ComponentBaseName }}::NotifyStateDeltaChanges(Multiplayer::ReplicationRecord& replicationRecord)

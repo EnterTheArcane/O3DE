@@ -210,8 +210,11 @@ namespace Multiplayer
             using SizeType = typename AZ::SizeType<AZ::RequiredBytesForValue<SIZE>(), false>::Type;
             SizeType origSize = aznumeric_cast<SizeType>(value.size());
             SizeType newSize = origSize;
-            serializer.Serialize(newSize, "Size");
-            newSize = AZStd::min(newSize, static_cast<SizeType>(SIZE)); // Network input, clamp to capacity
+            if (!serializer.Serialize(newSize, "Size") || newSize > SIZE)
+            {
+                serializer.Invalidate();
+                return;
+            }
             value.resize(newSize);
             if (modifyRecord && origSize == newSize)
             {
@@ -224,7 +227,11 @@ namespace Multiplayer
             if (bitset.GetBit(i))
             {
                 serializer.ClearTrackedChangesFlag();
-                serializer.Serialize(value[i], AzNetworking::GenerateIndexLabel<SIZE>(i).c_str());
+                if (!serializer.Serialize(value[i], AzNetworking::GenerateIndexLabel<SIZE>(i).c_str()))
+                {
+                    serializer.Invalidate();
+                    break;
+                }
                 if (modifyRecord && !serializer.GetTrackedChangesFlag())
                 {
                     bitset.SetBit(i, false);

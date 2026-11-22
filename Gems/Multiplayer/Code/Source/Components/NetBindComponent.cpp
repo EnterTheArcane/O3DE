@@ -531,7 +531,10 @@ namespace Multiplayer
     {
         const NetEntityRole netEntityRole = m_netEntityRole;
         ReplicationRecord replicationRecord(netEntityRole);
-        replicationRecord.Serialize(serializer);
+        if (!replicationRecord.Serialize(serializer))
+        {
+            return false;
+        }
         if ((serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject) && (netEntityRole == NetEntityRole::Server))
         {
             // Make sure to capture the entirety of the TotalRecord, before we clear out bits that haven't changed from our local state
@@ -539,7 +542,10 @@ namespace Multiplayer
             m_totalRecord.Append(replicationRecord);
         }
         // This will modify the replicationRecord and clear out bits that have not changed from the local state, this prevents us from notifying that something has changed multiple times
-        SerializeStateDeltaMessage(replicationRecord, serializer);
+        if (!SerializeStateDeltaMessage(replicationRecord, serializer))
+        {
+            return false;
+        }
 
         if (serializer.IsValid())
         {
@@ -662,7 +668,7 @@ namespace Multiplayer
         // We copy this record and use a temporary so that SerializeStateDeltaMessage will not modify the m_predictableRecord
         // since SerializeStateDeltaMessage will clear the dirty bit for the NetworkProperty if it did not actually change
         const bool success = SerializeStateDeltaMessage(tmpRecord, serializer);
-        if (serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject)
+        if (success && serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject)
         {
             tmpRecord.ResetConsumedBits();
             NotifyStateDeltaChanges(tmpRecord);
@@ -675,10 +681,13 @@ namespace Multiplayer
         auto& stats = GetMultiplayer()->GetStats();
         stats.RecordEntitySerializeStart(serializer.GetSerializerMode(), GetEntityId(), GetEntity()->GetName().c_str());
 
-        bool success = true;
-        serializer.BeginObject(GetEntity()->GetName().c_str());
+        bool success = serializer.BeginObject(GetEntity()->GetName().c_str());
         for (auto iter = m_multiplayerSerializationComponentVector.begin(); iter != m_multiplayerSerializationComponentVector.end(); ++iter)
         {
+            if (!success)
+            {
+                break;
+            }
             const bool componentSuccess = (*iter)->SerializeStateDeltaMessage(replicationRecord, serializer);
             if (!componentSuccess)
             {
@@ -687,10 +696,10 @@ namespace Multiplayer
                     static_cast<uint32_t>((*iter)->GetNetComponentId()), static_cast<int>(serializer.GetSerializerMode()),
                     serializer.GetSize(), serializer.GetCapacity());
             }
-            success &= componentSuccess;
+            success = componentSuccess;
             stats.RecordComponentSerializeEnd(serializer.GetSerializerMode(), (*iter)->GetNetComponentId());
         }
-        serializer.EndObject(GetEntity()->GetName().c_str());
+        success = serializer.EndObject(GetEntity()->GetName().c_str()) && success && serializer.IsValid();
         stats.RecordEntitySerializeStop(serializer.GetSerializerMode(), GetEntityId(), GetEntity()->GetName().c_str());
 
         return success;

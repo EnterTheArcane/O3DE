@@ -74,19 +74,18 @@ namespace Multiplayer
         EXPECT_EQ(valueMap.size(), NumTestEntriesPlusSize);
     }
 
-    TEST_F(MultiplayerComponentTests, SerializeNetworkPropertyHelperVectorClampsSizeToCapacity)
+    TEST_F(MultiplayerComponentTests, SerializeNetworkPropertyHelperVectorRejectsOversizedCount)
     {
         constexpr size_t NumTestEntries = 5;
         constexpr size_t NumTestEntriesPlusSize = NumTestEntries + 1;
         constexpr uint32_t BufferCapacity = 64;
 
-        // Write a size one larger than the fixed_vector can hold, as a hostile peer could
         using SizeType = AZ::SizeType<AZ::RequiredBytesForValue<NumTestEntries>(), false>::Type;
-        SizeType hostileSize = aznumeric_cast<SizeType>(NumTestEntries + 1);
+        SizeType oversizedCount = aznumeric_cast<SizeType>(NumTestEntries + 1);
         AZStd::vector<uint8_t> buffer(BufferCapacity);
         AzNetworking::NetworkInputSerializer writer(buffer.data(), BufferCapacity);
         AzNetworking::ISerializer& writerSerializer = writer;
-        EXPECT_TRUE(writerSerializer.Serialize(hostileSize, "Size"));
+        ASSERT_TRUE(writerSerializer.Serialize(oversizedCount, "Size"));
 
         // Only the size bit is dirty, so the size is the only value read
         AzNetworking::FixedSizeVectorBitset<NumTestEntriesPlusSize> bitset;
@@ -94,7 +93,8 @@ namespace Multiplayer
         bitset.SetBit(NumTestEntries, true);
         AzNetworking::FixedSizeBitsetView bitsetView(bitset, 0, NumTestEntriesPlusSize);
 
-        AZStd::fixed_vector<int32_t, NumTestEntries> testValues = { 5, 10 };
+        const AZStd::fixed_vector<int32_t, NumTestEntries> originalValues = { 5, 10 };
+        auto testValues = originalValues;
         NetComponentId componentId = aznumeric_cast<NetComponentId>(0);
         PropertyIndex propertyIndex = aznumeric_cast<PropertyIndex>(0);
         MultiplayerStats stats;
@@ -103,7 +103,8 @@ namespace Multiplayer
         AzNetworking::NetworkOutputSerializer reader(buffer.data(), writer.GetSize());
         SerializeNetworkPropertyHelperVector(reader, bitsetView, testValues, componentId, propertyIndex, stats);
 
-        EXPECT_EQ(testValues.size(), NumTestEntries);
+        EXPECT_FALSE(reader.IsValid());
+        EXPECT_EQ(testValues, originalValues);
     }
 
     TEST_F(MultiplayerComponentTests, ConsoleCommandRejectsMismatchedStringLengths)
