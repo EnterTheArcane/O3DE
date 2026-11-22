@@ -8,3 +8,6 @@ patches:
     - patch_file: patches/static-install-prefix-include.patch
       patch_description: Include the header for std::getenv in the static prefix helper
       patch_type: portability
+    - patch_file: patches/macos-only-compiler-flags.patch
+      patch_description: Apply macOS-specific version checks only on macOS
+      patch_type: portability

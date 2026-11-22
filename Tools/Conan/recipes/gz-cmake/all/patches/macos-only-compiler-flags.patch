@@ -1,0 +1,7 @@
+--- a/cmake/GzSetCompilerFlags.cmake
++++ b/cmake/GzSetCompilerFlags.cmake
+@@ -37,3 +37,3 @@
+-  if(APPLE)
++  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+     _gz_setup_apple()
+   endif()
