@@ -2,3 +2,8 @@ sources:
   "5.13.0":
     url: "https://github.com/EnterTheArcane/PhysX/archive/f471552020e1a0b410a8709db0855284ae00e289.tar.gz"
     sha256: "fb7152e5ad9045d668180ac6c296dc82831e4036ac336aec681a4372a02dd471"
+patches:
+  "5.13.0":
+    - patch_file: "patches/clang-23-warnings.patch"
+      patch_description: Extend the Linux Clang warning exclusions for Clang 23
+      patch_type: portability

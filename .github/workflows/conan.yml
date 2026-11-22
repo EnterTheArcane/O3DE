@@ -9,6 +9,9 @@ on:
         default: >-
           ["android-a64", "android-x64", "emscripten-w32", "ios-a64", "ios-simulator-a64",
           "linux-a64", "linux-x64", "macos-a64", "windows-a64", "windows-x64"]
+      cache_run_id:
+        description: Earlier run ID with compilation artifacts to restore
+        type: string
       publish:
         description: Publish and verify public GHCR candidates
         type: boolean
@@ -58,14 +61,14 @@ jobs:
         if: startsWith(matrix.profile, 'emscripten-')
         with:
           emsdk-version: '7.0.1'
-      - name: Restore compilation cache from this run
-        if: github.run_attempt > 1
+      - name: Restore compilation cache
+        if: github.run_attempt > 1 || inputs.cache_run_id != ''
         continue-on-error: true
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: compilation-cache-${{ matrix.profile }}
           github-token: ${{ github.token }}
-          run-id: ${{ github.run_id }}
+          run-id: ${{ inputs.cache_run_id || github.run_id }}
       - name: Set up ccache
         uses: chocobo1/setup-ccache-action@37c3347f8a7738e82aab7a06f276f7a12e3008fb
         with:

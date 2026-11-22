@@ -11,8 +11,12 @@ from pathlib import Path
 from conan import ConanFile
 from conan.errors import ConanException
 from conan.tools.cmake import CMake, CMakeToolchain
-from conan.tools.files import copy, get
-from conan.tools.scm import Version
+from conan.tools.files import (
+    apply_conandata_patches,
+    copy,
+    export_conandata_patches,
+    get,
+)
 
 
 CONFIGURATIONS = ("debug", "checked", "profile", "release")
@@ -30,6 +34,7 @@ class Recipe(ConanFile):
 
     def export_sources(self):
         copy(self, "physx-config.cmake", self.recipe_folder, self.export_sources_folder)
+        export_conandata_patches(self)
 
     def package_id(self):
         # Every package includes all four configurations, including the MSVC Debug CRT.
@@ -42,6 +47,7 @@ class Recipe(ConanFile):
 
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
+        apply_conandata_patches(self)
 
     def generate(self):
         os_name = str(self.settings.os)
@@ -64,18 +70,6 @@ class Recipe(ConanFile):
             "iOS": "ios",
             "Emscripten": "linux",
         }[os_name]
-        if (
-            os_name == "Linux"
-            and self.settings.compiler == "clang"
-            and Version(str(self.settings.compiler.version)) >= "23"
-        ):
-            # PhysX enables -Weverything and treats new Clang diagnostics as errors.
-            tc.extra_cxxflags.extend(
-                [
-                    "-Wno-unique-object-duplication",
-                    "-Wno-lifetime-safety-intra-tu-suggestions",
-                ]
-            )
         if os_name == "Emscripten":
             wasm64 = self.settings.arch == "wasm64"
             tc.cache_variables["PHYSX_EMSCRIPTEN_ARCH"] = (
