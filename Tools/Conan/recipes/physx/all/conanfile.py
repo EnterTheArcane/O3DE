@@ -16,6 +16,7 @@ from conan.tools.files import (
     copy,
     export_conandata_patches,
     get,
+    rename,
 )
 
 
@@ -97,11 +98,17 @@ class Recipe(ConanFile):
             )
         if not copy(self, "physx-config.cmake", self.export_sources_folder, package):
             raise ConanException("Missing physx-config.cmake")
-        copy(
+        if not copy(
             self,
             "PhysXConfigVersion.cmake",
             package / "release/lib/cmake/PhysX",
             package,
+        ):
+            raise ConanException("Missing PhysXConfigVersion.cmake")
+        rename(
+            self,
+            package / "PhysXConfigVersion.cmake",
+            package / "physx-config-version.cmake",
         )
         copy(
             self, "LICENSE.md", Path(self.source_folder) / "physx", package / "licenses"

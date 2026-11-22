@@ -75,6 +75,9 @@ class Recipe(ConanFile):
         tc.variables["SPIRV_SKIP_TESTS"] = True
         if self.settings.os == "Windows":
             tc.variables["SPIRV_WERROR"] = False
+            if self.settings.compiler == "clang":
+                # DXC's legacy -Wall enables all diagnostics with clang-cl.
+                tc.variables["LLVM_ENABLE_WARNINGS"] = False
         if cross_building(self):
             tools = Path(self.dependencies.build[self.name].package_folder) / "bin"
             suffix = ".exe" if self.settings_build.os == "Windows" else ""

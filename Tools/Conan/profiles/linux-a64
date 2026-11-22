@@ -1,5 +1,7 @@
 include(common/llvm)
 
+{% set boost_driver_flags = ["--target=aarch64-linux-gnu", "--gcc-install-dir=/usr/lib/gcc-cross/aarch64-linux-gnu/13"] %}
+
 [settings]
 os=Linux
 arch=armv8
@@ -13,6 +15,9 @@ libtiff/*:jpeg=libjpeg-turbo
 minizip-ng/*:with_openssl=False
 
 [conf]
+# Boost.Build needs the target GCC headers and runtime when invoking Clang.
+boost/*:tools.build:cxxflags+={{ boost_driver_flags | tojson }}
+boost/*:tools.build:sharedlinkflags+={{ boost_driver_flags | tojson }}
 tools.cmake.cmaketoolchain:generator=Ninja
 tools.cmake.cmaketoolchain:system_processor=aarch64
 # Keep pkg-config pointed at the target when PySide invokes CMake.
