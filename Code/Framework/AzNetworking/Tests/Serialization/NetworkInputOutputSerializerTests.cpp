@@ -223,23 +223,52 @@ namespace UnitTest
     {
         constexpr uint32_t ContainerCapacity = 4;
 
-        // A count above a fixed_vector's capacity is clamped to the capacity
         AZStd::vector<int32_t> fiveValues = { 1, 2, 3, 4, 5 };
-        AZStd::fixed_vector<int32_t, ContainerCapacity> fixedVector;
-        EXPECT_TRUE(WriteThenRead(fiveValues, fixedVector));
-        EXPECT_EQ(fixedVector.size(), ContainerCapacity);
+        const AZStd::fixed_vector<int32_t, ContainerCapacity> originalVector = { 9 };
+        auto fixedVector = originalVector;
+        EXPECT_FALSE(WriteThenRead(fiveValues, fixedVector));
+        EXPECT_EQ(fixedVector, originalVector);
 
-        // A length above a fixed_string's capacity is clamped, and the longer string behind it fails to read
         AZStd::fixed_string<ContainerCapacity + 1> fiveChars = "ABCDE";
-        AZStd::fixed_string<ContainerCapacity> fixedString;
+        AZStd::fixed_string<ContainerCapacity> fixedString = "old";
         EXPECT_FALSE(WriteThenRead(fiveChars, fixedString));
-        EXPECT_LE(fixedString.size(), ContainerCapacity);
+        EXPECT_EQ(fixedString, AZStd::fixed_string<ContainerCapacity>("old"));
 
-        // A huge count with no elements behind it stops at the first element that fails to read
-        uint32_t hugeCount = AZStd::numeric_limits<uint32_t>::max();
+        AZStd::vector<int32_t> atCapacity = { 1, 2, 3, 4 };
+        const AZStd::fixed_vector<int32_t, ContainerCapacity> expected = { 1, 2, 3, 4 };
+        EXPECT_TRUE(WriteThenRead(atCapacity, fixedVector));
+        EXPECT_EQ(fixedVector, expected);
+    }
+
+    TEST_F(InputOutputSerializerTests, FailedElementIsNotInserted)
+    {
+        // Write a count with no elements behind it.
+        uint32_t count = 1;
         AZStd::vector<int32_t> dynamicVector;
-        EXPECT_FALSE(WriteThenRead(hugeCount, dynamicVector));
-        EXPECT_LE(dynamicVector.size(), 1u);
+        EXPECT_FALSE(WriteThenRead(count, dynamicVector));
+        EXPECT_TRUE(dynamicVector.empty());
+
+        count = AZStd::numeric_limits<uint32_t>::max();
+        EXPECT_FALSE(WriteThenRead(count, dynamicVector));
+        EXPECT_TRUE(dynamicVector.empty());
+    }
+
+    TEST_F(InputOutputSerializerTests, FixedStringLengthMismatchInvalidatesReader)
+    {
+        uint8_t buffer[16] = {};
+        AzNetworking::NetworkInputSerializer writer(buffer, sizeof(buffer));
+        AzNetworking::ISerializer& output = writer;
+        uint8_t declaredSize = 4;
+        uint8_t bytes[] = { 'a', 'b' };
+        uint32_t actualSize = sizeof(bytes);
+        ASSERT_TRUE(output.Serialize(declaredSize, "Size"));
+        ASSERT_TRUE(writer.SerializeBytes(bytes, sizeof(bytes), true, actualSize, "String"));
+
+        AzNetworking::NetworkOutputSerializer reader(buffer, writer.GetSize());
+        AzNetworking::ISerializer& input = reader;
+        AZStd::fixed_string<4> value;
+        EXPECT_FALSE(input.Serialize(value, "Value"));
+        EXPECT_FALSE(reader.IsValid());
     }
 
 

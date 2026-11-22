@@ -48,13 +48,20 @@ namespace AzNetworking
             // Dynamic containers require different read/write serialization interfaces
             if (write)
             {
-                size = static_cast<uint32_t>(AZStd::min<AZStd::size_t>(size, container.max_size())); // Network input, clamp to capacity
+                if (!success || size > container.max_size())
+                {
+                    serializer.Invalidate();
+                    return false;
+                }
                 container.clear();
                 AzNetworking::AzContainerHelper::ReserveContainer<TYPE>(container, size);
                 ValueType element;
-                for (uint32_t i = 0; success && i < size; ++i)
+                for (uint32_t i = 0; i < size; ++i)
                 {
-                    success &= serializer.Serialize(element, GenerateIndexLabel<max>(i).c_str());
+                    if (!serializer.Serialize(element, GenerateIndexLabel<max>(i).c_str()))
+                    {
+                        return false;
+                    }
                     container.insert(container.end(), element);
                 }
             }
@@ -107,12 +114,19 @@ namespace AzNetworking
 
             if (write)
             {
-                size = AZStd::min(size, container.max_size()); // Network input, clamp to capacity
+                if (!success || size > container.max_size())
+                {
+                    serializer.Invalidate();
+                    return false;
+                }
                 container.clear();
                 ValueType element;
-                for (uint32_t i = 0; success && i < size; ++i)
+                for (uint32_t i = 0; i < size; ++i)
                 {
-                    success &= serializer.Serialize(element, GenerateIndexLabel<max>(i).c_str());
+                    if (!serializer.Serialize(element, GenerateIndexLabel<max>(i).c_str()))
+                    {
+                        return false;
+                    }
                     container.insert(element);
 
                 }
@@ -147,12 +161,19 @@ namespace AzNetworking
 
             if (write)
             {
-                size = AZStd::min(size, container.max_size()); // Network input, clamp to capacity
+                if (!success || size > container.max_size())
+                {
+                    serializer.Invalidate();
+                    return false;
+                }
                 container.clear();
                 ValueType element;
-                for (uint32_t i = 0; success && i < size; ++i)
+                for (uint32_t i = 0; i < size; ++i)
                 {
-                    success &= serializer.Serialize(element, GenerateIndexLabel<max>(i).c_str());
+                    if (!serializer.Serialize(element, GenerateIndexLabel<max>(i).c_str()))
+                    {
+                        return false;
+                    }
                     container.insert(element);
 
                 }
@@ -186,11 +207,19 @@ namespace AzNetworking
 
             if (write)
             {
+                if (!success || size > max)
+                {
+                    serializer.Invalidate();
+                    return false;
+                }
                 container.clear();
                 ValueType element;
-                for (uint32_t i = 0; success && i < size; ++i)
+                for (uint32_t i = 0; i < size; ++i)
                 {
-                    success &= serializer.Serialize(element, GenerateIndexLabel<max>(i).c_str());
+                    if (!serializer.Serialize(element, GenerateIndexLabel<max>(i).c_str()))
+                    {
+                        return false;
+                    }
                     container.insert(element);
                 }
             }
@@ -245,12 +274,19 @@ namespace AzNetworking
             SizeType size = aznumeric_cast<SizeType>(value.length());
             uint32_t outBytes = static_cast<uint32_t>(size);
 
-            bool success = serializer.Serialize(size, "Size");
-            size = AZStd::min(size, static_cast<SizeType>(MaxElementCount)); // Network input, clamp to capacity
+            if (!serializer.Serialize(size, "Size") || size > MaxElementCount)
+            {
+                serializer.Invalidate();
+                return false;
+            }
             value.resize_no_construct(size);
-            success &= serializer.SerializeBytes(reinterpret_cast<uint8_t*>(value.data()), static_cast<uint32_t>(size), true, outBytes, "String");
-
-            return success && outBytes == size;
+            if (!serializer.SerializeBytes(reinterpret_cast<uint8_t*>(value.data()), static_cast<uint32_t>(size), true, outBytes, "String")
+                || outBytes != size)
+            {
+                serializer.Invalidate();
+                return false;
+            }
+            return true;
         }
     };
 

@@ -13,6 +13,7 @@
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/Serialization/StringifySerializer.h>
 #include <AzTest/AzTest.h>
+#include <Source/AutoGen/Multiplayer.AutoPackets.h>
 #include <Multiplayer/Components/MultiplayerComponent.h>
 
 namespace Multiplayer
@@ -103,6 +104,24 @@ namespace Multiplayer
         SerializeNetworkPropertyHelperVector(reader, bitsetView, testValues, componentId, propertyIndex, stats);
 
         EXPECT_EQ(testValues.size(), NumTestEntries);
+    }
+
+    TEST_F(MultiplayerComponentTests, ConsoleCommandRejectsMismatchedStringLengths)
+    {
+        uint8_t buffer[16] = {};
+        AzNetworking::NetworkInputSerializer writer(buffer, sizeof(buffer));
+        AzNetworking::ISerializer& output = writer;
+        uint16_t declaredSize = 4;
+        uint8_t bytes[] = { 'a', 'b' };
+        uint32_t actualSize = sizeof(bytes);
+        ASSERT_TRUE(output.Serialize(declaredSize, "Size"));
+        ASSERT_TRUE(output.SerializeBytes(bytes, sizeof(bytes), true, actualSize, "String"));
+
+        AzNetworking::NetworkOutputSerializer reader(buffer, writer.GetSize());
+        AzNetworking::ISerializer& input = reader;
+        MultiplayerPackets::ConsoleCommand packet;
+        EXPECT_FALSE(packet.Serialize(input));
+        EXPECT_FALSE(reader.IsValid());
     }
 
 } // namespace Multiplayer
