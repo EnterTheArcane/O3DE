@@ -3,6 +3,12 @@ name: Conan Packages
 on:
   workflow_dispatch:
     inputs:
+      profiles:
+        description: JSON array of target profiles to build
+        type: string
+        default: >-
+          ["android-a64", "android-x64", "emscripten-w32", "ios-a64", "ios-simulator-a64",
+          "linux-a64", "linux-x64", "macos-a64", "windows-a64", "windows-x64"]
       publish:
         description: Publish and verify public GHCR candidates
         type: boolean
@@ -17,28 +23,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix: &package_matrix
-        include:
-          - profile: android-a64
-            runner: ubuntu-26.04
-          - profile: android-x64
-            runner: ubuntu-26.04
-          - profile: emscripten-w32
-            runner: ubuntu-26.04
-          - profile: ios-a64
-            runner: macos-26
-          - profile: ios-simulator-a64
-            runner: macos-26
-          - profile: linux-a64
-            runner: ubuntu-26.04
-          - profile: linux-x64
-            runner: ubuntu-26.04
-          - profile: macos-a64
-            runner: macos-26
-          - profile: windows-a64
-            runner: windows-2025-vs2026
-          - profile: windows-x64
-            runner: windows-2025-vs2026
-    runs-on: ${{ matrix.runner }}
+        profile: ${{ fromJSON(inputs.profiles) }}
+    runs-on: &package_runner >-
+      ${{ startsWith(matrix.profile, 'windows-') && 'windows-2025-vs2026' ||
+          (startsWith(matrix.profile, 'ios-') || startsWith(matrix.profile, 'macos-')) && 'macos-26' ||
+          'ubuntu-26.04' }}
     timeout-minutes: 300
     permissions:
       contents: read
@@ -202,7 +191,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: *package_matrix
-    runs-on: ${{ matrix.runner }}
+    runs-on: *package_runner
     timeout-minutes: 300
     env:
       PACKAGE_PROFILE: ${{ matrix.profile }}
