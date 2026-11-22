@@ -1,0 +1,59 @@
+--- a/NvCloth/src/SwSolverKernel.cpp
++++ b/NvCloth/src/SwSolverKernel.cpp
+@@ -86,19 +86,21 @@
+ 	if ((cpuInfo[2] & fmaFlags) != fmaFlags)
+ 		return 1; // no FMA3 support
+ 
+-	/* only using fma at the moment, don't lock out AMD's piledriver by requiring avx2
+-	__cpuid(cpuInfo, 7);
++	__cpuid(cpuInfo, 0);
++	if (cpuInfo[0] < 7)
++		return 1;
++
++	__cpuidex(cpuInfo, 7, 0);
+ 	int avx2Flags = 1 << 5;
+ 	if ((cpuInfo[1] & avx2Flags) != avx2Flags)
+-	    return 1; // no AVX2 support
+-	*/
++		return 1; // no AVX2 support
+ 
+ 	return 2;
+ #endif // _MSC_VER
+ #endif // _MSC_FULL_VER
+ }
+ 
+-const uint32_t sAvxSupport = getAvxSupport(); // 0: no AVX, 1: AVX, 2: AVX+FMA
++const uint32_t sAvxSupport = getAvxSupport(); // 0: no AVX, 1: AVX, 2: AVX2+FMA
+ }
+ #endif
+ 
+--- a/NvCloth/src/avx/SwSolveConstraints.cpp
++++ b/NvCloth/src/avx/SwSolveConstraints.cpp
+@@ -64,11 +64,17 @@
+ }
+ #if _MSC_VER >= 1700
+ template <>
++#if defined(__clang__)
++__attribute__((target("fma")))
++#endif
+ __m256 fmadd_ps<2>(__m256 a, __m256 b, __m256 c)
+ {
+ 	return _mm256_fmadd_ps(a, b, c);
+ }
+ template <>
++#if defined(__clang__)
++__attribute__((target("fma")))
++#endif
+ __m256 fnmadd_ps<2>(__m256 a, __m256 b, __m256 c)
+ {
+ 	return _mm256_fnmadd_ps(a, b, c);
+@@ -130,6 +136,9 @@
+ #if _MSC_VER >= 1700
+ //AVX2
+ template <>
++#if defined(__clang__)
++__attribute__((target("avx2")))
++#endif
+ __m256 exp2<2>(const __m256& v)
+ {
+ 	// http://www.netlib.org/cephes/

@@ -7,3 +7,6 @@ patches:
     - patch_file: "patches/arm64-compatibility.patch"
       patch_type: "portability"
       patch_description: "Use target SIMD guards and include the definition of size_t"
+    - patch_file: "patches/windows-clang-avx-dispatch.patch"
+      patch_type: "portability"
+      patch_description: "Compile AVX2 and FMA functions separately and check CPU support"
