@@ -164,15 +164,15 @@ namespace AzNetworking
         static constexpr uint32_t NumBytesRequiredForSize = AZ::RequiredBytesForValue<CAPACITY>();
         using SizeType = typename AZ::SizeType<NumBytesRequiredForSize, false>::Type;
 
-        // m_count is always less than CAPACITY, so should fit safely in SizeType
+        // SizeType holds the count at full capacity without changing its wire width.
         SizeType count = static_cast<SizeType>(m_count);
-        if (!serializer.Serialize(count, "Count"))
+        if (!serializer.Serialize(count, "Count") || count > CAPACITY)
         {
+            serializer.Invalidate();
             return false;
         }
-        m_count = count;
 
-        const uint32_t numBytesToSerialize = (m_count + 7) / 8; // Round up nearest byte
+        const uint32_t numBytesToSerialize = (count + 7) / 8; // Round up nearest byte
         uint8_t* bitsetContainer = reinterpret_cast<uint8_t*>(m_bitset.GetContainer().data());
         for (uint32_t i = 0; i < numBytesToSerialize; ++i)
         {
@@ -181,6 +181,7 @@ namespace AzNetworking
                 return false;
             }
         }
+        m_count = count;
         ClearUnusedBits();
         return true;
     }
