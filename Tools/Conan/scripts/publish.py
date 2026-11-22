@@ -1,0 +1,268 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+#
+
+import argparse
+from functools import partial
+import gzip
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+from urllib.parse import urlsplit
+
+from build import PROFILES
+
+
+LAYER = "application/vnd.oci.image.layer.v1.tar+gzip"
+IMAGE_CONFIG = "application/vnd.oci.image.config.v1+json"
+IMAGE_MANIFEST = "application/vnd.oci.image.manifest.v1+json"
+IMAGE_INDEX = "application/vnd.oci.image.index.v1+json"
+
+
+def write_json(path, data):
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def blob_path(layout, digest):
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+        raise ValueError(f"Invalid OCI digest: {digest}")
+    return layout / "blobs" / "sha256" / digest.removeprefix("sha256:")
+
+
+def layout_json_blob(layout, media_type, data):
+    payload = json.dumps(data, separators=(",", ":")).encode("utf-8")
+    digest = f"sha256:{hashlib.sha256(payload).hexdigest()}"
+    path = blob_path(layout, digest)
+    if not path.exists() or path.read_bytes() != payload:
+        path.write_bytes(payload)
+    return {"mediaType": media_type, "digest": digest, "size": len(payload)}
+
+
+def catalog_references(profile, output, registry):
+    packages = json.loads((output / f"{profile}.json").read_text(encoding="utf-8"))[
+        profile
+    ]
+    for reference in sorted(
+        {ref for config in packages.values() for ref in config.values()}
+    ):
+        repo, _, digest = reference.rpartition("@")
+        if not repo.startswith(f"{registry}/") or not re.fullmatch(
+            r"sha256:[0-9a-f]{64}", digest
+        ):
+            raise ValueError(f"Unexpected destination: {reference}")
+        yield repo, digest
+
+
+def check_manifest(client, repo, digest):
+    container = client.get_container(f"{repo}@{digest}")
+    response = client.do_request(
+        f"{client.prefix}://{container.manifest_url()}",
+        headers={"Accept": IMAGE_MANIFEST},
+    )
+    response.raise_for_status()
+    if f"sha256:{hashlib.sha256(response.content).hexdigest()}" != digest:
+        raise ValueError(f"Expected {digest} in {repo}")
+
+
+def push_manifest(client, layout, repo, digest):
+    payload = blob_path(layout, digest).read_bytes()
+    if f"sha256:{hashlib.sha256(payload).hexdigest()}" != digest:
+        raise ValueError(f"Local manifest digest mismatch: {digest}")
+    manifest = json.loads(payload)
+    if manifest.get("mediaType") != IMAGE_MANIFEST:
+        raise ValueError(f"Expected an OCI image manifest: {digest}")
+
+    tag = digest.replace(":", "-")
+    container = client.get_container(f"{repo}:{tag}")
+    for descriptor in (manifest["config"], *manifest["layers"]):
+        path = blob_path(layout, descriptor["digest"])
+        if path.stat().st_size != descriptor["size"]:
+            raise ValueError(f"Local blob size mismatch: {descriptor['digest']}")
+        client.upload_blob(str(path), container, descriptor).raise_for_status()
+
+    # Preserve the exact bytes associated with the catalog digest.
+    client.do_request(
+        f"{client.prefix}://{container.manifest_url()}",
+        "PUT",
+        data=payload,
+        headers={"Content-Type": IMAGE_MANIFEST},
+    ).raise_for_status()
+    check_manifest(client, repo, digest)
+
+
+def authenticate_push(client, repo, username, password):
+    from oras.auth import get_auth_backend
+    from oras.auth.utils import parse_auth_header
+
+    host, _, repository = repo.partition("/")
+    response = client.session.get(f"{client.prefix}://{host}/v2/", timeout=30)
+    if response.status_code == 401:
+        challenge = response.headers.get("WWW-Authenticate", "")
+        scheme = challenge.partition(" ")[0].lower()
+        if scheme == "basic":
+            client.auth = get_auth_backend("basic", client.session)
+        elif scheme == "bearer":
+            auth = parse_auth_header(challenge)
+            if not auth.realm or urlsplit(auth.realm).scheme != "https":
+                raise ValueError(f"Expected an HTTPS token endpoint for {host}")
+            # Authorize uploads before the SDK probes for existing blobs with HEAD.
+            auth.scope = f"repository:{repository}:pull,push"
+            client.auth.set_basic_auth(username, password)
+            token = client.auth.request_token(auth)
+            if not token:
+                raise ValueError(f"Could not authorize a push to {repo}")
+            client.auth.set_token_auth(token)
+            return
+        else:
+            raise ValueError(
+                f"Unsupported registry authentication challenge from {host}"
+            )
+    else:
+        response.raise_for_status()
+    client.auth.set_basic_auth(username, password)
+
+
+def publish_catalog(profile, output, registry, push):
+    from oras.client import OrasClient
+
+    username = os.environ.get("OCI_USERNAME") if push else None
+    password = os.environ.get("OCI_PASSWORD") if push else None
+    if bool(username) != bool(password):
+        raise ValueError(
+            "Set both OCI_USERNAME and OCI_PASSWORD for authenticated publishing"
+        )
+
+    for repo, digest in catalog_references(profile, output, registry):
+        # Registry authorization tokens are scoped to a repository.
+        client = OrasClient()
+        # Keep Requests from taking registry credentials from .netrc.
+        client.session.auth = lambda request: request
+        client.session.request = partial(client.session.request, timeout=(10, 120))
+        with client.session:
+            if push:
+                if username:
+                    authenticate_push(client, repo, username, password)
+                push_manifest(client, output / "oci", repo, digest)
+                print(f"Published {repo}@{digest}")
+            else:
+                check_manifest(client, repo, digest)
+                print(f"Verified public access to {repo}@{digest}")
+
+
+def prepare(profile, output, registry, cache):
+    layout = output / "oci"
+    (layout / "blobs" / "sha256").mkdir(parents=True, exist_ok=True)
+    manifests = {}
+    result = {}
+    os_name, arch = profile.rsplit("-", 1)
+    os_name = {"macos": "darwin", "ios-simulator": "ios", "emscripten": "js"}.get(
+        os_name, os_name
+    )
+    arch = {"a64": "arm64", "x64": "amd64", "w32": "wasm", "w64": "wasm64"}[arch]
+    configs = ["release", "debug"] if profile.startswith("windows-") else ["release"]
+    for config in configs:
+        stage = output / config / "packages"
+        packages = json.loads((stage / "packages.json").read_text(encoding="utf-8"))
+        result[config] = {}
+        for name, package in packages.items():
+            archive = stage / package["archive"]
+            with archive.open("rb") as stream:
+                layer_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+            with gzip.open(archive, "rb") as stream:
+                tar_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+            layer_digest = f"sha256:{layer_hash}"
+            layer_blob = blob_path(layout, layer_digest)
+            if layer_blob.exists():
+                # Existing OCI layouts can contain read-only, content-addressed blobs.
+                with layer_blob.open("rb") as stream:
+                    if hashlib.file_digest(stream, "sha256").hexdigest() != layer_hash:
+                        raise ValueError(f"Corrupted OCI layout blob: {layer_digest}")
+            else:
+                shutil.copyfile(archive, layer_blob)
+            image_config = layout_json_blob(
+                layout,
+                IMAGE_CONFIG,
+                {
+                    "architecture": arch,
+                    "os": os_name,
+                    "rootfs": {"type": "layers", "diff_ids": [f"sha256:{tar_hash}"]},
+                },
+            )
+            descriptor = layout_json_blob(
+                layout,
+                IMAGE_MANIFEST,
+                {
+                    "schemaVersion": 2,
+                    "mediaType": IMAGE_MANIFEST,
+                    "config": image_config,
+                    "layers": [
+                        {
+                            "mediaType": LAYER,
+                            "digest": layer_digest,
+                            "size": archive.stat().st_size,
+                            "annotations": {
+                                "org.opencontainers.image.title": archive.name
+                            },
+                        }
+                    ],
+                },
+            )
+            digest = descriptor["digest"]
+            descriptor["annotations"] = {
+                "org.opencontainers.image.ref.name": digest.replace(":", "-")
+            }
+            manifests[digest] = descriptor
+            repo = f"{registry}/{name}"
+            if cache:
+                cache.mkdir(parents=True, exist_ok=True)
+                (cache / "manifests").mkdir(exist_ok=True)
+                sha = digest.removeprefix("sha256:")
+                shutil.copyfile(
+                    blob_path(layout, digest), cache / "manifests" / f"{sha}.json"
+                )
+                shutil.copyfile(archive, cache / f"{layer_hash}.tar")
+            result[config][name] = f"{repo}@{digest}"
+    write_json(layout / "oci-layout", {"imageLayoutVersion": "1.0.0"})
+    write_json(
+        layout / "index.json",
+        {
+            "schemaVersion": 2,
+            "mediaType": IMAGE_INDEX,
+            "manifests": [manifests[digest] for digest in sorted(manifests)],
+        },
+    )
+    write_json(output / f"{profile}.json", {profile: result})
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command", choices=("prepare", "push", "verify"))
+    parser.add_argument("profile", choices=PROFILES)
+    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument(
+        "--registry", required=True, help="Registry and repository prefix"
+    )
+    parser.add_argument(
+        "--seed-cache",
+        type=Path,
+        help="Seed a scratch O3DE OCI cache for a local round trip",
+    )
+    args = parser.parse_args()
+    registry = args.registry.lower().rstrip("/")
+    if args.command == "prepare":
+        prepare(args.profile, args.output.resolve(), registry, args.seed_cache)
+    else:
+        publish_catalog(
+            args.profile, args.output.resolve(), registry, push=args.command == "push"
+        )
+
+
+if __name__ == "__main__":
+    main()

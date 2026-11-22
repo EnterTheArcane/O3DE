@@ -1,0 +1,237 @@
+name: Conan Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish and verify public GHCR candidates
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix: &package_matrix
+        include:
+          - profile: android-a64
+            runner: ubuntu-26.04
+          - profile: android-x64
+            runner: ubuntu-26.04
+          - profile: emscripten-w32
+            runner: ubuntu-26.04
+          - profile: ios-a64
+            runner: macos-26
+          - profile: ios-simulator-a64
+            runner: macos-26
+          - profile: linux-a64
+            runner: ubuntu-26.04
+          - profile: linux-x64
+            runner: ubuntu-26.04
+          - profile: macos-a64
+            runner: macos-26
+          - profile: windows-a64
+            runner: windows-2025-vs2026
+          - profile: windows-x64
+            runner: windows-2025-vs2026
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      actions: read
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PACKAGE_PROFILE: ${{ matrix.profile }}
+      REGISTRY: ghcr.io/${{ github.repository_owner }}/3rdparty
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.15'
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        if: startsWith(matrix.profile, 'android-')
+        with:
+          distribution: zulu
+          java-version: '21'
+      - name: Make room for native and target Linux SDKs
+        if: matrix.profile == 'linux-a64'
+        shell: bash
+        run: sudo rm -rf -- /usr/local/lib/android/sdk/ndk
+      - uses: emscripten-core/setup-emsdk@667eb33f24e84e7f362c16d8d7fff0629a73e15e
+        if: startsWith(matrix.profile, 'emscripten-')
+        with:
+          emsdk-version: '7.0.1'
+      - name: Restore compilation cache from this run
+        if: github.run_attempt > 1
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: compilation-cache-${{ matrix.profile }}
+          github-token: ${{ github.token }}
+          run-id: ${{ github.run_id }}
+      - name: Set up ccache
+        uses: chocobo1/setup-ccache-action@37c3347f8a7738e82aab7a06f276f7a12e3008fb
+        with:
+          store_cache: false
+          restore_cache: false
+          ccache_options: |
+            cache_dir=${{ github.workspace }}/.ccache
+            hash_dir=false
+            max_size=3G
+      - name: Load Apple signing identity
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.publish
+        shell: bash
+        env:
+          APPLE_CODE_SIGN_IDENTITY: ${{ vars.APPLE_CODE_SIGN_IDENTITY }}
+          APPLE_SIGNING_CERTIFICATE_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_BASE64 }}
+          APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
+        run: bash Tools/Conan/scripts/install_apple_signing.sh
+      - name: Build and validate OCI layout
+        timeout-minutes: 285
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+        run: ./Tools/Conan/scripts/ci.ps1 -Profile $env:PACKAGE_PROFILE -Registry $env:REGISTRY -CacheArchive build/imaging/conan-cache.tgz
+      - name: Export completed Conan packages
+        if: "!cancelled()"
+        continue-on-error: true
+        run: |
+          if ((Get-Command conan -ErrorAction SilentlyContinue) -and (Test-Path build/imaging/cache/p)) {
+            $env:CONAN_HOME = (Resolve-Path build/imaging/cache).Path
+            $excluded = @'
+          from pathlib import Path
+          import yaml
+
+          for path in Path("Tools/Conan/recipes").glob("*/*/conandata.yml"):
+              data = yaml.safe_load(path.read_text(encoding="utf-8"))
+              if data and data.get("publish") is False:
+                  print(path.parents[1].name)
+          '@ | python -
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $packages = conan list '*#*:*#*' --format=json | ConvertFrom-Json -AsHashtable
+            foreach ($reference in @($packages['Local Cache'].Keys)) {
+              if ($reference.Split('/')[0] -in $excluded) {
+                [void]$packages['Local Cache'].Remove($reference)
+              }
+            }
+            $packages | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath build/imaging/conan-cache-packages.json
+            conan cache save --list build/imaging/conan-cache-packages.json --no-source --file build/imaging/conan-cache-next.tgz
+            if ($LASTEXITCODE -eq 0) {
+              Move-Item -Force -LiteralPath build/imaging/conan-cache-next.tgz -Destination build/imaging/conan-cache.tgz
+            }
+          }
+      - name: Save compilation cache for reruns
+        if: "!cancelled()"
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: compilation-cache-${{ matrix.profile }}
+          overwrite: true
+          retention-days: 2
+          compression-level: 0
+          include-hidden-files: true
+          path: |
+            .ccache
+            build/imaging/conan-cache.tgz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        with:
+          name: oci-${{ matrix.profile }}
+          compression-level: 0
+          path: |
+            build/imaging/oci
+            build/imaging/${{ matrix.profile }}.json
+            build/imaging/release/packages/packages.json
+            build/imaging/debug/packages/packages.json
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io/${{ github.repository_owner }}/3rdparty
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: oci-*
+          path: build/candidates
+      - name: Install Python publisher
+        run: |
+          python3 -m venv build/imaging-publish
+          build/imaging-publish/bin/python -m pip install -r Tools/Conan/requirements.txt
+      - name: Publish by digest
+        env:
+          OCI_USERNAME: ${{ github.actor }}
+          OCI_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          publisher=build/imaging-publish/bin/python
+          for candidate in build/candidates/oci-*; do
+            "$publisher" Tools/Conan/scripts/publish.py push "${candidate##*/oci-}" --output "$candidate" --registry "$REGISTRY"
+          done
+      - name: Verify public access by digest
+        run: |
+          publisher=build/imaging-publish/bin/python
+          for candidate in build/candidates/oci-*; do
+            "$publisher" Tools/Conan/scripts/publish.py verify "${candidate##*/oci-}" --output "$candidate" --registry "$REGISTRY"
+          done
+          jq -s add build/candidates/oci-*/*.json > build/imaging-catalog.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: imaging-candidate-catalog
+          path: build/imaging-catalog.json
+
+  consume:
+    needs: publish
+    strategy:
+      fail-fast: false
+      matrix: *package_matrix
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 300
+    env:
+      PACKAGE_PROFILE: ${{ matrix.profile }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.15'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: imaging-candidate-catalog
+          path: build/catalog
+      - uses: emscripten-core/setup-emsdk@667eb33f24e84e7f362c16d8d7fff0629a73e15e
+        if: startsWith(matrix.profile, 'emscripten-')
+        with:
+          emsdk-version: '7.0.1'
+      - name: Build and test against an empty OCI cache
+        shell: pwsh
+        run: ./Tools/Conan/scripts/ci.ps1 -Profile $env:PACKAGE_PROFILE -Registry ghcr.io -PublishedCatalog build/catalog/imaging-catalog.json
+
+  promote:
+    needs: consume
+    runs-on: ubuntu-26.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: imaging-candidate-catalog
+          path: build/catalog
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: imaging-catalog
+          path: build/catalog/imaging-catalog.json

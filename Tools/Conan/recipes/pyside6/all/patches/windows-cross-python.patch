@@ -1,0 +1,19 @@
+--- a/build_scripts/main.py
++++ b/build_scripts/main.py
+@@ -635,6 +635,16 @@
+         if self.is_cross_compile:
+             if self.python_target_path:
+                 cmake_cmd.append(f"-DPython_ROOT_DIR={self.python_target_path}")
++                if sys.platform == "win32":
++                    python_target = Path(self.python_target_path)
++                    version = f"{sys.version_info.major}{sys.version_info.minor}"
++                    library = python_target / "libs" / f"python{version}.lib"
++                    cmake_cmd.append(f"-DPython_LIBRARY={library}")
++                    cmake_cmd.append(f"-DPython_INCLUDE_DIR={python_target / 'include'}")
++                    site_packages = Path(self.install_dir) / "lib/site-packages"
++                    cmake_cmd.append(f"-DQFP_PYTHON_SITE_PACKAGES={site_packages.as_posix()}")
++                    if not self.debug:
++                        cmake_cmd.append(f"-DPYTHON_EXTENSION_SUFFIX=.cp{version}-win_arm64")
+ 
+             # Host python is needed when cross compiling to run
+             # embedding_generator.py. Pass it as a separate option.

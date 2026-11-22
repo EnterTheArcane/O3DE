@@ -1,0 +1,15 @@
+publish: false
+sources:
+  "30.0.16248370":
+    Linux:
+      x86_64:
+        url: "https://dl.google.com/android/repository/android-ndk-r30-linux.zip"
+        sha256: "753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2"
+    Macos:
+      x86_64:
+        url: "https://dl.google.com/android/repository/android-ndk-r30-darwin.zip"
+        sha256: "d125634de97b26deb1e1bb1a562f9d839aa5803d1784a1e414485f5ccbe6739f"
+    Windows:
+      x86_64:
+        url: "https://dl.google.com/android/repository/android-ndk-r30-windows.zip"
+        sha256: "b830098aaf18b67a42eb831c404e15e5f2990a474f054ac145b0bc957ac6d729"

@@ -1,0 +1,10 @@
+sources:
+  "5.2.0":
+    url: "https://github.com/gazebosim/gz-cmake/archive/refs/tags/gz-cmake5_5.2.0.tar.gz"
+    sha256: "7537f4a110eecee76883b357a47425173ce3f3b6c814cb97737f53ddbb948e9f"
+
+patches:
+  "5.2.0":
+    - patch_file: patches/static-install-prefix-include.patch
+      patch_description: Include the header for std::getenv in the static prefix helper
+      patch_type: portability

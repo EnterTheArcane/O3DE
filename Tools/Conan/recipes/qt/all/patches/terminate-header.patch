@@ -1,0 +1,11 @@
+--- a/qtbase/src/corelib/compat/removed_api.cpp
++++ b/qtbase/src/corelib/compat/removed_api.cpp
+@@ -1253,6 +1253,8 @@ Q_CORE_EXPORT bool operator==(QLatin1Char lhs, QChar rhs) noexcept
+ #include "qexceptionhandling.h"
+ 
++#include <exception>
++
+ QT_BEGIN_NAMESPACE
+ Q_NORETURN void qTerminate() noexcept
+ {
+     std::terminate();

@@ -1,0 +1,13 @@
+--- a/src/jpegxl.imageio/CMakeLists.txt
++++ b/src/jpegxl.imageio/CMakeLists.txt
+@@ -3,6 +3,10 @@
+ # https://github.com/AcademySoftwareFoundation/OpenImageIO
+ 
+ if (JXL_FOUND)
++    # The static libjxl encoder uses __android_log_write.
++    if (ANDROID)
++        list (APPEND JXL_LIBRARIES log)
++    endif ()
+     add_oiio_plugin (jxlinput.cpp jxloutput.cpp
+                      INCLUDE_DIRS ${JXL_INCLUDES}
+                      LINK_LIBRARIES ${JXL_LIBRARIES}

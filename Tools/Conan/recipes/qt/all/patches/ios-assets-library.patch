@@ -1,0 +1,11 @@
+--- a/qtbase/src/plugins/platforms/ios/optional/CMakeLists.txt
++++ b/qtbase/src/plugins/platforms/ios/optional/CMakeLists.txt
+@@ -1,6 +1,7 @@
+ # Copyright (C) 2022 The Qt Company Ltd.
+ # SPDX-License-Identifier: BSD-3-Clause
+ 
+-if(IOS)
++# Assets Library is unavailable when targeting iOS 26 or later.
++if(IOS AND CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "26.0")
+     add_subdirectory(nsphotolibrarysupport)
+ endif()

@@ -1,0 +1,17 @@
+sources:
+  "2026.10.01":
+    url: "https://github.com/chromium/crashpad/archive/677b9e33a269d8ddcf6ad21344e43f6caec4786f.tar.gz"
+    sha256: "1ddbf933fbd617b39cc0832953b89f243113d6083499fe28ee7d8431d024d397"
+
+lss:
+  "2026.10.01":
+    "LICENSE":
+      url: "https://chromium.googlesource.com/linux-syscall-support/+/9719c1e1e676814c456b55f5f070eabad6709d31/LICENSE?format=TEXT"
+      sha256: "36b080c1d557314d8a0e9da7e5188ed6f9025a5a184277379f442d515d60d652"
+    "linux_syscall_support.h":
+      url: "https://chromium.googlesource.com/linux-syscall-support/+/9719c1e1e676814c456b55f5f070eabad6709d31/linux_syscall_support.h?format=TEXT"
+      sha256: "5c836ff397c7bcd31d5b4e75514deb9d4c1f723cab85f9c150979900ce3ccc3f"
+
+patches:
+  "2026.10.01":
+    - patch_file: "patches/handler-extensions.patch"

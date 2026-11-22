@@ -1,0 +1,23 @@
+--- a/src/raw.imageio/rawinput.cpp
++++ b/src/raw.imageio/rawinput.cpp
+@@ -6,6 +6,7 @@
+ #include <ctime> /* time_t, struct tm, gmtime */
+ #include <iostream>
+ #include <memory>
++#include <system_error>
+ 
+ #include <OpenImageIO/half.h>
+ 
+@@ -303,11 +304,7 @@ libraw_errmsg(int ret)
+         if (const char* m = libraw_strerror(ret))
+             msg = m;
+     } else if (ret > 0) {
+-        // C style error code, use safe version of strerror
+-        const size_t maxbuf = 100;
+-        char buf[maxbuf]    = { 0 };
+-        if (strerror_r(ret, buf, maxbuf) == 0)
+-            msg = std::string(buf);
++        msg = std::error_code(ret, std::generic_category()).message();
+     } else if (ret == 0) {
+         msg = "ok";  // 0 means "no error"
+     }

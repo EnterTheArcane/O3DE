@@ -1,0 +1,17 @@
+publish: false
+sources:
+  "10.0.28000.2957":
+    sdk_version: "10.0.28000.0"
+    headers:
+      url: "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp/10.0.28000.2957/microsoft.windows.sdk.cpp.10.0.28000.2957.nupkg"
+      sha256: "f0a200dae58858f418b30dc9e2f52b4188f97eb7837bd4f73074652a01937ddd"
+    tools:
+      url: "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/10.0.28000.2957/microsoft.windows.sdk.buildtools.10.0.28000.2957.nupkg"
+      sha256: "b7163fc6f636172726d0985963e4f7f11c41afe1c7fdfe78f8051877360ed696"
+    libraries:
+      x64:
+        url: "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp.x64/10.0.28000.2957/microsoft.windows.sdk.cpp.x64.10.0.28000.2957.nupkg"
+        sha256: "7ca47e7345dcbdf36ec4c3c4cd59ab9cb5c9f620a2e785cc4fa641509647cc5a"
+      arm64:
+        url: "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp.arm64/10.0.28000.2957/microsoft.windows.sdk.cpp.arm64.10.0.28000.2957.nupkg"
+        sha256: "ee1770d19d84a80281f82ccf38e7d863ae653edc6eebed02fbe77dc900b10f8d"

@@ -1,0 +1,17 @@
+include(common/llvm)
+
+[settings]
+os=Linux
+arch=x86_64
+build_type=Release
+compiler.cppstd=20
+compiler.libcxx=libstdc++11
+
+[options]
+fmt/*:header_only=True
+libtiff/*:jpeg=libjpeg-turbo
+minizip-ng/*:with_openssl=False
+
+[conf]
+tools.cmake.cmaketoolchain:generator=Ninja
+tools.graph:skip_binaries=False

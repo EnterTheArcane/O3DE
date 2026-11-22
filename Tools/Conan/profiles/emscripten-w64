@@ -1,0 +1,9 @@
+include(emscripten-w32)
+
+[settings]
+arch=wasm64
+
+[buildenv]
+CFLAGS+=-m64
+CXXFLAGS+=-m64
+LDFLAGS+=-m64

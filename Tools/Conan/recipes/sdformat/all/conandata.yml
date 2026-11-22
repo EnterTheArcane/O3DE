@@ -1,0 +1,10 @@
+sources:
+  "16.1.0":
+    url: "https://github.com/gazebosim/sdformat/archive/refs/tags/sdformat16_16.1.0.tar.gz"
+    sha256: "f9ef71787b0055f7ee35a3b52f42a9d6397f0c2f21f9572957bc3f456e2ca674"
+
+patches:
+  "16.1.0":
+    - patch_file: patches/private-build-dependencies.patch
+      patch_description: Export TinyXML2 as a dependency of the static SDK and keep libdl private
+      patch_type: portability

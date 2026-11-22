@@ -1,0 +1,4 @@
+include(ios-a64)
+
+[settings]
+os.sdk=iphonesimulator

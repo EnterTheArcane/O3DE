@@ -1,0 +1,10 @@
+--- a/src/OpenColorIO/CMakeLists.txt
++++ b/src/OpenColorIO/CMakeLists.txt
+@@ -339,6 +339,6 @@
+-if(APPLE)
++if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+     target_link_libraries(OpenColorIO
+         PRIVATE
+             "-framework ColorSync"
+             "-framework CoreFoundation"
+             "-framework CoreGraphics"

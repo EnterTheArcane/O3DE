@@ -1,0 +1,23 @@
+publish: false
+sources:
+  "2022.12.12":
+    Linux:
+      x86_64:
+        url: "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:5e19d2fb166fbd4f6f32147fbb2f497091a54ad8"
+        sha256: "a95c29544e581b56c1d3f1920637a9f518989b3b744d6b2234fe8de634acddf1"
+      armv8:
+        url: "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-arm64/+/git_revision:5e19d2fb166fbd4f6f32147fbb2f497091a54ad8"
+        sha256: "c9ac3a6530362fd493a303b2f3e91eb868e717b9eab345dbda2cf1d8ce4aa815"
+    Macos:
+      armv8:
+        url: "https://chrome-infra-packages.appspot.com/dl/gn/gn/mac-arm64/+/git_revision:5e19d2fb166fbd4f6f32147fbb2f497091a54ad8"
+        sha256: "bd485a3494c85341a59241e8307cdcbc1d244b58478ad331ede96449beae17ca"
+    Windows:
+      x86_64:
+        url: "https://chrome-infra-packages.appspot.com/dl/gn/gn/windows-amd64/+/git_revision:5e19d2fb166fbd4f6f32147fbb2f497091a54ad8"
+        sha256: "78ebf5d11d97298d8dce53090c18ad7d3463d8e52698ce6691d9fdd9b7774f07"
+
+licenses:
+  "2022.12.12":
+    url: "https://gn.googlesource.com/gn/+/5e19d2fb166fbd4f6f32147fbb2f497091a54ad8/LICENSE?format=TEXT"
+    sha256: "31284f60e87b701cfe2ac9f6396e51a4940be3b3499a01c859d3b4ee0655d2ad"

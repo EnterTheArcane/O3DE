@@ -1,0 +1,12 @@
+--- a/share/cmake/modules/FindExtPackages.cmake
++++ b/share/cmake/modules/FindExtPackages.cmake
+@@ -111,6 +111,5 @@
+ # minizip-ng
+ # https://github.com/zlib-ng/minizip-ng
+-ocio_handle_dependency(  minizip-ng REQUIRED ALLOW_INSTALL
+-                         MIN_VERSION 4.0.5
+-                         RECOMMENDED_VERSION 4.2.2
+-                         RECOMMENDED_VERSION_REASON "Latest version tested with OCIO")
++find_package(minizip-ng 4.0.5 CONFIG REQUIRED
++             PATHS "${minizip-ng_DIR}"
++             NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)

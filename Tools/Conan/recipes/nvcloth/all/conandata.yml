@@ -1,0 +1,9 @@
+sources:
+  "1.1.6":
+    url: "https://github.com/NVIDIAGameWorks/NvCloth/archive/67e94d4f8c9cb4f64c22cbe91f8dcb7b19ffe577.tar.gz"
+    sha256: "e2a912e0edcdcc205098ab0920bc831e6bf6f7242ee8a57d98a7446a3691da3e"
+patches:
+  "1.1.6":
+    - patch_file: "patches/arm64-compatibility.patch"
+      patch_type: "portability"
+      patch_description: "Use target SIMD guards and include the definition of size_t"

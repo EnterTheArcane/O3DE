@@ -1,0 +1,15 @@
+sources:
+  "1.9.2609":
+    url: "https://github.com/EnterTheArcane/DirectXShaderCompiler/archive/f8d3ea5f5c3e3486c177eb0b0ee2af1bea0c3134.tar.gz"
+    sha256: "3445dff3e9db3cdaa2bf095afb784ce9c29e62d24ace2d142a8f676f92744220"
+extra_sources:
+  "1.9.2609":
+    DirectX-Headers:
+      url: "https://github.com/microsoft/DirectX-Headers/archive/980971e835876dc0cde415e8f9bc646e64667bf7.tar.gz"
+      sha256: "b5a4b6d8806ff7f29f19879f83d015dbe8740676d4ca0b48647a789cc7773c4e"
+    SPIRV-Headers:
+      url: "https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.4.357.0.tar.gz"
+      sha256: "4d703067a7e06331ccb37bdfed3f9b7879cc61969a2689ae95c95db34a47ff07"
+    SPIRV-Tools:
+      url: "https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.357.0.tar.gz"
+      sha256: "d31e7109b6ef3559067e53e520870eafed7c9534d00db9728814b6df03fa4a5e"

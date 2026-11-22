@@ -1,0 +1,246 @@
+diff --git a/Mac/BuildScript/build-installer.py b/Mac/BuildScript/build-installer.py
+--- a/Mac/BuildScript/build-installer.py
++++ b/Mac/BuildScript/build-installer.py
+@@ -120,7 +120,8 @@
+ DEPSRC = os.path.join(WORKDIR, 'third-party')
+ DEPSRC = os.path.expanduser('~/Universal/other-sources')
+ 
+-universal_opts_map = { 'universal2': ('arm64', 'x86_64'),
++universal_opts_map = { 'arm64': ('arm64',),
++                       'universal2': ('arm64', 'x86_64'),
+                        '32-bit': ('i386', 'ppc',),
+                        '64-bit': ('x86_64', 'ppc64',),
+                        'intel':  ('i386', 'x86_64'),
+@@ -129,6 +130,7 @@
+                        '3-way':  ('ppc', 'i386', 'x86_64'),
+                        'all':    ('i386', 'ppc', 'x86_64', 'ppc64',) }
+ default_target_map = {
++        'arm64': '11.0',
+         'universal2': '10.9',
+         '64-bit': '10.5',
+         '3-way': '10.5',
+@@ -224,11 +226,26 @@
+             # "fixstrod.o" on this line.
+             for nm in ("strstr.o", "strtoul.o", " strtod.o"):
+                 line = line.replace(nm, "")
++        if not useOldTk() and line.startswith("PKG_CFG_ARGS"):
++            line = line.rstrip() + " 'ac_cv_func_strchrnul=no'\n"
+         new_contents.append(line)
+ 
+     with open("Makefile", "w") as fp:
+         fp.writelines(new_contents)
+ 
++    if not useOldTk():
++        tcl_lib = "libtcl9.0.dylib"
++        runCommand("make tclsh")
++        runCommand(
++            "install_name_tool -change %s @loader_path/%s tclsh"
++            % (
++                shellQuote(
++                    "/Library/Frameworks/Python.framework/Versions/%s/lib/%s"
++                    % (getVersion(), tcl_lib)
++                ),
++                tcl_lib,
++            )
++        )
+ # List of names of third party software built with this installer.
+ # The names will be inserted into the rtf version of the License.
+ THIRD_PARTY_LIBS = []
+@@ -240,21 +257,6 @@
+ def library_recipes():
+     result = []
+ 
+-    # Since Apple removed the header files for the deprecated system
+-    # OpenSSL as of the Xcode 7 release (for OS X 10.10+), we do not
+-    # have much choice but to build our own copy here, too.
+-
+-    result.extend([
+-          dict(
+-              name="OpenSSL 3.5.9",
+-              url="https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz",
+-              checksum="603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
+-              buildrecipe=build_universal_openssl,
+-              configure=None,
+-              install=None,
+-          ),
+-    ])
+-
+     if internalTk():
+         if useOldTk():
+             tcl_tk_ver='8.6.8'
+@@ -270,7 +272,7 @@
+             tk_checksum='d7a146d2917eb8b5cc95276dbf0e3d03c7464d2b19c1675357857c989301dbb4'
+             tk_patches = []
+ 
+-
++        tcl_tk_lib_ver = ".".join(tcl_tk_ver.split(".")[:2])
+         base_url = "https://prdownloads.sourceforge.net/tcl/{what}{version}-src.tar.gz"
+         result.extend([
+           dict(
+@@ -281,13 +283,16 @@
+               configure_pre=[
+                     '--enable-shared',
+                     '--enable-threads',
++                    '--disable-zipfs',
+                     '--libdir=/Library/Frameworks/Python.framework/Versions/%s/lib'%(getVersion(),),
+               ],
+               useLDFlags=False,
+               buildrecipe=tweak_tcl_build,
+-              install='make TCL_LIBRARY=%(TCL_LIBRARY)s && make install TCL_LIBRARY=%(TCL_LIBRARY)s DESTDIR=%(DESTDIR)s'%{
++              install='make TCL_LIBRARY=%(TCL_LIBRARY)s && make install TCL_LIBRARY=%(TCL_LIBRARY)s DESTDIR=%(DESTDIR)s && cd %(LIBDIR)s && ln -fs ../../../Library/Frameworks/Python.framework/Versions/%(PYVER)s/lib/libtcl* .'%{
+                   "DESTDIR": shellQuote(os.path.join(WORKDIR, 'libraries')),
+-                  "TCL_LIBRARY": shellQuote('/Library/Frameworks/Python.framework/Versions/%s/lib/tcl8.6'%(getVersion())),
++                  "LIBDIR": shellQuote(os.path.join(WORKDIR, 'libraries', 'usr', 'local', 'lib')),
++                  "PYVER": getVersion(),
++                  "TCL_LIBRARY": shellQuote('/Library/Frameworks/Python.framework/Versions/%s/lib/tcl%s'%(getVersion(), tcl_tk_lib_ver)),
+                   },
+               ),
+           dict(
+@@ -300,13 +305,17 @@
+                     '--enable-aqua',
+                     '--enable-shared',
+                     '--enable-threads',
++                    '--disable-zipfs',
+                     '--libdir=/Library/Frameworks/Python.framework/Versions/%s/lib'%(getVersion(),),
+               ],
+               useLDFlags=False,
+-              install='make TCL_LIBRARY=%(TCL_LIBRARY)s TK_LIBRARY=%(TK_LIBRARY)s && make install TCL_LIBRARY=%(TCL_LIBRARY)s TK_LIBRARY=%(TK_LIBRARY)s DESTDIR=%(DESTDIR)s'%{
++              install='make TCL_LIBRARY=%(TCL_LIBRARY)s TK_LIBRARY=%(TK_LIBRARY)s && make install TCL_LIBRARY=%(TCL_LIBRARY)s TK_LIBRARY=%(TK_LIBRARY)s DESTDIR=%(DESTDIR)s && cd %(LIBDIR)s && ln -fs ../../../Library/Frameworks/Python.framework/Versions/%(PYVER)s/lib/%(TK_LIB_GLOB)s .'%{
+                   "DESTDIR": shellQuote(os.path.join(WORKDIR, 'libraries')),
+-                  "TCL_LIBRARY": shellQuote('/Library/Frameworks/Python.framework/Versions/%s/lib/tcl8.6'%(getVersion())),
+-                  "TK_LIBRARY": shellQuote('/Library/Frameworks/Python.framework/Versions/%s/lib/tk8.6'%(getVersion())),
++                  "LIBDIR": shellQuote(os.path.join(WORKDIR, 'libraries', 'usr', 'local', 'lib')),
++                  "PYVER": getVersion(),
++                  "TK_LIB_GLOB": "libtk*" if useOldTk() else "libtcl9tk*",
++                  "TCL_LIBRARY": shellQuote('/Library/Frameworks/Python.framework/Versions/%s/lib/tcl%s'%(getVersion(), tcl_tk_lib_ver)),
++                  "TK_LIBRARY": shellQuote('/Library/Frameworks/Python.framework/Versions/%s/lib/tk%s'%(getVersion(), tcl_tk_lib_ver)),
+                   },
+                 ),
+         ])
+@@ -1032,7 +1041,7 @@
+                         DEPTARGET,
+                         ' -arch '.join(archList),
+                         shellQuote(basedir)[1:-1],),
+-                "LDFLAGS=-mmacosx-version-min=%s -L%s/usr/local/lib -arch %s"%(
++                "LDFLAGS=-Wl,-headerpad_max_install_names -mmacosx-version-min=%s -L%s/usr/local/lib -arch %s"%(
+                     DEPTARGET,
+                     shellQuote(basedir)[1:-1],
+                     ' -arch '.join(archList)),
+@@ -1080,6 +1089,21 @@
+     os.mkdir(universal)
+     os.makedirs(os.path.join(universal, 'usr', 'local', 'lib'))
+     os.makedirs(os.path.join(universal, 'usr', 'local', 'include'))
++
++    openssl_root = os.environ.get("PYTHON_OPENSSL_ROOT")
++    if not openssl_root:
++        fatal("PYTHON_OPENSSL_ROOT must identify the OpenSSL package")
++
++    openssl_include = os.path.join(openssl_root, "include", "openssl")
++    shutil.copytree(
++        openssl_include,
++        os.path.join(universal, "usr", "local", "include", "openssl"),
++    )
++    for library in ("libcrypto.a", "libssl.a"):
++        shutil.copy2(
++            os.path.join(openssl_root, "lib", library),
++            os.path.join(universal, "usr", "local", "lib", library),
++        )
+ 
+     for recipe in library_recipes():
+         buildRecipe(recipe, universal, ARCHLIST)
+@@ -1132,7 +1156,17 @@
+ 
+ 
+ def buildPython():
+-    print("Building a universal python for %s architectures" % UNIVERSALARCHS)
++    print("Building Python for %s architectures" % UNIVERSALARCHS)
++
++    universal_configure_args = ""
++    if UNIVERSALARCHS != "arm64":
++        universal_configure_args = (
++            "--enable-universalsdk=/ --with-universal-archs=%s" % UNIVERSALARCHS
++        )
++
++    tcl_lib_name, tk_lib_name = (
++        ("tcl8.6", "tk8.6") if useOldTk() else ("tcl9.0", "tcl9tk9.0")
++    )
+ 
+     buildDir = os.path.join(WORKDIR, '_bld', 'python')
+     rootDir = os.path.join(WORKDIR, '_root')
+@@ -1157,29 +1191,30 @@
+ 
+     print("Running configure...")
+     print(" NOTE: --with-mimalloc=no pending resolution of weak linking issues")
+-    runCommand("%s -C --enable-framework --enable-universalsdk=/ "
++    runCommand("%s -C --enable-framework --with-dsymutil "
+                "--with-mimalloc=no "
+                "--with-system-libmpdec "
+-               "--with-universal-archs=%s "
+                "%s "
+                "%s "
+                "%s "
+                "%s "
+                "%s "
+                "%s "
+-               "LDFLAGS='-g -L%s/libraries/usr/local/lib' "
++               "%s "
++               "LDFLAGS='-g -Wl,-headerpad_max_install_names -L%s/libraries/usr/local/lib' "
+                "CFLAGS='-g -I%s/libraries/usr/local/include' 2>&1"%(
+         shellQuote(os.path.join(SRCDIR, 'configure')),
+-        UNIVERSALARCHS,
++        universal_configure_args,
+         (' ', '--with-computed-gotos ')[PYTHON_3],
+-        (' ', '--without-ensurepip ')[PYTHON_3],
++        (' ', '--with-ensurepip=install ')[PYTHON_3],
+         (' ', "--with-openssl='%s/libraries/usr/local'"%(
+                             shellQuote(WORKDIR)[1:-1],))[PYTHON_3],
+         (' ', "--enable-optimizations --with-lto")[compilerCanOptimize()],
+         (' ', "TCLTK_CFLAGS='-I%s/libraries/usr/local/include'"%(
+                             shellQuote(WORKDIR)[1:-1],))[internalTk()],
+-        (' ', "TCLTK_LIBS='-L%s/libraries/usr/local/lib -ltcl8.6 -ltk8.6'"%(
+-                            shellQuote(WORKDIR)[1:-1],))[internalTk()],
++        (' ', "TCLTK_LIBS='-L%s/libraries/usr/local/lib -l%s -l%s'"%(
++                            shellQuote(WORKDIR)[1:-1], tcl_lib_name,
++                            tk_lib_name))[internalTk()],
+         shellQuote(WORKDIR)[1:-1],
+         shellQuote(WORKDIR)[1:-1]))
+ 
+@@ -1221,13 +1256,13 @@
+     print("Running " + make_cmd)
+     runCommand(make_cmd)
+ 
+-    make_cmd = "make install DESTDIR=%s %s"%(
++    make_cmd = "make install STRIPFLAG= DESTDIR=%s %s"%(
+         shellQuote(rootDir),
+         runshared_for_make)
+     print("Running " + make_cmd)
+     runCommand(make_cmd)
+ 
+-    make_cmd = "make frameworkinstallextras DESTDIR=%s %s"%(
++    make_cmd = "make frameworkinstallextras STRIPFLAG= DESTDIR=%s %s"%(
+         shellQuote(rootDir),
+         runshared_for_make)
+     print("Running " + make_cmd)
+@@ -1730,6 +1765,8 @@
+     # Now build python itself
+     buildPython()
+ 
++    return
++
+     # And then build the documentation
+     # Remove the Deployment Target from the shell
+     # environment, it's no longer needed and
+diff --git a/Mac/Makefile.in b/Mac/Makefile.in
+--- a/Mac/Makefile.in
++++ b/Mac/Makefile.in
+@@ -172,8 +172,9 @@
+ 		done ;\
+ 	fi
+ 
++# Keep the object available for dsymutil during installation.
+ pythonw: $(srcdir)/Tools/pythonw.c Makefile
+-	$(CC) $(LDFLAGS) -DPYTHONFRAMEWORK='"$(PYTHONFRAMEWORK)"' -o $@ \
++	$(CC) $(LDFLAGS) -save-temps=obj -DPYTHONFRAMEWORK='"$(PYTHONFRAMEWORK)"' -o $@ \
+ 		$(srcdir)/Tools/pythonw.c -I.. -I$(srcdir)/../Include \
+ 		../$(PYTHONFRAMEWORK).framework/Versions/$(VERSION)/$(PYTHONFRAMEWORK)
+ 

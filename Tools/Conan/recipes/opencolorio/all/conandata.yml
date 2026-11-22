@@ -1,0 +1,13 @@
+sources:
+  "2.6.0":
+    url: "https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/refs/tags/v2.6.0.tar.gz"
+    sha256: "784ac37bde5b9c6e5dc15f23d1235bd1452d376cdc03627d6d6dd310f375a735"
+
+patches:
+  "2.6.0":
+    - patch_file: patches/desktop-macos-frameworks.patch
+      patch_description: Link monitor and color profile frameworks only on macOS
+      patch_type: portability
+    - patch_file: patches/conan-minizip-config.patch
+      patch_description: Resolve minizip from the target package during cross builds
+      patch_type: portability

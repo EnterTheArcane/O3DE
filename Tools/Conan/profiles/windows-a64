@@ -1,0 +1,22 @@
+include(common/llvm)
+include(common/windows-sdk)
+
+[settings]
+os=Windows
+arch=armv8
+build_type=Release
+compiler.cppstd=20
+compiler.runtime=dynamic
+compiler.runtime_version=v145
+
+[options]
+fmt/*:header_only=True
+giflib/*:utils=False
+libtiff/*:jpeg=libjpeg-turbo
+minizip-ng/*:with_openssl=False
+
+[conf]
+# Include the CRT header before NASM 2.15.05 defines its noreturn macro.
+nasm/*:tools.build:cflags+=["-FIsetjmp.h"]
+tools.cmake.cmaketoolchain:generator=Ninja
+tools.graph:skip_binaries=False

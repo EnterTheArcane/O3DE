@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.31)
+project(llvm_sdk_test LANGUAGES C CXX)
+
+find_package(LLVM CONFIG REQUIRED)
+find_package(Clang CONFIG REQUIRED)
+
+add_executable(llvm_sdk_test main.cpp)
+target_compile_features(llvm_sdk_test PRIVATE cxx_std_20)
+target_include_directories(llvm_sdk_test SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+target_link_libraries(llvm_sdk_test PRIVATE LLVMCore clangTooling clangStaticAnalyzerFrontend)
+if(NOT LLVM_ENABLE_RTTI)
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        target_compile_options(llvm_sdk_test PRIVATE /GR-)
+    else()
+        target_compile_options(llvm_sdk_test PRIVATE -fno-rtti)
+    endif()
+endif()

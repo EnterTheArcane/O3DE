@@ -1,0 +1,19 @@
+publish: false
+sources:
+  "7.0.1":
+    Linux:
+      x86_64:
+        sdk:
+          url: "https://storage.googleapis.com/webassembly/emscripten-releases-builds/linux/9146b21a8350e85c9934cf570f7a6ceb7470623b/wasm-binaries.tar.xz"
+          sha256: "aebab2ffa9b758d56db9e41adfacb0bf00f95800970c64f5e6a0ae7631066b5c"
+        node:
+          url: "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-x64.tar.xz"
+          sha256: "14b342e71204f811bde6153be8e04b62aef63c236fef92b55f9c83154b409647"
+    Macos:
+      armv8:
+        sdk:
+          url: "https://storage.googleapis.com/webassembly/emscripten-releases-builds/mac/9146b21a8350e85c9934cf570f7a6ceb7470623b/wasm-binaries-arm64.tar.xz"
+          sha256: "bd00b4bfb30bf025ce9d3df299d9216a3f6e6b54ba6ffb1c1400e916b3b8ea2d"
+        node:
+          url: "https://nodejs.org/dist/v24.19.0/node-v24.19.0-darwin-arm64.tar.gz"
+          sha256: "8294b7aa9b03997481c06babf1e8b270c859358f27da57a11509afe537ac381d"

@@ -1,0 +1,31 @@
+{% set emsdk_version = "7.0.1" %}
+
+[settings]
+os=Emscripten
+arch=wasm
+build_type=Release
+compiler=emcc
+compiler.cppstd=20
+compiler.version={{ emsdk_version }}
+compiler.libcxx=libc++
+
+[options]
+fmt/*:header_only=True
+gz-math/*:shared=False
+gz-utils/*:shared=False
+# The TurboJPEG API embeds zlib and clashes with the static zlib archive.
+libjpeg-turbo/*:turbojpeg=False
+libtiff/*:jpeg=libjpeg-turbo
+libwebp/*:with_simd=False
+minizip-ng/*:with_libbsd=False
+minizip-ng/*:with_openssl=False
+openjph/*:with_executables=False
+sdformat/*:shared=False
+zstd/*:build_programs=False
+
+[tool_requires]
+*: emsdk/{{ emsdk_version }}
+
+[conf]
+tools.cmake.cmaketoolchain:generator=Ninja
+tools.graph:skip_binaries=False

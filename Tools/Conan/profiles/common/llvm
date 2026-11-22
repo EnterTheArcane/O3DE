@@ -1,0 +1,12 @@
+{% set llvm_version = "23.1.6" %}
+
+[settings]
+compiler=clang
+compiler.version={{ llvm_version.split('.')[0] }}
+
+[tool_requires]
+!(android-ndk/*|android-sdk/*): llvm/{{ llvm_version }}
+
+[conf]
+user.toolchain:llvm={{ llvm_version }}
+tools.info.package_id:confs+=["user.toolchain:llvm"]

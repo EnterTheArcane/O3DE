@@ -1,0 +1,23 @@
+include(common/llvm)
+
+[settings]
+os=Linux
+arch=armv8
+build_type=Release
+compiler.cppstd=20
+compiler.libcxx=libstdc++11
+
+[options]
+fmt/*:header_only=True
+libtiff/*:jpeg=libjpeg-turbo
+minizip-ng/*:with_openssl=False
+
+[conf]
+tools.cmake.cmaketoolchain:generator=Ninja
+tools.cmake.cmaketoolchain:system_processor=aarch64
+# Keep pkg-config pointed at the target when PySide invokes CMake.
+tools.cmake.cmaketoolchain:extra_variables={"ENV{PKG_CONFIG_LIBDIR}":"/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"}
+tools.graph:skip_binaries=False
+
+[buildenv]
+PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig

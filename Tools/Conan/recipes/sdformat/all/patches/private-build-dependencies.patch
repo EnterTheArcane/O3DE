@@ -1,0 +1,43 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -46,12 +46,16 @@
+ 
+   #################################################
+   # Find tinyxml2.
+-  gz_find_package(TINYXML2 REQUIRED)
++  if (BUILD_SHARED_LIBS)
++    find_package(tinyxml2 CONFIG REQUIRED)
++  else()
++    gz_find_package(tinyxml2 CONFIG REQUIRED)
++  endif()
+ 
+   #################################################
+   # Find DL if doing relocatable installation
+   if (GZ_ENABLE_RELOCATABLE_INSTALL)
+-    gz_find_package(DL REQUIRED)
++    gz_find_package(DL REQUIRED BUILD_ONLY)
+   endif()
+ 
+ 
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -47,7 +47,7 @@
+     gz-math::gz-math
+     gz-utils::gz-utils
+   PRIVATE
+-    TINYXML2::TINYXML2)
++    tinyxml2::tinyxml2)
+ 
+   if (USE_INTERNAL_URDF)
+     target_include_directories(${PROJECT_LIBRARY_TARGET_NAME} PRIVATE
+--- a/src/cmd/CMakeLists.txt
++++ b/src/cmd/CMakeLists.txt
+@@ -4,7 +4,7 @@
+ target_link_libraries(${sdf_executable}
+   gz-utils::cli
+   ${PROJECT_LIBRARY_TARGET_NAME}
+-  TINYXML2::TINYXML2
++  tinyxml2::tinyxml2
+ )
+ install(
+   TARGETS ${sdf_executable}
