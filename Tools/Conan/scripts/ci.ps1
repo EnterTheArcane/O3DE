@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)][string]$Registry,
     [string]$BuildProfile,
     [string]$PublishedCatalog,
-    [string]$CacheArchive
+    [string]$CacheArchive,
+    [switch]$VerifyEngine
 )
 
 $ErrorActionPreference = 'Stop'
@@ -21,6 +22,16 @@ function Invoke-ConanBuild([string]$Command) {
     python "$PSScriptRoot/build.py" $Command $Profile --output build/imaging @buildOptions
 }
 
+function Build-OciLayout {
+    Invoke-ConanBuild build
+    python "$PSScriptRoot/test_packaging.py"
+    $prepareOptions = @()
+    if ($VerifyEngine) {
+        $prepareOptions += @('--seed-cache', 'build/verify-cache/oci')
+    }
+    python "$PSScriptRoot/publish.py" prepare $Profile --output build/imaging --registry $Registry @prepareOptions
+}
+
 $android = $Profile -in @('android-a64', 'android-x64')
 $wasm = $Profile -in @('emscripten-w32', 'emscripten-w64')
 if ($android -or $wasm -or $Profile -in @('ios-a64', 'ios-simulator-a64')) {
@@ -33,8 +44,8 @@ if ($android -or $wasm -or $Profile -in @('ios-a64', 'ios-simulator-a64')) {
             Invoke-ConanBuild android-ndk
         }
     } else {
-        Invoke-ConanBuild build
-        python "$PSScriptRoot/publish.py" prepare $Profile --output build/imaging --registry $Registry --seed-cache build/verify-cache/oci
+        Build-OciLayout
+        if (-not $VerifyEngine) { return }
         $catalog = "build/imaging/$Profile.json"
     }
     $toolOptions = @()
@@ -76,7 +87,9 @@ if ($IsWindows) {
     Import-Module "$vs/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
     $arch = if ($Profile -eq 'windows-a64') { 'arm64' } else { 'amd64' }
     $hostArch = if ($BuildProfile -eq 'windows-a64') { 'arm64' } else { 'amd64' }
-    Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=$hostArch"
+    # Conan builds and runs native generators before it builds the target SDKs.
+    $shellArch = if ($PublishedCatalog) { $arch } else { $hostArch }
+    Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments "-arch=$shellArch -host_arch=$hostArch"
 } elseif ($IsLinux) {
     $mode = if ($cross) { 'cross' } else { 'native' }
     bash "$PSScriptRoot/install_linux_sdk.sh" $mode
@@ -108,8 +121,10 @@ if ($PublishedCatalog) {
         ctest --test-dir build/imaging-engine -C Profile -R 'GradientSignal.Editor.Tests|AzNetworking.Tests' --no-tests=error --output-on-failure
     }
 } else {
-    Invoke-ConanBuild build
-    python "$PSScriptRoot/test_packaging.py"
-    python "$PSScriptRoot/publish.py" prepare $Profile --output build/imaging --registry $Registry --seed-cache build/verify-cache/oci
+    Build-OciLayout
+    if (-not $VerifyEngine) { return }
+    if ($IsWindows -and $cross) {
+        Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=$hostArch"
+    }
     python "$PSScriptRoot/verify.py" --profile $Profile --prebuilt --catalog "build/imaging/$Profile.json" --cache build/verify-cache --output build/imaging-check @verifyOptions
 }

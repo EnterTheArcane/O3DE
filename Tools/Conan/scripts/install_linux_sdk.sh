@@ -17,7 +17,12 @@ qt_packages=(
     libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev libxrender-dev
 )
 
+apt_options=(-y)
 if [[ ${1:-native} == cross ]]; then
+    # Multiarch libraries need matching versions across the runner's two mirrors.
+    if [[ ${GITHUB_ACTIONS:-} == true ]]; then
+        apt_options+=(--allow-downgrades --no-remove)
+    fi
     sudo dpkg --add-architecture arm64
     ubuntu_sources=/etc/apt/sources.list.d/ubuntu.sources
     sources=$(sed '/^Architectures:/d; /^Types: deb$/a Architectures: amd64' "$ubuntu_sources")
@@ -34,7 +39,7 @@ EOF
 fi
 
 sudo apt-get update
-sudo apt-get install -y gcc-13 g++-13 wayland-protocols 7zip "${qt_packages[@]}"
+sudo apt-get install "${apt_options[@]}" gcc-13 g++-13 wayland-protocols 7zip "${qt_packages[@]}"
 if [[ ${1:-native} == cross ]]; then
-    sudo apt-get install -y clang g++-13-aarch64-linux-gnu "${qt_packages[@]/%/:arm64}"
+    sudo apt-get install "${apt_options[@]}" clang g++-13-aarch64-linux-gnu "${qt_packages[@]/%/:arm64}"
 fi
