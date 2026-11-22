@@ -5,5 +5,5 @@ sources:
 patches:
   "5.13.0":
     - patch_file: "patches/clang-23-warnings.patch"
-      patch_description: Extend the Linux Clang warning exclusions for Clang 23
+      patch_description: Use standard warnings when building with Clang 23 or newer
       patch_type: portability

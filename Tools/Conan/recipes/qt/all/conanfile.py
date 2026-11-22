@@ -142,6 +142,7 @@ class Recipe(ConanFile):
         elif self.settings.os == "Android":
             sdk = self.dependencies.build["android-sdk"]
             tc.variables["ANDROID_SDK_ROOT"] = Path(sdk.package_folder).as_posix()
+            tc.variables["QT_ALLOW_DOWNLOAD"] = True
             tc.variables["QT_ANDROID_SDK_BUILD_TOOLS_REVISION"] = str(sdk.ref.version)
             tc.variables["QT_ANDROID_MIN_SDK_VERSION"] = int(
                 str(self.settings.os.api_level)
