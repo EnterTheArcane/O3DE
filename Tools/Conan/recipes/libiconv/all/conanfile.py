@@ -3,6 +3,8 @@
 # Adapted from the Conan Center Index libiconv recipe.
 # https://github.com/conan-io/conan-center-index/tree/master/recipes/libiconv
 
+import os
+
 from conan import ConanFile
 from conan.tools.apple import fix_apple_shared_install_name
 from conan.tools.build import cross_building
@@ -13,14 +15,13 @@ from conan.tools.files import (
     export_conandata_patches,
     get,
     rename,
+    replace_in_file,
     rm,
     rmdir,
-    replace_in_file,
 )
 from conan.tools.gnu import Autotools, AutotoolsToolchain
 from conan.tools.layout import basic_layout
 from conan.tools.microsoft import is_msvc, unix_path
-import os
 
 
 class LibiconvConan(ConanFile):
@@ -129,6 +130,9 @@ class LibiconvConan(ConanFile):
             env.define("RANLIB", ":")
             env.define("NM", "dumpbin -symbols")
             env.define("win32_target", "_WIN32_WINNT_VISTA")
+            if "windows-sdk" in self.dependencies.build:
+                # The Makefiles use GNU windres options rather than rc.exe options.
+                env.unset("RC")
         tc.generate(env)
 
     def _apply_resource_patch(self):
@@ -137,9 +141,7 @@ class LibiconvConan(ConanFile):
                 self.source_folder, "windows", "windres-options"
             )
             self.output.info(
-                "Applying {} resource patch: {}".format(
-                    self.settings.arch, windres_options_path
-                )
+                f"Applying {self.settings.arch} resource patch: {windres_options_path}"
             )
             replace_in_file(
                 self,
