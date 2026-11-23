@@ -60,24 +60,43 @@ jobs:
     runs-on: ubuntu-slim
     permissions: {}
     outputs:
-      profiles: ${{ steps.profiles.outputs.profiles }}
+      targets: ${{ steps.targets.outputs.result }}
     steps:
-      - name: Collect profiles
-        id: profiles
-        shell: bash
+      - name: Collect build targets
+        id: targets
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           DISPATCH_INPUTS: ${{ toJSON(inputs) }}
-        run: |
-          profiles=$(jq -c '[
-            to_entries[]
-            | select((.key | startswith("build-")) and .value == true)
-            | .key | ltrimstr("build-")
-          ]' <<< "$DISPATCH_INPUTS")
-          if [[ "$profiles" == '[]' ]]; then
-            echo '::error::Select at least one target profile.'
-            exit 1
-          fi
-          echo "profiles=$profiles" >> "$GITHUB_OUTPUT"
+        with:
+          script: |
+            const runners = {
+              android: "ubuntu-26.04",
+              emscripten: "ubuntu-26.04",
+              ios: "macos-26",
+              linux: "ubuntu-26.04",
+              macos: "macos-26",
+              windows: "windows-2025-vs2026",
+            };
+            const inputs = JSON.parse(process.env.DISPATCH_INPUTS);
+            const prefix = "build-";
+            const targets = [];
+            for (const [name, enabled] of Object.entries(inputs)) {
+              if (!name.startsWith(prefix) || enabled !== true) {
+                continue;
+              }
+
+              const profile = name.slice(prefix.length);
+              const platform = profile.split("-", 1)[0];
+              if (!Object.hasOwn(runners, platform)) {
+                throw new Error(`No runner for profile ${profile}.`);
+              }
+              targets.push({ profile, runner: runners[platform] });
+            }
+
+            if (targets.length === 0) {
+              throw new Error("Select at least one target profile.");
+            }
+            return targets;
 
   build:
     name: Build (${{ matrix.profile }})
@@ -85,11 +104,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix: &package_matrix
-        profile: ${{ fromJSON(needs.prepare.outputs.profiles) }}
-    runs-on: &package_runner >-
-      ${{ startsWith(matrix.profile, 'windows-') && 'windows-2025-vs2026' ||
-          (startsWith(matrix.profile, 'ios-') || startsWith(matrix.profile, 'macos-')) && 'macos-26' ||
-          'ubuntu-26.04' }}
+        include: ${{ fromJSON(needs.prepare.outputs.targets) }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 300
     permissions:
       contents: read
@@ -253,7 +269,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: *package_matrix
-    runs-on: *package_runner
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 300
     env:
       PACKAGE_PROFILE: ${{ matrix.profile }}
