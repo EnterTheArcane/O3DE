@@ -35,7 +35,7 @@ function Build-OciLayout {
 $android = $Profile -in @('android-a64', 'android-x64')
 $wasm = $Profile -in @('emscripten-w32', 'emscripten-w64')
 if ($android -or $wasm -or $Profile -in @('ios-a64', 'ios-simulator-a64')) {
-    if (-not $PublishedCatalog -and $IsLinux -and ($android -or $Profile -eq 'emscripten-w32')) {
+    if (-not $PublishedCatalog -and $IsLinux -and ($android -or $wasm)) {
         bash "$PSScriptRoot/install_linux_sdk.sh" native
     }
     if ($PublishedCatalog) {
