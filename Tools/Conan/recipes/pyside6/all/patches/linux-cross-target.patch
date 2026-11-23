@@ -1,0 +1,23 @@
+--- a/sources/pyside6/cmake/Macros/PySideModules.cmake
++++ b/sources/pyside6/cmake/Macros/PySideModules.cmake
+@@ -352,6 +352,20 @@
+                                      "--compiler-path=${CMAKE_CXX_COMPILER}")
+     endif()
+ 
++    if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
++       AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
++        # Use the target selected by the compiler driver for the Clang parser.
++        set(linux_triple "${CMAKE_CXX_COMPILER_TARGET}")
++        if(NOT linux_triple)
++            execute_process(COMMAND "${CMAKE_CXX_COMPILER}" -print-target-triple
++                            OUTPUT_VARIABLE linux_triple OUTPUT_STRIP_TRAILING_WHITESPACE
++                            COMMAND_ERROR_IS_FATAL ANY)
++        endif()
++        list(APPEND shiboken_command
++             "--compiler-argument=--target=${linux_triple}"
++             "--clang-option=--target=${linux_triple}")
++    endif()
++
+     if(CMAKE_ANDROID_ARCH_LLVM_TRIPLE)
+         message(STATUS "Building for Android with arch ${CMAKE_ANDROID_ARCH_LLVM_TRIPLE}")
+         # CMAKE_CXX_COMPILER is the generic clang++; for finding the include paths,

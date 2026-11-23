@@ -29,3 +29,6 @@ patches:
     - patch_file: "patches/windows-cross-python.patch"
       patch_description: Link the target Python import library for the selected Windows configuration
       patch_type: portability
+    - patch_file: "patches/linux-cross-target.patch"
+      patch_description: Pass the compiler target triple to Shiboken when cross-compiling for Linux
+      patch_type: portability
