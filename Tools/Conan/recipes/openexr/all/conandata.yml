@@ -8,3 +8,6 @@ patches:
     - patch_file: patches/android-aligned-allocation.patch
       patch_description: Use posix_memalign on Android before API 28
       patch_type: portability
+    - patch_file: patches/clang-cl-sse41-detection.patch
+      patch_description: Require Clang's target feature macro for SSE4.1
+      patch_type: portability
