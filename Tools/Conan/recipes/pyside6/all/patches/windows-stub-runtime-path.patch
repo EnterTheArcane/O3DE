@@ -1,0 +1,43 @@
+--- a/sources/pyside6/cmake/Macros/PySideModules.cmake
++++ b/sources/pyside6/cmake/Macros/PySideModules.cmake
+@@ -106,29 +106,17 @@
+     endif()
+     if(WIN32)
+         list(APPEND ld_prefix_list "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_BINS}")
+-    endif()
+-
+-    list(JOIN ld_prefix_list "${PATH_SEP}" ld_prefix_values_string)
+-    set(ld_prefix "${ld_prefix_var_name}=${ld_prefix_values_string}")
+-
+-    # Append any existing ld_prefix values, so existing PATH, LD_LIBRARY_PATH, etc.
+-    # On Windows it is needed because pyside modules import Qt,
+-    # and the Qt modules are found from PATH.
+-    # On Linux and macOS, existing values might be set to find system libraries correctly.
+-    # For example on openSUSE when compiling with icc, libimf.so from Intel has to be found.
+-    if(WIN32)
+-        # Get the value of PATH with CMake separators.
+-        file(TO_CMAKE_PATH "$ENV{${ld_prefix_var_name}}" path_value)
+-
+-        # Replace the CMake list separators with "\;"s, to avoid the PATH values being
+-        # interpreted as CMake list elements, we actually want to pass the whole string separated
+-        # by ";" to the command line.
+-        if(path_value)
+-            make_path(path_value "${path_value}")
+-            string(APPEND ld_prefix "${PATH_SEP}${path_value}")
+-        endif()
+-    else()
+-        # Handles both macOS and Linux.
++        # Keep the inherited PATH out of Ninja commands that cmd.exe must parse.
++        set(ld_prefix "")
++        list(REVERSE ld_prefix_list)
++        foreach(directory IN LISTS ld_prefix_list)
++            list(APPEND ld_prefix --modify "${ld_prefix_var_name}=path_list_prepend:${directory}")
++        endforeach()
++    else()
++        list(JOIN ld_prefix_list "${PATH_SEP}" ld_prefix_values_string)
++        set(ld_prefix "${ld_prefix_var_name}=${ld_prefix_values_string}")
++
++        # Preserve system library search paths on macOS and Linux.
+         set(env_value "$ENV{${ld_prefix_var_name}}")
+         if(env_value)
+             string(APPEND ld_prefix ":${env_value}")

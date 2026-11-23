@@ -53,6 +53,12 @@ class PySide6(ConanFile):
     def layout(self):
         cmake_layout(self, src_folder="src")
 
+    def package_id(self):
+        # The Windows distribution contains both Python ABIs.
+        if self.info.settings.os == "Windows":
+            self.info.settings.rm_safe("build_type")
+            self.info.settings.rm_safe("compiler.runtime_type")
+
     def requirements(self):
         self.requires("qt/6.12.0")
         self.requires("python/3.15.2")

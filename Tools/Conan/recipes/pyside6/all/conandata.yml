@@ -38,3 +38,6 @@ patches:
     - patch_file: "patches/linux-cross-target.patch"
       patch_description: Pass the compiler target triple to Shiboken when cross-compiling for Linux
       patch_type: portability
+    - patch_file: "patches/windows-stub-runtime-path.patch"
+      patch_description: Prepend DLL directories to the inherited Windows PATH at build time
+      patch_type: portability
