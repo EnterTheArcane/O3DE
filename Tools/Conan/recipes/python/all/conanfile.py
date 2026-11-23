@@ -6,14 +6,14 @@
 #
 #
 
+import os
+import shlex
+import sys
 from io import StringIO
 from pathlib import Path
-import os
 from runpy import run_path
-import shlex
 from shutil import which
 from subprocess import list2cmdline
-import sys
 
 from conan import ConanFile
 from conan.errors import ConanException
@@ -126,7 +126,11 @@ class Recipe(ConanFile):
                 "tools.build:compiler_executables", check_type=dict
             )
             llvm = Path(compiler["c"]).parent.parent
-            toolset = f'"/p:PlatformToolset=ClangCL" "/p:LLVMInstallDir={llvm}"'
+            llvm_version = self.settings.compiler.version
+            toolset = (
+                f'"/p:PlatformToolset=ClangCL" "/p:LLVMInstallDir={llvm}" '
+                f'"/p:LLVMToolsVersion={llvm_version}"'
+            )
         env = Environment()
         env.unset("PYTHON")
         env.define("PYTHON_FOR_BUILD", str(python))
