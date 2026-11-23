@@ -1,0 +1,15 @@
+sources:
+  3.7.1:
+    sha256: eb8ea1ae79a8423033efec28ebb2306a2bbb9d59bad1c6e529f3d50015276afc
+    url: https://dicom.offis.de/download/dcmtk/dcmtk371/dcmtk-3.7.1.tar.gz
+patches:
+  3.7.1:
+  - patch_file: patches/windows-cross-build.patch
+    patch_description: Use Wine only when cross-compiling to Windows from a non-Windows host
+    patch_type: portability
+  - patch_description: 'CMake: robust discovery with find_package() and use imported targets'
+    patch_file: patches/3.7.1-0001-cmake-robust-deps-handling.patch
+    patch_type: conan
+  - patch_description: 'CMake: fix OpenSSL compatibility checks'
+    patch_file: patches/3.7.1-0002-cmake-check-openssl-symbol.patch
+    patch_type: conan

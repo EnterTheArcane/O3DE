@@ -1,0 +1,31 @@
+--- a/CMake/dcmtkPrepare.cmake
++++ b/CMake/dcmtkPrepare.cmake
+@@ -293,7 +293,7 @@
+ #-----------------------------------------------------------------------------
+ 
+ if(CMAKE_CROSSCOMPILING)
+-  if(WIN32)
++  if(WIN32 AND NOT CMAKE_HOST_WIN32)
+     include("${DCMTK_CMAKE_INCLUDE}CMake/dcmtkUseWine.cmake")
+     DCMTK_SETUP_WINE()
+   elseif(ANDROID)
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -69,7 +69,7 @@
+ # ----------------------------------------------------------------------------
+ 
+ if(CMAKE_CROSSCOMPILING)
+-  if(WIN32)
++  if(WIN32 AND NOT CMAKE_HOST_WIN32)
+     set(DCMTK_RUN_CTEST_SCRIPT "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/dcmtkCTestRunWine.cmake" CACHE INTERNAL "path to the CMake script for launching a unit test as a detached Wine process in the prepared wineprefix")
+   elseif(ANDROID)
+     set(DCMTK_RUN_CTEST_SCRIPT "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/dcmtkCTestRunAndroid.cmake" CACHE INTERNAL "path to the CMake script for launching a unit test via the android emulator")
+@@ -131,7 +131,7 @@
+ set(DCMICONVPATH "${DCMTK_ICONV_DATAFILES}")
+ 
+ if(CMAKE_CROSSCOMPILING)
+-  if(WIN32)
++  if(WIN32 AND NOT CMAKE_HOST_WIN32)
+     string(REPLACE ";" "${ENVIRONMENT_PATH_SEPARATOR}" DCMDICTPATH "${DCMTK_DICOM_DICTIONARIES}")
+     configure_file("${DCMTK_SOURCE_DIR}/CMake/CTest/CTestCustomWine.cmake.in"
+       "${DCMTK_BINARY_DIR}/CTestCustom.cmake" ESCAPE_QUOTES @ONLY
