@@ -40,6 +40,10 @@ public:
 
 int main()
 {
+    if (NvClothCompiledWithCudaSupport() != NVCLOTH_TEST_CUDA)
+    {
+        return 1;
+    }
     Allocator allocator;
     ErrorCallback errors;
     nv::cloth::InitializeNvCloth(&allocator, &errors, nullptr, nullptr);

@@ -171,12 +171,8 @@ jobs:
         if: "!cancelled()"
         continue-on-error: true
         run: |
-          if ((Get-Command conan -ErrorAction SilentlyContinue) -and (Test-Path build/imaging/cache/p)) {
-            $env:CONAN_HOME = (Resolve-Path build/imaging/cache).Path
-            conan cache save '*#*:*#*' --no-source --file build/imaging/conan-cache-next.tgz
-            if ($LASTEXITCODE -eq 0) {
-              Move-Item -Force -LiteralPath build/imaging/conan-cache-next.tgz -Destination build/imaging/conan-cache.tgz
-            }
+          if (Get-Command conan -ErrorAction SilentlyContinue) {
+            python Tools/Conan/scripts/build.py export-cache --output build/imaging --cache-archive build/imaging/conan-cache.tgz
           }
       - name: Save compilation cache for reruns
         if: "!cancelled()"

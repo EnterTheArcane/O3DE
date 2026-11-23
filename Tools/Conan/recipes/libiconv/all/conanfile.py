@@ -30,10 +30,9 @@ class LibiconvConan(ConanFile):
     license = "LGPL-2.1-or-later"
     url = "https://github.com/conan-io/conan-center-index"
     homepage = "https://www.gnu.org/software/libiconv/"
-    topics = ("iconv", "text", "encoding", "locale", "unicode", "conversion")
-
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

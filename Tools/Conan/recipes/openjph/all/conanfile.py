@@ -31,8 +31,9 @@ class OpenJPH(ConanFile):
     license = "BSD-2-Clause"
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
+
     implements: ClassVar[list[str]] = ["auto_shared_fpic"]
-    options: ClassVar[dict[str, list[bool]]] = {
+    options = {
         "shared": [True, False],
         "fPIC": [True, False],
         "with_executables": [True, False],
@@ -40,7 +41,7 @@ class OpenJPH(ConanFile):
         "with_stream_expand_tool": [True, False],
         "disable_simd": [True, False],
     }
-    default_options: ClassVar[dict[str, bool]] = {
+    default_options = {
         "shared": False,
         "fPIC": True,
         "with_executables": True,

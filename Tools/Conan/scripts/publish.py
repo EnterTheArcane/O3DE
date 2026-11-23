@@ -7,18 +7,18 @@
 #
 
 import argparse
-from functools import partial
 import gzip
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import shutil
+from functools import partial
+from pathlib import Path
+from time import sleep
 from urllib.parse import urlsplit
 
 from build import PROFILES
-
 
 LAYER = "application/vnd.oci.image.layer.v1.tar+gzip"
 IMAGE_CONFIG = "application/vnd.oci.image.config.v1+json"
@@ -60,12 +60,18 @@ def catalog_references(profile, output, registry):
         yield repo, digest
 
 
-def check_manifest(client, repo, digest):
+def check_manifest(client, repo, digest, *, retry_not_found=False):
     container = client.get_container(f"{repo}@{digest}")
-    response = client.do_request(
-        f"{client.prefix}://{container.manifest_url()}",
-        headers={"Accept": IMAGE_MANIFEST},
-    )
+    delays = (0, 1, 2, 4, 8, 16) if retry_not_found else (0,)
+    for delay in delays:
+        if delay:
+            sleep(delay)
+        response = client.do_request(
+            f"{client.prefix}://{container.manifest_url()}",
+            headers={"Accept": IMAGE_MANIFEST},
+        )
+        if response.status_code != 404:
+            break
     response.raise_for_status()
     if f"sha256:{hashlib.sha256(response.content).hexdigest()}" != digest:
         raise ValueError(f"Expected {digest} in {repo}")
@@ -94,7 +100,8 @@ def push_manifest(client, layout, repo, digest):
         data=payload,
         headers={"Content-Type": IMAGE_MANIFEST},
     ).raise_for_status()
-    check_manifest(client, repo, digest)
+    # GHCR can return 404 by digest briefly after accepting the manifest.
+    check_manifest(client, repo, digest, retry_not_found=True)
 
 
 def authenticate_push(client, repo, username, password):

@@ -1,12 +1,4 @@
 sources:
   "5.13.0":
-    url: "https://github.com/EnterTheArcane/PhysX/archive/f471552020e1a0b410a8709db0855284ae00e289.tar.gz"
-    sha256: "fb7152e5ad9045d668180ac6c296dc82831e4036ac336aec681a4372a02dd471"
-patches:
-  "5.13.0":
-    - patch_file: "patches/clang-23-warnings.patch"
-      patch_description: Use standard warnings when building with Clang 23 or newer
-      patch_type: portability
-    - patch_file: "patches/windows-clang-flags.patch"
-      patch_description: Restrict MSVC-specific build and warning flags to MSVC
-      patch_type: portability
+    url: "https://github.com/EnterTheArcane/PhysX/archive/b8486eacc9be483afc2b36d17485d69871194b0b.tar.gz"
+    sha256: "f1c3de41d091c708afb56001284eca68db613700ef4c53c9d00c5c23197610a1"

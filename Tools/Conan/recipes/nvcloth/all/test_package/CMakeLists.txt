@@ -11,5 +11,8 @@ project(TestNvCloth LANGUAGES CXX)
 find_package(NvCloth CONFIG REQUIRED)
 add_executable(test_nvcloth test.cpp)
 target_compile_features(test_nvcloth PRIVATE cxx_std_17)
-target_compile_definitions(test_nvcloth PRIVATE "$<IF:$<CONFIG:Debug>,_DEBUG,NDEBUG>")
+target_compile_definitions(test_nvcloth PRIVATE
+    "$<IF:$<CONFIG:Debug>,_DEBUG,NDEBUG>"
+    "NVCLOTH_TEST_CUDA=$<BOOL:${NVCLOTH_TEST_CUDA}>"
+)
 target_link_libraries(test_nvcloth PRIVATE NvCloth::NvCloth)

@@ -35,10 +35,9 @@ class LibtiffConan(ConanFile):
     url = "https://github.com/conan-io/conan-center-index"
     license = "libtiff"
     homepage = "http://www.simplesystems.org/libtiff"
-    topics = ("tiff", "image", "bigtiff", "tagged-image-file-format")
-
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
+
     options: ClassVar[dict] = {
         "shared": [True, False],
         "fPIC": [True, False],

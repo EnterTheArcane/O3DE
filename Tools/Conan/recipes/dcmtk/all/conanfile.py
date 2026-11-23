@@ -33,9 +33,9 @@ class DCMTKConan(ConanFile):
     url = "https://github.com/conan-io/conan-center-index"
     homepage = "https://dicom.offis.de/dcmtk"
     license = "BSD-3-Clause"
-    topics = ("dicom", "image")
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
+
     options: ClassVar[dict] = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -158,9 +158,9 @@ class DCMTKConan(ConanFile):
             tc.variables["DCMTK_OVERWRITE_WIN32_COMPILER_FLAGS"] = False
         if is_msvc(self):
             tc.variables["DCMTK_ICONV_FLAGS_ANALYZED"] = True
-            tc.variables[
-                "DCMTK_COMPILE_WIN32_MULTITHREADED_DLL"
-            ] = not is_msvc_static_runtime(self)
+            tc.variables["DCMTK_COMPILE_WIN32_MULTITHREADED_DLL"] = (
+                not is_msvc_static_runtime(self)
+            )
 
         # Prevent libnsl from the system (and not from Conan) from being picked up
         tc.cache_variables["HAVE_LIBNSL_MAIN"] = False
@@ -244,13 +244,15 @@ class DCMTKConan(ConanFile):
                 self,
                 os.path.join(self.source_folder, "CMake", "dcmtkPrepare.cmake"),
                 "set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${OPENSSL_LIBS} ${THREAD_LIBS})",
-                textwrap.dedent(f"""\
+                textwrap.dedent(
+                    f"""\
                     list(APPEND CMAKE_REQUIRED_FLAGS "{cmake_required["flags"]}")
                     list(APPEND CMAKE_REQUIRED_INCLUDES "{cmake_required["includes"]}")
                     list(APPEND CMAKE_REQUIRED_DEFINITIONS "{cmake_required["definitions"]}")
                     list(APPEND CMAKE_REQUIRED_LINK_OPTIONS "{cmake_required["link_options"]}")
                     list(APPEND CMAKE_REQUIRED_LIBRARIES "{cmake_required["libraries"]}")
-                """),
+                """
+                ),
             )
 
         if self.options.charset_conversion == "libiconv":
@@ -259,12 +261,14 @@ class DCMTKConan(ConanFile):
                 self,
                 os.path.join(self.source_folder, "CMake", "3rdparty.cmake"),
                 "set(CMAKE_REQUIRED_LIBRARIES ${LIBICONV_LIBS})",
-                textwrap.dedent(f"""\
+                textwrap.dedent(
+                    f"""\
                     list(APPEND CMAKE_REQUIRED_FLAGS "{cmake_required["flags"]}")
                     list(APPEND CMAKE_REQUIRED_DEFINITIONS "{cmake_required["definitions"]}")
                     list(APPEND CMAKE_REQUIRED_LINK_OPTIONS "{cmake_required["link_options"]}")
                     list(APPEND CMAKE_REQUIRED_LIBRARIES "{cmake_required["libraries"]}")
-                """),
+                """
+                ),
             )
 
     def build(self):
@@ -297,12 +301,14 @@ class DCMTKConan(ConanFile):
     def _create_cmake_module_alias_targets(self, module_file, targets):
         content = ""
         for alias, aliased in targets.items():
-            content += textwrap.dedent(f"""\
+            content += textwrap.dedent(
+                f"""\
                 if(TARGET {aliased} AND NOT TARGET {alias})
                     add_library({alias} INTERFACE IMPORTED)
                     set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
                 endif()
-            """)
+            """
+            )
         save(self, module_file, content)
 
     @property

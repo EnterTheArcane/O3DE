@@ -27,6 +27,10 @@ class Recipe(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.user_presets_path = False
+        physx = self.dependencies.host["physx"]
+        tc.cache_variables["PHYSX_TEST_CUDA"] = bool(
+            physx.options.get_safe("with_cuda")
+        )
         if self.settings.arch == "wasm64":
             tc.cache_variables["CMAKE_C_FLAGS"] = "-m64"
             tc.cache_variables["CMAKE_CXX_FLAGS"] = "-m64"

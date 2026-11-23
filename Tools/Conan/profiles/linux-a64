@@ -27,4 +27,5 @@ dcmtk/*:tools.cmake.cmaketoolchain:extra_variables*={"DCMTK_STDLIBC_ICONV_HAS_DE
 tools.graph:skip_binaries=False
 
 [buildenv]
+CUDAHOSTCXX=aarch64-linux-gnu-g++-13
 PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig

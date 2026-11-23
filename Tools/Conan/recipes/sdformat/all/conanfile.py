@@ -25,8 +25,12 @@ class Recipe(ConanFile):
     license = "Apache-2.0 AND BSD-3-Clause"
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
+
     options = {"shared": [True, False]}
-    default_options = {"shared": True, "tinyxml2/*:shared": False}
+    default_options = {
+        "shared": True,
+        "tinyxml2/*:shared": False,
+    }
 
     def set_version(self):
         if self.version is None:

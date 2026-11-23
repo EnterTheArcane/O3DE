@@ -15,7 +15,7 @@
         "pyside6/6.12.0#0d92dba6310766365b14051dc264ffa6",
         "pybind11/3.1.0#0d2fd6b7fa13f29c1c6fb8fa23a7b570%1794934313.817",
         "ptex/2.4.2#ba6a60f9dabd40f83df6dafa24e014e9%1703960018.592",
-        "physx/5.13.0#3ba0d0fd8e9844bc4eadaf35f5e81961",
+        "physx/5.13.0#892a11e8c70568d3aadbb66203273e39",
         "openvdb/12.1.1#cbee943bf6eb413aff6a7145df7b587a%1782311268.738",
         "openssl/4.1.0#4fef53b5a175912b4e9a5e562d46f4a8",
         "openjph/0.33.0#4eb6175e47376b3e99173647bb552f1d",
@@ -24,7 +24,7 @@
         "openexr/3.5.4#daff5c40aaa6d863f8c9f55e42ea59ea",
         "opencolorio/2.6.0#b86e8b6f78f566458d3a3d2e81f6088f",
         "onetbb/2023.1.0#e093f6ab7de9b45b14a1c0bd09af038b%1785830469.721",
-        "nvcloth/1.1.6#88b739d3695d64ea08c63b26ec7974ae",
+        "nvcloth/1.1.6#b45c7f2bcf3ee67cc4904efb6f36403f",
         "minizip-ng/4.2.1#61fc65e7b4ecff3d903946f9d534c50a%1777643608.431",
         "lz4/1.9.4#a2f02ad3908618757c68d3618256a196%1775037236.076",
         "libxml2/2.15.4#9a0c674e87edc8d5bca8ccdb6761e4f8%1792501927.602",
@@ -59,7 +59,8 @@
         "c-blosc/1.21.5#faf01d4fdbdf0911a1340e060484ef52%1760422815.204",
         "bzip2/1.0.8#c470882369c2d95c5c77e970c0c7e321%1762886692.465",
         "brotli/1.2.1#edc0b7d57e13bfb675278fdf511971b0%1792659362.361",
-        "boost/1.84.0#fc2fd00e54dffc953c94ea842ef95f35%1790854197.405"
+        "boost/1.84.0#fc2fd00e54dffc953c94ea842ef95f35%1790854197.405",
+        "cuda-toolkit/13.5.0#6465af1d9df64d24f2410dca68733f55"
     ],
     "build_requires": [
         "strawberryperl/5.42.3.1#5107089b0a919bc78dba7681bbcc7cc1%1792571907.829",
@@ -78,7 +79,8 @@
         "gn/2022.12.12#26f6cfa5ab4753a75063b5d67bf7de35",
         "directxshadercompiler/1.9.2609#a017e78c22ce5b302698e40f70ef68de",
         "cmake/4.5.0#24bd34291eb0f81c64854389dd6a216f%1794652026.685",
-        "b2/5.6.1#41ae5699a0588de1202afe5b675cc86d%1793034698.727"
+        "b2/5.6.1#41ae5699a0588de1202afe5b675cc86d%1793034698.727",
+        "cuda-toolkit/13.5.0#6465af1d9df64d24f2410dca68733f55"
     ],
     "python_requires": [
         "apple-signing/1.0#87ff59f047d7c512c47714ab0ca4655f"

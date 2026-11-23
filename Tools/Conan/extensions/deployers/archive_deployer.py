@@ -13,15 +13,26 @@ import json
 import lzma
 import os
 import shutil
+import sys
 import tarfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from package_cps import CPS_DIRECTORY, package_manifest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from hooks.hook_sbom import SBOM_FILENAME, package_sbom
+
 
 def archive_package(
-    folder, archive, licenses=None, *, preserve_links=False, cps=None, standalone=False
+    folder,
+    archive,
+    licenses=None,
+    *,
+    preserve_links=False,
+    cps=None,
+    sbom=None,
+    standalone=False,
 ):
     root = folder.resolve()
     links = []
@@ -92,6 +103,12 @@ def archive_package(
             tarfile.open(fileobj=compressed, mode="w|", dereference=True) as tar,
         ):
             add(root, Path("payload"), set(), root)
+            if sbom is not None:
+                name = f"payload/{SBOM_FILENAME}"
+                data = sbom.encode("utf-8")
+                add_bytes(name, data)
+                if standalone:
+                    checksums.append(f"{hashlib.sha256(data).hexdigest()}  {name}\n")
             if licenses:
                 add(
                     licenses,
@@ -126,6 +143,11 @@ def deploy_packages(graph, output_folder, *, standalone=False):
     output.mkdir(parents=True, exist_ok=True)
     packages = {}
     consumer = graph.root.conanfile
+    host_nodes = {
+        node.conanfile.pref: node.conanfile
+        for node in graph.nodes
+        if node.context == "host" and node.ref
+    }
     engine_provided = set(
         getattr(consumer, "extension_properties", {}).get("engine_provided", ())
     )
@@ -195,6 +217,10 @@ def deploy_packages(graph, output_folder, *, standalone=False):
                 raise ValueError(f"Expected a built host artifact for {dependency.ref}")
             folder = Path(dependency.package_folder)
             cps = package_manifest(dependency, folder, available)
+            sbom = None
+            if not (folder / SBOM_FILENAME).is_file():
+                # Older cached binaries can be deployed without changing their revision.
+                sbom = package_sbom(host_nodes[dependency.pref])
             notices = None
             if name in imaging:
                 notices = licenses
@@ -222,6 +248,7 @@ def deploy_packages(graph, output_folder, *, standalone=False):
                 notices,
                 preserve_links=platform in ("Macos", "iOS"),
                 cps=cps,
+                sbom=sbom,
                 standalone=standalone,
             )
             if standalone:

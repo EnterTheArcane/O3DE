@@ -25,7 +25,8 @@ class Recipe(ConanFile):
     provides = "libjpeg"
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
-    options: ClassVar[dict[str, list[bool]]] = {
+
+    options = {
         "shared": [True, False],
         "fPIC": [True, False],
         "SIMD": [True, False],
@@ -35,7 +36,7 @@ class Recipe(ConanFile):
         "libjpeg8_compatibility": [True, False],
         "turbojpeg": [True, False],
     }
-    default_options: ClassVar[dict[str, bool]] = dict.fromkeys(options, True)
+    default_options = dict.fromkeys(options, True)
     default_options["shared"] = False
 
     def set_version(self):

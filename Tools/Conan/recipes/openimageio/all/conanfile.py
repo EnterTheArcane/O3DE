@@ -30,6 +30,7 @@ class Recipe(ConanFile):
     license = "Apache-2.0 OR BSD-3-Clause"
     package_type = "shared-library"
     settings = "os", "arch", "compiler", "build_type"
+
     default_options = {
         "dcmtk/*:default_dict": "builtin",
         "dcmtk/*:with_openssl": False,

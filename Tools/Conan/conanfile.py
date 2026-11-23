@@ -23,6 +23,7 @@ class Packages(ConanFile):
     def requirements(self):
         self.requires("gz-cmake/5.2.0")
         self.requires("imath/3.2.3")
+        self.requires("nvcloth/1.1.6")
         self.requires("opencolorio/2.6.0")
         self.requires("openexr/3.5.4")
         self.requires("openimageio/3.2.2.0")
@@ -37,7 +38,6 @@ class Packages(ConanFile):
         web = self.settings.os == "Emscripten"
 
         if desktop or mobile:
-            self.requires("nvcloth/1.1.6")
             self.requires("ispc-texture-compressor/2024.09.23")
 
         if desktop:

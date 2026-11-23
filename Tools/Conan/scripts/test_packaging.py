@@ -13,7 +13,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from conan.internal.model.cpp_info import CppInfo
 from conan.internal.model.pkg_type import PackageType
@@ -22,7 +22,7 @@ sys.path.insert(
     0, str(Path(__file__).resolve().parents[1] / "extensions" / "deployers")
 )
 
-from archive_deployer import archive_package
+from archive_deployer import SBOM_FILENAME, archive_package
 from archive_deployer import deploy as deploy_archive
 from oci_deployer import deploy
 from package_cps import package_manifest
@@ -112,6 +112,7 @@ class PackagingTests(unittest.TestCase):
                 package = root / "cache"
                 package.mkdir()
                 (package / "python").write_bytes(b"cached")
+                (package / SBOM_FILENAME).write_bytes(b"{}")
                 dependency = Mock(package_folder=package, languages=None)
                 dependency.ref.name = "python"
                 dependency.ref.version = "3.15.2"
@@ -204,12 +205,27 @@ class PackagingTests(unittest.TestCase):
             )
             dependency.ref.name = "example"
             dependency.ref.version = "1.2.3"
+            dependency.ref.revision = "recipe"
+            dependency.ref.user = dependency.ref.channel = None
+            dependency.name = "example"
+            dependency.context = "host"
+            dependency.license = "mit"
+            dependency.author = dependency.description = dependency.homepage = None
             dependency.settings.get_safe.return_value = "Linux"
             dependency.pref.repr_notime.return_value = "example/1.2.3#recipe:id#package"
             dependency.cpp_info = CppInfo()
             dependency.dependencies.host = {}
             dependency.dependencies.direct_host = {}
-            graph = Mock(nodes=[])
+            node = Mock(
+                ref=dependency.ref,
+                conanfile=dependency,
+                context="host",
+                test=False,
+                edges=[],
+            )
+            node.name = "example"
+            dependency.subgraph = Mock(root=node, nodes=[node])
+            graph = Mock(nodes=[node])
             graph.root.conanfile.extension_properties = {}
             graph.root.conanfile.dependencies.direct_host = {"example": dependency}
             graph.root.conanfile.dependencies.host = {}
@@ -236,6 +252,14 @@ class PackagingTests(unittest.TestCase):
             ):
                 payload = [member.name for member in layer if member.isfile()]
                 self.assertIn("payload/lib/cps/example.cps", payload)
+                bom = json.load(layer.extractfile(f"payload/{SBOM_FILENAME}"))
+                self.assertEqual(bom["specVersion"], "1.6")
+                self.assertEqual(
+                    bom["metadata"]["component"]["licenses"],
+                    [{"license": {"id": "MIT", "acknowledgement": "declared"}}],
+                )
+                self.assertEqual(bom["components"], [])
+                self.assertFalse((package / SBOM_FILENAME).exists())
                 self.assertEqual(
                     sorted(member.name for member in tar if member.isfile()),
                     sorted([*payload, "content.SHA256SUMS"]),
@@ -259,6 +283,7 @@ class PackagingTests(unittest.TestCase):
             package = root / "cache"
             package.mkdir()
             (package / "libOpenImageIO.a").write_bytes(b"archive")
+            (package / SBOM_FILENAME).write_bytes(b"{}")
             (package / "licenses").mkdir()
             (package / "licenses/LICENSE").write_bytes(b"license")
             imaging = Mock(
@@ -305,6 +330,7 @@ class PackagingTests(unittest.TestCase):
             package = root / "cache"
             package.mkdir()
             (package / "header.h").touch()
+            (package / SBOM_FILENAME).write_bytes(b"{}")
 
             def dependency(name):
                 result = Mock(package_folder=package, languages=None, conan_data={})
@@ -416,15 +442,26 @@ class PackagingTests(unittest.TestCase):
             client.get_container.return_value.manifest_url.return_value = (
                 "ghcr.io/v2/test/test/expat/manifests/test"
             )
-            client.do_request.return_value.content = manifest
-            push_manifest(client, layout, "ghcr.io/test/test/expat", f"sha256:{digest}")
+            client.do_request.side_effect = [
+                Mock(status_code=201),
+                Mock(status_code=404),
+                Mock(status_code=200, content=manifest),
+            ]
+            with patch("publish.sleep") as wait:
+                push_manifest(
+                    client, layout, "ghcr.io/test/test/expat", f"sha256:{digest}"
+                )
+            wait.assert_called_once_with(1)
             self.assertEqual(client.upload_blob.call_count, 2)
             upload = client.do_request.call_args_list[0]
             self.assertEqual(upload.args[1], "PUT")
             self.assertEqual(upload.kwargs["data"], manifest)
             self.assertEqual(upload.kwargs["headers"], {"Content-Type": IMAGE_MANIFEST})
 
-            client.do_request.return_value.content = manifest + b"\n"
+            client.do_request.side_effect = None
+            client.do_request.return_value = Mock(
+                status_code=200, content=manifest + b"\n"
+            )
             with self.assertRaisesRegex(ValueError, "Expected sha256:"):
                 check_manifest(client, "ghcr.io/test/test/expat", f"sha256:{digest}")
 

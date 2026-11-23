@@ -32,6 +32,7 @@ class UltraHDR(ConanFile):
     license = ("MIT", "Apache-2.0")
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
+
     options: ClassVar[dict[str, list[bool] | list[str]]] = {
         "shared": [True, False],
         "fPIC": [True, False],

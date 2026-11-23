@@ -15,3 +15,6 @@ minizip-ng/*:with_openssl=False
 [conf]
 tools.cmake.cmaketoolchain:generator=Ninja
 tools.graph:skip_binaries=False
+
+[buildenv]
+CUDAHOSTCXX=g++-13

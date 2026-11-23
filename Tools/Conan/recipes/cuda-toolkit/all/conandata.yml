@@ -1,0 +1,75 @@
+publish: false
+sources:
+  "13.5.0":
+    Linux:
+      x86_64:
+        target_directory: targets/x86_64-linux
+        components:
+          cuda_nvcc:
+            path: "cuda_nvcc/linux-x86_64/cuda_nvcc-linux-x86_64-13.5.37-archive.tar.xz"
+            sha256: "ac41262734f3c62cd75a502081cfae093b03b846d7f9274d8b1eb41f83209b96"
+          cuda_crt:
+            path: "cuda_crt/linux-x86_64/cuda_crt-linux-x86_64-13.5.37-archive.tar.xz"
+            sha256: "0df5c0ca27392152f370751c82b27ff1ab67661e4810cfc7248e2e03479c9ae0"
+          cuda_cudart:
+            path: "cuda_cudart/linux-x86_64/cuda_cudart-linux-x86_64-13.5.37-archive.tar.xz"
+            sha256: "26ca1b8963ce1b73e0e77113c711730545cacaaee7233c0526477d96d4c621fe"
+          cccl:
+            path: "cccl/linux-x86_64/cccl-linux-x86_64-13.3.5.0.6-archive.tar.xz"
+            sha256: "5139f641e72df6b0c64ee9e68cabaeafa9a5e36a4b1f7d370a1dc0dac62dd72f"
+          libnvvm:
+            path: "libnvvm/linux-x86_64/libnvvm-linux-x86_64-13.5.37-archive.tar.xz"
+            sha256: "8dd4866e387f0ce2259e8dcc91bebdbb59f84c6d4505b3bba46ae91b9a11dd16"
+      armv8:
+        target_directory: targets/sbsa-linux
+        components:
+          cuda_nvcc:
+            path: "cuda_nvcc/linux-sbsa/cuda_nvcc-linux-sbsa-13.5.37-archive.tar.xz"
+            sha256: "0c6756fdda5a4c5159dc5181788bd68c9d261e71d6f299ebb241185e113254a3"
+          cuda_crt:
+            path: "cuda_crt/linux-sbsa/cuda_crt-linux-sbsa-13.5.37-archive.tar.xz"
+            sha256: "65d373eead42f1544363027c9ee3e6e6eb223c27743749e84ce1e9595bc71b33"
+          cuda_cudart:
+            path: "cuda_cudart/linux-sbsa/cuda_cudart-linux-sbsa-13.5.37-archive.tar.xz"
+            sha256: "9da80d6aa87f5bc46971c1343024f30a850aca9aac03da95219880aaf854154f"
+          cccl:
+            path: "cccl/linux-sbsa/cccl-linux-sbsa-13.3.5.0.6-archive.tar.xz"
+            sha256: "c308969d8ad6de704c3f8be9ccf5ff2c9b40dd6e23b43b6e4057d255779d5ada"
+          libnvvm:
+            path: "libnvvm/linux-sbsa/libnvvm-linux-sbsa-13.5.37-archive.tar.xz"
+            sha256: "6c79308860d5eb47c6dd3693652a4d7cd430050438d31d5f036aa0b19583f2ea"
+    Windows:
+      x86_64:
+        components:
+          cuda_nvcc:
+            path: "cuda_nvcc/windows-x86_64/cuda_nvcc-windows-x86_64-13.5.37-archive.zip"
+            sha256: "daf9ea2304917ea6426be5fbe0e86c34cccc07c4f593cbc9070da54a8f7f4b27"
+          cuda_crt:
+            path: "cuda_crt/windows-x86_64/cuda_crt-windows-x86_64-13.5.37-archive.zip"
+            sha256: "acf9730a9731f08fab5719684ed3e64f16cb592571c700bfa342fe32d3ca2047"
+          cuda_cudart:
+            path: "cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-13.5.37-archive.zip"
+            sha256: "ef9747b13bd2c2c199a5f2756b56c94d0b5acf04556ce95ef4649122ee9b752a"
+          cccl:
+            path: "cccl/windows-x86_64/cccl-windows-x86_64-13.3.5.0.6-archive.zip"
+            sha256: "33b31a28db58aff9bd0a60a53e8424086b65da0684dade8f3c81ff2ff6f6a563"
+          libnvvm:
+            path: "libnvvm/windows-x86_64/libnvvm-windows-x86_64-13.5.37-archive.zip"
+            sha256: "0cb16fa041acd156b3654b66f182f65373a4ebfd4c2353ce7303f4d1b1eb88b2"
+      armv8:
+        components:
+          cuda_nvcc:
+            path: "cuda_nvcc/windows-arm64/cuda_nvcc-windows-arm64-13.5.37-archive.zip"
+            sha256: "95257306e88e163f6c23ddba8708111db0422ec18b7901e121bfe21acff5ea98"
+          cuda_crt:
+            path: "cuda_crt/windows-arm64/cuda_crt-windows-arm64-13.5.37-archive.zip"
+            sha256: "d473996aed38f077a59fdf3bae637da5f424dc41dc3db26a7eedf3f5710d2144"
+          cuda_cudart:
+            path: "cuda_cudart/windows-arm64/cuda_cudart-windows-arm64-13.5.37-archive.zip"
+            sha256: "2327bb5c60b24dfdfec4ab12504afc32d93eb22b35c116d1ba8a6f63648e2376"
+          cccl:
+            path: "cccl/windows-arm64/cccl-windows-arm64-13.3.5.0.6-archive.zip"
+            sha256: "b640d71365ed2f0c70de918f41ded5e84474f773cefeff094f395c5d1e5a7a53"
+          libnvvm:
+            path: "libnvvm/windows-arm64/libnvvm-windows-arm64-13.5.37-archive.zip"
+            sha256: "69c107867727c4bc2d52c4db8307256ec6f5207eeb466526d774bd8bc390208e"

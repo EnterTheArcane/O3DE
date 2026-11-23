@@ -11,15 +11,7 @@ from pathlib import Path
 from conan import ConanFile
 from conan.errors import ConanException
 from conan.tools.cmake import CMake, CMakeToolchain
-from conan.tools.files import (
-    apply_conandata_patches,
-    copy,
-    export_conandata_patches,
-    get,
-    load,
-    rename,
-    save,
-)
+from conan.tools.files import copy, get, rename
 
 CONFIGURATIONS = ("debug", "checked", "profile", "release")
 
@@ -30,13 +22,26 @@ class Recipe(ConanFile):
     package_type = "static-library"
     settings = "os", "arch", "compiler", "build_type"
 
+    options = {"with_cuda": [True, False]}
+    default_options = {"with_cuda": True}
+
     def set_version(self):
         if self.version is None:
             (self.version,) = self.conan_data["sources"]
 
     def export_sources(self):
         copy(self, "physx-config.cmake", self.recipe_folder, self.export_sources_folder)
-        export_conandata_patches(self)
+
+    def config_options(self):
+        if self.settings.os not in ("Linux", "Windows") or self.settings.arch not in (
+            "x86_64",
+            "armv8",
+        ):
+            self.options.rm_safe("with_cuda")
+
+    def build_requirements(self):
+        if self.options.get_safe("with_cuda"):
+            self.tool_requires("cuda-toolkit/13.5.0")
 
     def package_id(self):
         # Every package includes all four configurations, including the MSVC Debug CRT.
@@ -49,16 +54,6 @@ class Recipe(ConanFile):
 
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
-        apply_conandata_patches(self)
-        # CMake uses clang-cl to preprocess Windows resource dependencies.
-        foundation_resource = Path(
-            "physx/source/compiler/windows/resource/PhysXFoundation.rc"
-        )
-        save(
-            self,
-            foundation_resource,
-            load(self, foundation_resource, encoding="utf-16"),
-        )
 
     def generate(self):
         os_name = str(self.settings.os)
@@ -67,7 +62,11 @@ class Recipe(ConanFile):
         tc.blocks.remove("cppstd")
         tc.cache_variables["CMAKE_INSTALL_LIBDIR"] = "lib"
         tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = True
-        tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = False
+        with_cuda = bool(self.options.get_safe("with_cuda"))
+        tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = with_cuda
+        if with_cuda:
+            # CUDA 13 targets Turing or newer. PTX lets the driver JIT for newer GPUs.
+            tc.cache_variables["CMAKE_CUDA_ARCHITECTURES"] = "75-virtual"
         tc.cache_variables["PX_GENERATE_STATIC_LIBRARIES"] = True
         tc.cache_variables["PX_BUILDPVDRUNTIME"] = os_name in (
             "Windows",

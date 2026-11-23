@@ -32,14 +32,15 @@ class Recipe(ConanFile):
     license = "LGPL-3.0-or-later"
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
-    options: ClassVar[dict[str, list[bool]]] = {
+
+    options = {
         "shared": [True, False],
         "fPIC": [True, False],
         "simd": [True, False],
         "avx2": [True, False],
         "avx512": [True, False],
     }
-    default_options: ClassVar[dict[str, bool]] = {
+    default_options = {
         "shared": False,
         "fPIC": True,
         "simd": True,

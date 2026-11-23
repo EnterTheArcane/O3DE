@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP_PROFILES = ("windows-x64", "windows-a64", "linux-x64", "linux-a64", "macos-a64")
 ANDROID_PROFILES = ("android-a64", "android-x64")
@@ -90,6 +92,44 @@ def cache_folder(output, exclusions):
     return cache
 
 
+def export_cache(env, archive):
+    if not (Path(env["CONAN_HOME"]) / "p").is_dir():
+        return
+
+    excluded = set()
+    for conandata in (ROOT / "recipes").glob("*/*/conandata.yml"):
+        data = yaml.safe_load(conandata.read_text(encoding="utf-8"))
+        if data and data.get("ci_cache") is False:
+            excluded.add(conandata.parents[1].name)
+
+    packages = json.loads(
+        subprocess.check_output(["conan", "list", "*#*:*#*", "--format=json"], env=env)
+    )
+    for ref in tuple(packages["Local Cache"]):
+        if ref.split("/", 1)[0] in excluded:
+            del packages["Local Cache"][ref]
+
+    with TemporaryDirectory(dir=archive.parent) as directory:
+        package_list = Path(directory) / "packages.json"
+        package_list.write_text(json.dumps(packages), encoding="utf-8")
+        temporary_archive = Path(directory) / archive.name
+        subprocess.run(
+            [
+                "conan",
+                "cache",
+                "save",
+                "--no-source",
+                "--list",
+                package_list,
+                "--file",
+                temporary_archive,
+            ],
+            env=env,
+            check=True,
+        )
+        temporary_archive.replace(archive)
+
+
 def test_packages(conan, stage, deployed, *arguments, android=False, wasm=False):
     packages = json.loads((deployed / "packages.json").read_text(encoding="utf-8"))
     references = {name: package["identity"] for name, package in packages.items()}
@@ -115,7 +155,8 @@ def test_packages(conan, stage, deployed, *arguments, android=False, wasm=False)
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "command", choices=("lock", "build", "android-ndk", "build-profile")
+        "command",
+        choices=("lock", "build", "android-ndk", "build-profile", "export-cache"),
     )
     parser.add_argument("profile", choices=PROFILES, nargs="?")
     parser.add_argument("--build-profile", choices=DESKTOP_PROFILES)
@@ -135,7 +176,10 @@ def main():
     if args.command == "build-profile":
         print(native_profile)
         return
-    if not args.profile or args.output is None:
+    if args.command == "export-cache":
+        if args.output is None or args.cache_archive is None:
+            parser.error("export-cache requires --output and --cache-archive")
+    elif not args.profile or args.output is None:
         parser.error(f"{args.command} requires a target profile and --output")
 
     android = args.profile in ANDROID_PROFILES
@@ -150,13 +194,17 @@ def main():
 
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    profile = ROOT / "profiles" / args.profile
     local_packages = sorted(
         f"{recipe.parent.name}/*" for recipe in (ROOT / "recipes").glob("*/config.yml")
     )
     exclusions = [f"~{package}" for package in local_packages]
     env = dict(os.environ, CONAN_HOME=str(cache_folder(output, exclusions)))
     env.pop("CONAN_USER_HOME", None)
+    if args.command == "export-cache":
+        export_cache(env, args.cache_archive.resolve())
+        return
+
+    profile = ROOT / "profiles" / args.profile
     # Older caches may still contain the pruning hook.
     env.pop("O3DE_CONAN_PRUNE_BUILD", None)
     toolchain_settings = []
