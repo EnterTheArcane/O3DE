@@ -16,6 +16,8 @@ libtiff/*:jpeg=libjpeg-turbo
 minizip-ng/*:with_openssl=False
 
 [conf]
+# Boost.Container 1.84 passes int pointers to the Windows Interlocked APIs.
+boost/1.84.0:tools.build:cflags+=["-Wno-error=incompatible-pointer-types"]
 # Include the CRT header before NASM 2.15.05 defines its noreturn macro.
 nasm/*:tools.build:cflags+=["-FIsetjmp.h"]
 tools.cmake.cmaketoolchain:generator=Ninja
