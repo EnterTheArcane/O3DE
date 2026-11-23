@@ -18,6 +18,8 @@ boost/1.84.0:without_coroutine=True
 boost/1.84.0:without_fiber=True
 fmt/*:header_only=True
 giflib/*:utils=False
+# The Windows raw library is already thread-safe.
+libraw/0.22.3:build_thread_safe=False
 libtiff/*:jpeg=libjpeg-turbo
 # WebP 1.6.0 adds the 32-bit -mfpu=neon option to ARM64 clang-cl builds.
 libwebp/1.6.0:with_simd=False

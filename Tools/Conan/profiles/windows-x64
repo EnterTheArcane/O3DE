@@ -14,6 +14,8 @@ compiler.runtime_version=v145
 boost/1.84.0:without_cobalt=True
 fmt/*:header_only=True
 giflib/*:utils=False
+# The Windows raw library is already thread-safe.
+libraw/0.22.3:build_thread_safe=False
 libtiff/*:jpeg=libjpeg-turbo
 minizip-ng/*:with_openssl=False
 
