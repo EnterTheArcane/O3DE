@@ -22,6 +22,8 @@ tools.cmake.cmaketoolchain:generator=Ninja
 tools.cmake.cmaketoolchain:system_processor=aarch64
 # Keep pkg-config pointed at the target when PySide invokes CMake.
 tools.cmake.cmaketoolchain:extra_variables={"ENV{PKG_CONFIG_LIBDIR}":"/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"}
+# glibc iconv accepts an empty encoding name, even when DCMTK cannot run its probe.
+dcmtk/*:tools.cmake.cmaketoolchain:extra_variables*={"DCMTK_STDLIBC_ICONV_HAS_DEFAULT_ENCODING":1}
 tools.graph:skip_binaries=False
 
 [buildenv]
