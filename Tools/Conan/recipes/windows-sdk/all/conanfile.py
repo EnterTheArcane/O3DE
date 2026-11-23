@@ -117,12 +117,13 @@ class Recipe(ConanFile):
         env.define("UCRTVersion", version)
         env.define("WindowsTargetPlatformVersion", version)
         env.define_path("RC", str(root / bin_dir / "rc.exe"))
-        # VCVars supplies the MSVC runtime and may also expose an installed SDK.
+        # Native tools expect semicolon-separated paths even when launched from MSYS2.
         for directory in reversed(INCLUDE_DIRS):
-            env.prepend_path("INCLUDE", str(root / "Include" / version / directory))
+            include_path = root / "Include" / version / directory
+            env.prepend("INCLUDE", include_path.as_posix(), separator=";")
         for directory in reversed(LIB_DIRS):
-            env.prepend_path(
-                "LIB", str(root / "Lib" / version / directory / target_arch)
-            )
+            library_path = root / "Lib" / version / directory / target_arch
+            env.prepend("LIB", library_path.as_posix(), separator=";")
         for directory in ("References", "UnionMetadata"):
-            env.prepend_path("LIBPATH", str(root / directory / version))
+            metadata_path = root / directory / version
+            env.prepend("LIBPATH", metadata_path.as_posix(), separator=";")
