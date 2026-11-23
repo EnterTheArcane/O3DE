@@ -12,6 +12,10 @@ compiler.runtime_version=v145
 [options]
 # OpenVDB uses Boost.Iostreams and Boost.System and has no Cobalt dependency.
 boost/1.84.0:without_cobalt=True
+# Boost.Context 1.84 has no assembly matching clang-cl's Windows ARM64 target.
+boost/1.84.0:without_context=True
+boost/1.84.0:without_coroutine=True
+boost/1.84.0:without_fiber=True
 fmt/*:header_only=True
 giflib/*:utils=False
 libtiff/*:jpeg=libjpeg-turbo
