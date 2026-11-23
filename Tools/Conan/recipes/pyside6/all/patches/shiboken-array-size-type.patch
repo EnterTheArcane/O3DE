@@ -1,0 +1,19 @@
+--- a/sources/shiboken6_generator/ApiExtractor/typesystemparser.cpp
++++ b/sources/shiboken6_generator/ApiExtractor/typesystemparser.cpp
+@@ -44,6 +44,7 @@
+ #include <algorithm>
+ #include <array>
++#include <cstddef>
+ #include <optional>
+ #include <memory>
+ 
+ using namespace Qt::StringLiterals;
+@@ -198,7 +199,7 @@
+ };
+ 
+-template <Qt::CaseSensitivity cs, class EnumType, long unsigned N>
++template <Qt::CaseSensitivity cs, class EnumType, std::size_t N>
+ static std::optional<EnumType>
+     lookupEnum(const std::array<EnumLookup<EnumType>, N> &haystack, QStringView needle)
+ {
+     auto pred = [needle](const EnumLookup<EnumType> &candidate) {

@@ -26,6 +26,9 @@ libclang:
 patches:
   "6.12.0":
     - patch_file: "patches/pyside6.patch"
+    - patch_file: "patches/shiboken-array-size-type.patch"
+      patch_description: Match the std::array size parameter type on Windows
+      patch_type: portability
     - patch_file: "patches/windows-honor-compiler.patch"
       patch_description: Honor the compiler selected by the build environment on Windows
       patch_type: portability
