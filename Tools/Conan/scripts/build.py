@@ -49,7 +49,8 @@ def symbol_arguments(profile):
         "tools.info.package_id:confs+": [SYMBOLS_CONF],
     }
     if profile.startswith("windows-"):
-        flags = ["/Zi", "/FS"]
+        # MSYS2 treats slash-prefixed arguments as paths.
+        flags = ["-Zi", "-FS"]
         linker = "/DEBUG:FULL /OPT:REF /OPT:ICF"
         variables = {
             "CMAKE_POLICY_DEFAULT_CMP0141": "NEW",
