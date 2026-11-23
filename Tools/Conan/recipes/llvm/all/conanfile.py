@@ -116,6 +116,16 @@ class Recipe(ConanFile):
             prefix = f"{arch}-pc-windows-msvc-" if cross else ""
             clang_cl = (tools / f"{prefix}clang-cl.exe").as_posix()
             compilers = {"c": clang_cl, "cpp": clang_cl}
+            if cross:
+                # Meson detects clang-cl by its executable name.
+                command = [
+                    (tools / "clang-cl.exe").as_posix(),
+                    f"--target={arch}-pc-windows-msvc",
+                ]
+                self.conf_info.define(
+                    "tools.meson.mesontoolchain:extra_variables",
+                    {"binaries": {"c": command, "cpp": command}},
+                )
         else:
             linux = self.settings.os == "Linux"
             prefix = f"{arch}-linux-gnu-" if linux and cross else ""
