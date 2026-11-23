@@ -1,0 +1,56 @@
+--- a/src/cmake/compiler.cmake
++++ b/src/cmake/compiler.cmake
+@@ -393,6 +393,11 @@
+     endif ()
+ endif ()
+ 
++# clang-cl needs feature flags, even though CMake sets MSVC for its driver.
++set (_simd_use_msvc_arch OFF)
++if ((MSVC OR CMAKE_COMPILER_IS_INTEL) AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
++    set (_simd_use_msvc_arch ON)
++endif ()
+ set (SIMD_COMPILE_FLAGS "")
+ message (STATUS "Compiling with SIMD level ${USE_SIMD}")
+ if (NOT USE_SIMD STREQUAL "")
+@@ -411,7 +416,7 @@
+                 if (_simd_skip_x86)
+                     continue ()
+                 endif ()
+-                if (MSVC OR CMAKE_COMPILER_IS_INTEL)
++                if (_simd_use_msvc_arch)
+                     # The SSE levels are handled unconditionally below. Here we
+                     # only need to track the highest /arch: level requested.
+                     if (feature STREQUAL "avx" AND _highest_msvc_arch LESS 1)
+@@ -451,13 +456,13 @@
+                 endif ()
+             else ()
+                 # Unrecognized token: pass it through the way we always have.
+-                if (NOT (MSVC OR CMAKE_COMPILER_IS_INTEL))
++                if (NOT _simd_use_msvc_arch)
+                     list (APPEND SIMD_COMPILE_FLAGS "-m${feature}")
+                 endif ()
+             endif ()
+         endforeach()
+ 
+-        if ((MSVC OR CMAKE_COMPILER_IS_INTEL) AND SIMD_TARGET_X86_64)
++        if (_simd_use_msvc_arch AND SIMD_TARGET_X86_64)
+             # MSVC makes every intrinsic through AVX2 available regardless of
+             # the /arch: setting, and it never predefines the __SSE*__ macros
+             # that simd.h keys off. Since all x86-64 hardware is SSE4.2 or
+@@ -466,7 +471,7 @@
+         endif ()
+ 
+         # Only add a single /arch flag representing the highest level of support.
+-        if (MSVC OR CMAKE_COMPILER_IS_INTEL)
++        if (_simd_use_msvc_arch)
+             if (_highest_msvc_arch EQUAL 1)
+                 list (APPEND SIMD_COMPILE_FLAGS "/arch:AVX")
+             endif ()
+@@ -482,6 +487,7 @@
+     message (VERBOSE "SIMD compile flags: ${SIMD_COMPILE_FLAGS}")
+     add_compile_options (${SIMD_COMPILE_FLAGS})
+ endif ()
++unset (_simd_use_msvc_arch)
+ unset (_simd_target_archs)
+ unset (_simd_x86_features)
+ unset (_simd_x86_xarch)

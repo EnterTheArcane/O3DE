@@ -8,3 +8,6 @@ patches:
     - patch_file: "patches/jpegxl-android-log.patch"
     - patch_file: "patches/raw-portable-error.patch"
     - patch_file: "patches/wasm64-integer-types.patch"
+    - patch_file: "patches/clang-cl-simd-flags.patch"
+      patch_description: Request SIMD target features instead of defining feature macros under clang-cl
+      patch_type: portability
