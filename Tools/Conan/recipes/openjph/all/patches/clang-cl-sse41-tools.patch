@@ -1,0 +1,24 @@
+--- a/src/apps/ojph_expand/CMakeLists.txt
++++ b/src/apps/ojph_expand/CMakeLists.txt
+@@ -36,6 +36,9 @@
+ 
+       # Set compilation flags
+       if (MSVC)
++        if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
++          set_source_files_properties(${OJPH_IMG_IO_SSE4} PROPERTIES COMPILE_FLAGS -msse4.1)
++        endif()
+         set_source_files_properties(${OJPH_IMG_IO_AVX2} PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+       else()
+         set_source_files_properties(${OJPH_IMG_IO_SSE4} PROPERTIES COMPILE_FLAGS -msse4.1)
+--- a/src/apps/ojph_compress/CMakeLists.txt
++++ b/src/apps/ojph_compress/CMakeLists.txt
+@@ -36,6 +36,9 @@
+ 
+       # Set compilation flags
+       if (MSVC)
++        if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
++          set_source_files_properties(${OJPH_IMG_IO_SSE4} PROPERTIES COMPILE_FLAGS -msse4.1)
++        endif()
+         set_source_files_properties(${OJPH_IMG_IO_AVX2} PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+       else()
+         set_source_files_properties(${OJPH_IMG_IO_SSE4} PROPERTIES COMPILE_FLAGS -msse4.1)

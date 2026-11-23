@@ -1,0 +1,12 @@
+sources:
+  "0.33.0":
+    url: https://github.com/aous72/OpenJPH/archive/refs/tags/0.33.0.tar.gz
+    sha256: 3437f296ff8531b35558650b0ed7fde45cad39394329eef4064a3d4900cf101f
+patches:
+  "0.33.0":
+    - patch_file: patches/cmake-cxx-standard-pic.patch
+      patch_description: Use the configured C++ standard and position-independent code settings
+      patch_type: conan
+    - patch_file: patches/clang-cl-sse41-tools.patch
+      patch_description: Enable SSE4.1 for the dispatched CLI translation units under clang-cl
+      patch_type: portability
