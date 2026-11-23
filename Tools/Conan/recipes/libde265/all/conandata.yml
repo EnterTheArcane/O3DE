@@ -1,0 +1,12 @@
+sources:
+  "1.1.3":
+    url: "https://github.com/strukturag/libde265/releases/download/v1.1.3/libde265-1.1.3.tar.gz"
+    sha256: "554228bd17788c99a7e63b37ab5634722190e6e2bf60c1dcb01cef328e133905"
+patches:
+  "1.1.3":
+    - patch_file: patches/getopt-long-const-optstring.patch
+      patch_description: Accept a constant option string in getopt_long
+      patch_type: portability
+    - patch_file: patches/clang-cl-sse.patch
+      patch_description: Enable SSE4.1 in the dispatched x86 objects under clang-cl
+      patch_type: portability

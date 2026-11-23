@@ -1,0 +1,13 @@
+--- a/libde265/x86/CMakeLists.txt
++++ b/libde265/x86/CMakeLists.txt
+@@ -21,7 +21,9 @@
+ 
+ set(sse_flags "")
+ 
+-if(NOT MSVC)
++if(MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
++  set(sse_flags "/clang:-msse4.1")
++elseif(NOT MSVC)
+   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+     set(sse_flags "${sse_flags} -msse4.1")
+   else(CMAKE_SIZEOF_VOID_P EQUAL 8)
