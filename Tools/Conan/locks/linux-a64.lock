@@ -92,7 +92,7 @@
         "autoconf/2.71#51077f068e61700d65bb05541ea1e4b0%1731054366.86"
     ],
     "python_requires": [
-        "apple-signing/1.0#74ee0082be059ab3e81a4c2ff4c3296d"
+        "apple-signing/1.0#87ff59f047d7c512c47714ab0ca4655f"
     ],
     "config_requires": []
 }

@@ -62,7 +62,7 @@
         "bzip2/1.0.8#c470882369c2d95c5c77e970c0c7e321%1762886692.465"
     ],
     "python_requires": [
-        "apple-signing/1.0#74ee0082be059ab3e81a4c2ff4c3296d"
+        "apple-signing/1.0#87ff59f047d7c512c47714ab0ca4655f"
     ],
     "config_requires": []
 }

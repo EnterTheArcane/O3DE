@@ -16,11 +16,11 @@ Set APPLE_CODE_SIGN_IDENTITY to use a signing identity from the keychain.
 from __future__ import annotations
 
 import os
-from io import StringIO
 import pathlib
 import re
 import shlex
 import sys
+from io import StringIO
 
 from conan import ConanFile
 
@@ -65,10 +65,13 @@ def is_executable_macho(conanfile: ConanFile, path: pathlib.Path) -> bool:
 
 
 def code_paths(root: pathlib.Path) -> tuple[list[pathlib.Path], list[pathlib.Path]]:
+    # Debug symbols mirror the package layout, including framework directory names.
+    symbols = root / "symbols"
     paths = [
         path
         for path in root.rglob("*")
-        if all(not part.endswith(".dSYM") for part in path.relative_to(root).parts)
+        if not path.is_relative_to(symbols)
+        and all(not part.endswith(".dSYM") for part in path.relative_to(root).parts)
         and not path.is_symlink()
     ]
     macho_files = sorted(
