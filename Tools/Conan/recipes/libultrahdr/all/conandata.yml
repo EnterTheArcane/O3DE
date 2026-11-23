@@ -1,0 +1,9 @@
+sources:
+  "2.0.2":
+    url: https://github.com/google/libultrahdr/archive/refs/tags/v2.0.2.tar.gz
+    sha256: aa8d193bb887c348c419780511dd03b374f4e07af8812b6d3f80c8537cf1ef2c
+patches:
+  "2.0.2":
+    - patch_file: patches/cmake-portability.patch
+      patch_description: Reuse the configured compiler settings and JPEG dependency
+      patch_type: conan
