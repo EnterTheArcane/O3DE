@@ -44,6 +44,12 @@ class Recipe(ConanFile):
         if self.settings.os in ("iOS", "Emscripten"):
             self.package_type = "static-library"
 
+    def package_id(self):
+        # The Windows SDK contains both Release and Debug builds.
+        if self.info.settings.os == "Windows":
+            self.info.settings.rm_safe("build_type")
+            self.info.settings.rm_safe("compiler.runtime_type")
+
     def requirements(self):
         if self.settings.os == "Linux":
             self.requires("openssl/4.1.0")
@@ -153,21 +159,27 @@ class Recipe(ConanFile):
     def build(self):
         cmake = CMake(self)
         cmake.configure()
-        cmake.build()
-        if self.settings.os == "Windows":
-            # Debug host tools run from bin/Debug and load Qt DLLs from bin.
-            env = Environment()
-            env.prepend_path("PATH", str(Path(self.build_folder) / "qtbase/bin"))
-            with env.vars(self).apply():
-                cmake.build(build_type="Debug")
+        if self.settings.os != "Windows":
+            cmake.build()
+            return
+
+        cmake.build(build_type="Release")
+        # Debug host tools run from bin/Debug and load Qt DLLs from bin.
+        env = Environment()
+        env.prepend_path("PATH", str(Path(self.build_folder) / "qtbase/bin"))
+        with env.vars(self).apply():
+            cmake.build(build_type="Debug")
 
     def package(self):
         package = Path(self.package_folder)
         sdk = package / "qt"
         cmake = CMake(self)
-        cmake.install(cli_args=["--prefix", sdk.as_posix()])
+        install_args = ["--prefix", sdk.as_posix()]
         if self.settings.os == "Windows":
-            cmake.install(build_type="Debug", cli_args=["--prefix", sdk.as_posix()])
+            cmake.install(build_type="Release", cli_args=install_args)
+            cmake.install(build_type="Debug", cli_args=install_args)
+        else:
+            cmake.install(cli_args=install_args)
         assets = Path(self.source_folder).parent
         if not copy(self, "LICENSE", assets, sdk):
             raise ConanException("Missing the Qt license")
