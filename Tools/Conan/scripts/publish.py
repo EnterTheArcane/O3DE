@@ -136,6 +136,17 @@ def authenticate_push(client, repo, username, password):
     client.auth.set_basic_auth(username, password)
 
 
+def log_registry_errors(response, *args, **kwargs):
+    if response.status_code in (401, 403, 429) or response.status_code >= 500:
+        url = urlsplit(response.url)
+        print(
+            f"{response.request.method} {url.netloc}{url.path} returned "
+            f"{response.status_code}, auth challenge: "
+            f"{bool(response.headers.get('WWW-Authenticate'))}, "
+            f"request ID: {response.headers.get('X-GitHub-Request-Id', 'unavailable')}",
+            flush=True,
+        )
+
 def publish_catalog(profile, output, registry, push):
     from oras.client import OrasClient
 
@@ -149,11 +160,13 @@ def publish_catalog(profile, output, registry, push):
     for repo, digest in catalog_references(profile, output, registry):
         # Registry authorization tokens are scoped to a repository.
         client = OrasClient()
+        client.session.hooks['response'].append(log_registry_errors)
         # Keep Requests from taking registry credentials from .netrc.
         client.session.auth = lambda request: request
         client.session.request = partial(client.session.request, timeout=(10, 120))
         with client.session:
             if push:
+                print(f'Publishing {repo}@{digest}', flush=True)
                 if username:
                     authenticate_push(client, repo, username, password)
                 push_manifest(client, output / "oci", repo, digest)

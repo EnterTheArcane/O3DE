@@ -80,6 +80,7 @@ jobs:
           echo "profiles=$profiles" >> "$GITHUB_OUTPUT"
 
   build:
+    if: false
     name: Build (${{ matrix.profile }})
     needs: select-profiles
     strategy:
@@ -206,12 +207,13 @@ jobs:
   publish:
     name: Publish
     if: github.event_name == 'workflow_dispatch' && inputs.publish
-    needs: build
+    needs: select-profiles
     runs-on: ubuntu-26.04
     timeout-minutes: 300
     permissions:
       contents: read
       packages: write
+      actions: read
     env:
       REGISTRY: ghcr.io/${{ github.repository_owner }}/3rdparty
     steps:
@@ -220,6 +222,8 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
+          github-token: ${{ github.token }}
+          run-id: 45244541448
           pattern: oci-*
           path: build/candidates
       - name: Install Python publisher
