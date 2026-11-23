@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       build-android-a64:
-        description: Android (ARM)
+        description: Android (A64)
         type: boolean
         default: false
       build-android-x64:
@@ -12,23 +12,23 @@ on:
         type: boolean
         default: false
       build-emscripten-w32:
-        description: Emscripten (WASM32)
+        description: Emscripten (W32)
         type: boolean
         default: false
       build-emscripten-w64:
-        description: Emscripten (WASM64)
+        description: Emscripten (W64)
         type: boolean
         default: false
       build-ios-a64:
-        description: iOS (ARM)
+        description: iOS (A64)
         type: boolean
         default: false
       build-ios-simulator-a64:
-        description: iOS-Simulator (ARM)
+        description: iOS-Simulator (A64)
         type: boolean
         default: false
       build-linux-a64:
-        description: Linux (ARM)
+        description: Linux (A64)
         type: boolean
         default: false
       build-linux-x64:
@@ -36,11 +36,11 @@ on:
         type: boolean
         default: false
       build-macos-a64:
-        description: macOS (ARM)
+        description: macOS (A64)
         type: boolean
         default: false
       build-windows-a64:
-        description: Windows (ARM)
+        description: Windows (A64)
         type: boolean
         default: false
       build-windows-x64:
