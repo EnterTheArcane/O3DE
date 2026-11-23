@@ -3,17 +3,51 @@ name: Conan Packages
 on:
   workflow_dispatch:
     inputs:
-      profiles:
-        description: JSON array of target profiles to build
-        type: string
-        default: >-
-          ["android-a64", "android-x64", "emscripten-w32", "ios-a64", "ios-simulator-a64",
-          "linux-a64", "linux-x64", "macos-a64", "windows-a64", "windows-x64"]
+      build-android-a64:
+        description: Android (ARM)
+        type: boolean
+        default: false
+      build-android-x64:
+        description: Android (X64)
+        type: boolean
+        default: false
+      build-emscripten-w32:
+        description: WebAssembly
+        type: boolean
+        default: false
+      build-ios-a64:
+        description: iOS (ARM)
+        type: boolean
+        default: false
+      build-ios-simulator-a64:
+        description: iOS-Simulator (ARM)
+        type: boolean
+        default: false
+      build-linux-a64:
+        description: Linux (ARM)
+        type: boolean
+        default: false
+      build-linux-x64:
+        description: Linux (X64)
+        type: boolean
+        default: false
+      build-macos-a64:
+        description: macOS (ARM)
+        type: boolean
+        default: false
+      build-windows-a64:
+        description: Windows (ARM)
+        type: boolean
+        default: false
+      build-windows-x64:
+        description: Windows (X64)
+        type: boolean
+        default: false
       cache_run_id:
-        description: Earlier run ID with compilation artifacts to restore
+        description: Previous Cache Run Id
         type: string
       publish:
-        description: Publish and verify public GHCR candidates
+        description: Publish
         type: boolean
         default: false
 
@@ -21,12 +55,37 @@ permissions:
   contents: read
 
 jobs:
+  select-profiles:
+    name: Select profiles
+    runs-on: ubuntu-slim
+    permissions: {}
+    outputs:
+      profiles: ${{ steps.profiles.outputs.profiles }}
+    steps:
+      - name: Collect profiles
+        id: profiles
+        shell: bash
+        env:
+          DISPATCH_INPUTS: ${{ toJSON(inputs) }}
+        run: |
+          profiles=$(jq -c '[
+            to_entries[]
+            | select((.key | startswith("build-")) and .value == true)
+            | .key | ltrimstr("build-")
+          ]' <<< "$DISPATCH_INPUTS")
+          if [[ "$profiles" == '[]' ]]; then
+            echo '::error::Select at least one target profile.'
+            exit 1
+          fi
+          echo "profiles=$profiles" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build (${{ matrix.profile }})
+    needs: select-profiles
     strategy:
       fail-fast: false
       matrix: &package_matrix
-        profile: ${{ fromJSON(inputs.profiles) }}
+        profile: ${{ fromJSON(needs.select-profiles.outputs.profiles) }}
     runs-on: &package_runner >-
       ${{ startsWith(matrix.profile, 'windows-') && 'windows-2025-vs2026' ||
           (startsWith(matrix.profile, 'ios-') || startsWith(matrix.profile, 'macos-')) && 'macos-26' ||
@@ -190,7 +249,7 @@ jobs:
 
   consume:
     name: Consume
-    needs: publish
+    needs: [select-profiles, publish]
     strategy:
       fail-fast: false
       matrix: *package_matrix
