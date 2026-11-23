@@ -26,6 +26,9 @@ libclang:
 patches:
   "6.12.0":
     - patch_file: "patches/pyside6.patch"
+    - patch_file: "patches/windows-honor-compiler.patch"
+      patch_description: Honor the compiler selected by the build environment on Windows
+      patch_type: portability
     - patch_file: "patches/windows-cross-python.patch"
       patch_description: Link the target Python import library for the selected Windows configuration
       patch_type: portability

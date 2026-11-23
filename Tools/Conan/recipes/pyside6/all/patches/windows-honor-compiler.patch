@@ -1,0 +1,24 @@
+--- a/build_scripts/utils.py
++++ b/build_scripts/utils.py
+@@ -95,14 +95,14 @@
+ def platform_cmake_options(as_tuple_list=False):
+     result = []
+     if sys.platform == 'win32':
+-        # Prevent cmake from auto-detecting clang if it is in path.
+-        if as_tuple_list:
+-            result.append(("CMAKE_C_COMPILER", "cl.exe"))
+-            result.append(("CMAKE_CXX_COMPILER", "cl.exe"))
+-        else:
+-            result.append("-DCMAKE_C_COMPILER=cl.exe")
+-            result.append("-DCMAKE_CXX_COMPILER=cl.exe")
++        for language, variable in (("C", "CC"), ("CXX", "CXX")):
++            option = f"CMAKE_{language}_COMPILER"
++            compiler = os.environ.get(variable) or "cl.exe"
++            if as_tuple_list:
++                result.append((option, compiler))
++            else:
++                result.append(f"-D{option}={compiler}")
+     return result
+ 
+ 
+ def copyfile(src, dst, force=True, _vars=None, force_copy_symlink=False,

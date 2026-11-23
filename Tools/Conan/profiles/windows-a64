@@ -19,6 +19,8 @@ boost/1.84.0:without_fiber=True
 fmt/*:header_only=True
 giflib/*:utils=False
 libtiff/*:jpeg=libjpeg-turbo
+# WebP 1.6.0 adds the 32-bit -mfpu=neon option to ARM64 clang-cl builds.
+libwebp/1.6.0:with_simd=False
 minizip-ng/*:with_openssl=False
 
 [conf]
