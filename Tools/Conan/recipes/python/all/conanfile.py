@@ -326,9 +326,7 @@ class Recipe(ConanFile):
         env = Environment()
         if self.conf.get("user.package:debug_symbols"):
             env.append("CFLAGS_NODIST", "-g")
-        env.define_path(
-            "PYTHON_OPENSSL_ROOT", self.dependencies["openssl"].package_folder
-        )
+        env.define_path("OPENSSL_ROOT_DIR", self.dependencies["openssl"].package_folder)
         env.define_path("SDK_TOOLS_BIN", str(python.parent))
         env.define("ac_cv_header_libintl_h", "no")
         env.define("ac_cv_lib_intl_textdomain", "no")

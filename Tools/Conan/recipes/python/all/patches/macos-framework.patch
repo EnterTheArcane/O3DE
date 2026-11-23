@@ -131,9 +131,9 @@ diff --git a/Mac/BuildScript/build-installer.py b/Mac/BuildScript/build-installe
      os.makedirs(os.path.join(universal, 'usr', 'local', 'lib'))
      os.makedirs(os.path.join(universal, 'usr', 'local', 'include'))
 +
-+    openssl_root = os.environ.get("PYTHON_OPENSSL_ROOT")
++    openssl_root = os.environ.get("OPENSSL_ROOT_DIR")
 +    if not openssl_root:
-+        fatal("PYTHON_OPENSSL_ROOT must identify the OpenSSL package")
++        fatal("OPENSSL_ROOT_DIR must identify the OpenSSL package")
 +
 +    openssl_include = os.path.join(openssl_root, "include", "openssl")
 +    shutil.copytree(
