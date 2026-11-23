@@ -19,3 +19,6 @@ patches:
       base_path: "external/SPIRV-Tools"
       patch_description: Respect SPIRV_WERROR when using the MSVC driver
       patch_type: portability
+    - patch_file: "patches/clang-cl-debug-warnings.patch"
+      patch_description: Keep DXC Debug warnings nonfatal under clang-cl
+      patch_type: portability
