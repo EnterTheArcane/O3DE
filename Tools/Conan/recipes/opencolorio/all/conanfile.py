@@ -76,6 +76,11 @@ class Recipe(ConanFile):
         tc = CMakeToolchain(self)
         # OCIO sets CACHE properties on this entry even when the toolchain set a normal variable.
         tc.cache_variables["CMAKE_CXX_STANDARD"] = 20
+        if self.settings.os in ("Macos", "iOS"):
+            # OCIO sets a macOS default before project() loads Conan's toolchain.
+            tc.cache_variables["CMAKE_OSX_DEPLOYMENT_TARGET"] = str(
+                self.settings.os.version
+            )
         tc.variables["BUILD_SHARED_LIBS"] = self.package_type == "shared-library"
         tc.variables["CMAKE_DEBUG_POSTFIX"] = "_d"
         tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = True
