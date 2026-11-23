@@ -173,24 +173,7 @@ jobs:
         run: |
           if ((Get-Command conan -ErrorAction SilentlyContinue) -and (Test-Path build/imaging/cache/p)) {
             $env:CONAN_HOME = (Resolve-Path build/imaging/cache).Path
-            $excluded = @'
-          from pathlib import Path
-          import yaml
-
-          for path in Path("Tools/Conan/recipes").glob("*/*/conandata.yml"):
-              data = yaml.safe_load(path.read_text(encoding="utf-8"))
-              if data and data.get("publish") is False:
-                  print(path.parents[1].name)
-          '@ | python -
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            $packages = conan list '*#*:*#*' --format=json | ConvertFrom-Json -AsHashtable
-            foreach ($reference in @($packages['Local Cache'].Keys)) {
-              if ($reference.Split('/')[0] -in $excluded) {
-                [void]$packages['Local Cache'].Remove($reference)
-              }
-            }
-            $packages | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath build/imaging/conan-cache-packages.json
-            conan cache save --list build/imaging/conan-cache-packages.json --no-source --file build/imaging/conan-cache-next.tgz
+            conan cache save '*#*:*#*' --no-source --file build/imaging/conan-cache-next.tgz
             if ($LASTEXITCODE -eq 0) {
               Move-Item -Force -LiteralPath build/imaging/conan-cache-next.tgz -Destination build/imaging/conan-cache.tgz
             }
