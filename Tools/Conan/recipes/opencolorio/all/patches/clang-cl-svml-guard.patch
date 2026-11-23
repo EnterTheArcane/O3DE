@@ -1,0 +1,49 @@
+--- a/src/OpenColorIO/ops/fixedfunction/FixedFunctionOpCPU.cpp
++++ b/src/OpenColorIO/ops/fixedfunction/FixedFunctionOpCPU.cpp
+@@ -2223,7 +2223,7 @@
+     return ssePower(x, exp);
+ }
+ 
+-#if (_MSC_VER >= 1920) && (OCIO_USE_AVX)
++#if !defined(__clang__) && (_MSC_VER >= 1920) && (OCIO_USE_AVX)
+ // MSVC 2019+ has built-in _mm_pow_ps() SVML intrinsic implementation
+ // accessible through immintrin.h. Therefore precise SIMD version is available
+ // only when compiled with MSVC and AVX support.
+@@ -2278,16 +2278,14 @@
+     return ssePower(x, exp);
+ }
+ 
+-#if (_MSC_VER >= 1920) && (OCIO_USE_AVX)
+-// Only Windows compilers have built-in _mm_pow_ps() SVML intrinsic
+-// implementation, so non-fast SIMD version is available only on Windows for
+-// now.
++#if !defined(__clang__) && (_MSC_VER >= 1920) && (OCIO_USE_AVX)
++// MSVC provides the _mm_pow_ps() SVML intrinsic for the precise SIMD path.
+ template<>
+ __m128 Renderer_LIN_TO_PQ_SSE<false>::myPower(__m128 x, __m128 exp)
+ {
+     return _mm_pow_ps(x, exp);
+ }
+-#endif // (_MSC_VER >= 1920) && (OCIO_USE_AVX)
++#endif
+ 
+ template<bool FAST_POWER>
+ void Renderer_LIN_TO_PQ_SSE<FAST_POWER>::apply(const void* inImg, void* outImg, long numPixels) const
+@@ -2662,7 +2660,7 @@
+             {
+                 return std::make_shared<Renderer_LIN_TO_PQ_SSE<true>>(func);
+             }
+-#if (_MSC_VER >= 1920) && (OCIO_USE_AVX)
++#if !defined(__clang__) && (_MSC_VER >= 1920) && (OCIO_USE_AVX)
+             // MSVC 2019+ has built-in _mm_pow_ps() SVML intrinsic
+             // implementation accessible through immintrin.h. Therefore precise
+             // SIMD version is available only when compiled with MSVC and AVX
+@@ -2679,7 +2677,7 @@
+             {
+                 return std::make_shared<Renderer_PQ_TO_LIN_SSE<true>>(func);
+             }
+-#if (_MSC_VER >= 1920) && (OCIO_USE_AVX)
++#if !defined(__clang__) && (_MSC_VER >= 1920) && (OCIO_USE_AVX)
+             // MSVC 2019+ has built-in _mm_pow_ps() SVML intrinsic
+             // implementation accessible through immintrin.h. Therefore precise
+             // SIMD version is available only when compiled with MSVC and AVX

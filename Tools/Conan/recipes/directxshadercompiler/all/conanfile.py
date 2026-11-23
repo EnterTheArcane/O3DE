@@ -78,6 +78,7 @@ class Recipe(ConanFile):
             if self.settings.compiler == "clang":
                 # DXC's legacy -Wall enables all diagnostics with clang-cl.
                 tc.variables["LLVM_ENABLE_WARNINGS"] = False
+                tc.variables["LLVM_ENABLE_WERROR"] = False
         if cross_building(self):
             tools = Path(self.dependencies.build[self.name].package_folder) / "bin"
             suffix = ".exe" if self.settings_build.os == "Windows" else ""
