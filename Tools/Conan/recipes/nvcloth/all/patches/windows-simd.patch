@@ -1,0 +1,96 @@
+--- a/NvCloth/src/NvSimd/sse2/NvSse2SimdTypes.h
++++ b/NvCloth/src/NvSimd/sse2/NvSse2SimdTypes.h
+@@ -32,7 +32,7 @@
+ // SSE + SSE2 (don't include intrin.h!)
+ #include <emmintrin.h>
+ 
+-#if defined _MSC_VER && !(defined NV_SIMD_USE_NAMESPACE && NV_SIMD_USE_NAMESPACE)
++#if defined _MSC_VER && !defined(__clang__) && !(defined NV_SIMD_USE_NAMESPACE && NV_SIMD_USE_NAMESPACE)
+ 
+ // SIMD libarary lives in global namespace and Simd4f is
+ // typedef'd  to __m128 so it can be passed by value on MSVC.
+--- a/NvCloth/src/SwSolverKernel.cpp
++++ b/NvCloth/src/SwSolverKernel.cpp
+@@ -38,7 +38,7 @@
+ 
+ using namespace physx;
+ 
+-#define NV_AVX (NV_SIMD_SIMD&&(PX_WIN32 || PX_WIN64) && PX_VC >= 10)
++#define NV_AVX (NV_SIMD_SSE2 && (PX_WIN32 || PX_WIN64) && PX_VC >= 10)
+ #ifdef _MSC_VER 
+ #pragma warning(disable : 4127) // conditional expression is constant
+ #endif
+--- a/NvCloth/src/sse2/SwCollisionHelpers.h
++++ b/NvCloth/src/sse2/SwCollisionHelpers.h
+@@ -52,7 +52,7 @@
+ {
+ #if defined(_MSC_VER)
+ 	unsigned long result;
+-	_BitScanForward(&result, unsigned long(mask));
++	_BitScanForward(&result, static_cast<unsigned long>(mask));
+ 	return result;
+ #else
+ 	return __builtin_ffs(mask) - 1;
+--- a/NvCloth/src/sse2/SwSolveConstraints.h
++++ b/NvCloth/src/sse2/SwSolveConstraints.h
+@@ -40,6 +40,9 @@
+ 	PX_UNUSED(stiffnessEtc);
+ 	PX_UNUSED(stiffnessExponent);
+ 	__m128 sOne = _mm_set1_ps(1.0f);
++	const __m128 minusOneXYZOneW = static_cast<Simd4f>(sMinusOneXYZOneW);
++	const __m128 epsilon = static_cast<Simd4f>(gSimd4fEpsilon);
++	const __m128 maskXY = static_cast<Simd4f>(sMaskXY);
+ 
+ 	__m128 stretchLimit, compressionLimit, multiplier;
+ 	if (useMultiplier)
+@@ -71,10 +74,10 @@
+ 		__m128 v3i = _mm_load_ps(p3i);
+ 		__m128 v3j = _mm_load_ps(p3j);
+ 
+-		__m128 h0ij = _mm_add_ps(v0j, _mm_mul_ps(v0i, sMinusOneXYZOneW));
+-		__m128 h1ij = _mm_add_ps(v1j, _mm_mul_ps(v1i, sMinusOneXYZOneW));
+-		__m128 h2ij = _mm_add_ps(v2j, _mm_mul_ps(v2i, sMinusOneXYZOneW));
+-		__m128 h3ij = _mm_add_ps(v3j, _mm_mul_ps(v3i, sMinusOneXYZOneW));
++		__m128 h0ij = _mm_add_ps(v0j, _mm_mul_ps(v0i, minusOneXYZOneW));
++		__m128 h1ij = _mm_add_ps(v1j, _mm_mul_ps(v1i, minusOneXYZOneW));
++		__m128 h2ij = _mm_add_ps(v2j, _mm_mul_ps(v2i, minusOneXYZOneW));
++		__m128 h3ij = _mm_add_ps(v3j, _mm_mul_ps(v3i, minusOneXYZOneW));
+ 
+ 		__m128 a = _mm_unpacklo_ps(h0ij, h2ij);
+ 		__m128 b = _mm_unpackhi_ps(h0ij, h2ij);
+@@ -87,24 +90,29 @@
+ 		__m128 vwij = _mm_unpackhi_ps(b, d);
+ 
+ 		__m128 rij = _mm_load_ps(rIt);
+-		__m128 e2ij = _mm_add_ps(gSimd4fEpsilon, _mm_add_ps(_mm_mul_ps(hxij, hxij),
++		__m128 e2ij = _mm_add_ps(epsilon, _mm_add_ps(_mm_mul_ps(hxij, hxij),
+ 		                                                    _mm_add_ps(_mm_mul_ps(hyij, hyij), _mm_mul_ps(hzij, hzij))));
+ 
+ 		//Load/calculate the constraint stiffness
+-		__m128 stij = useStiffnessPerConstraint ? _mm_set_ps1(1.0f) - exp2(stiffnessExponent * _mm_load_ps(stIt)) : stiffness;
++		__m128 stij = stiffness;
++		if (useStiffnessPerConstraint)
++		{
++			const Simd4f constraintStiffness = _mm_load_ps(stIt);
++			stij = _mm_sub_ps(sOne, exp2(stiffnessExponent * constraintStiffness));
++		}
+ 
+ 
+-		__m128 mask = _mm_cmpnle_ps(rij, gSimd4fEpsilon);
++		__m128 mask = _mm_cmpnle_ps(rij, epsilon);
+ 		__m128 erij = _mm_and_ps(_mm_sub_ps(sOne, _mm_mul_ps(rij, _mm_rsqrt_ps(e2ij))), mask);
+ 
+ 		if (useMultiplier)
+ 		{
+ 			erij = _mm_sub_ps(erij, _mm_mul_ps(multiplier, _mm_max_ps(compressionLimit, _mm_min_ps(erij, stretchLimit))));
+ 		}
+-		__m128 exij = _mm_mul_ps(erij, _mm_mul_ps(stij, _mm_rcp_ps(_mm_add_ps(gSimd4fEpsilon, vwij))));
++		__m128 exij = _mm_mul_ps(erij, _mm_mul_ps(stij, _mm_rcp_ps(_mm_add_ps(epsilon, vwij))));
+ 
+-		__m128 exlo = _mm_and_ps(sMaskXY, exij);
+-		__m128 exhi = _mm_andnot_ps(sMaskXY, exij);
++		__m128 exlo = _mm_and_ps(maskXY, exij);
++		__m128 exhi = _mm_andnot_ps(maskXY, exij);
+ 
+ 		__m128 f0ij = _mm_mul_ps(h0ij, _mm_shuffle_ps(exlo, exlo, 0xc0));
+ 		__m128 f1ij = _mm_mul_ps(h1ij, _mm_shuffle_ps(exlo, exlo, 0xd5));
