@@ -7,3 +7,6 @@ patches:
     - patch_file: "patches/clang-23-warnings.patch"
       patch_description: Use standard warnings when building with Clang 23 or newer
       patch_type: portability
+    - patch_file: "patches/windows-clang-flags.patch"
+      patch_description: Restrict MSVC-specific build and warning flags to MSVC
+      patch_type: portability

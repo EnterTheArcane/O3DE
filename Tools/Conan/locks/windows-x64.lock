@@ -15,7 +15,7 @@
         "pyside6/6.12.0#2f10639f0c3bdf3cb730d315037f6fac",
         "pybind11/3.1.0#0d2fd6b7fa13f29c1c6fb8fa23a7b570%1794934313.817",
         "ptex/2.4.2#ba6a60f9dabd40f83df6dafa24e014e9%1703960018.592",
-        "physx/5.13.0#df42f1ec7952f1acd303101745338015",
+        "physx/5.13.0#3ba0d0fd8e9844bc4eadaf35f5e81961",
         "openvdb/12.1.1#cbee943bf6eb413aff6a7145df7b587a%1782311268.738",
         "openssl/4.1.0#4fef53b5a175912b4e9a5e562d46f4a8",
         "openjph/0.33.0#41609296d128f80c263b8b947e2d9381%1794479266.887",

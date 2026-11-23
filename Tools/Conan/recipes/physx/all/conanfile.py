@@ -16,9 +16,10 @@ from conan.tools.files import (
     copy,
     export_conandata_patches,
     get,
+    load,
     rename,
+    save,
 )
-
 
 CONFIGURATIONS = ("debug", "checked", "profile", "release")
 
@@ -49,6 +50,15 @@ class Recipe(ConanFile):
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
         apply_conandata_patches(self)
+        # CMake uses clang-cl to preprocess Windows resource dependencies.
+        foundation_resource = Path(
+            "physx/source/compiler/windows/resource/PhysXFoundation.rc"
+        )
+        save(
+            self,
+            foundation_resource,
+            load(self, foundation_resource, encoding="utf-16"),
+        )
 
     def generate(self):
         os_name = str(self.settings.os)

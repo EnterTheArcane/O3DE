@@ -12,6 +12,3 @@ block(SCOPE_FOR VARIABLES)
         include("${_IMPORT_PREFIX}/lib/cmake/PhysX/PhysXTargets-${config}.cmake")
     endforeach()
 endblock()
-
-add_library(PhysX::physx_lib INTERFACE IMPORTED)
-target_link_libraries(PhysX::physx_lib INTERFACE ${PhysX_LIBRARIES})
