@@ -10,6 +10,8 @@ compiler.runtime=dynamic
 compiler.runtime_version=v145
 
 [options]
+# OpenVDB uses Boost.Iostreams and Boost.System and has no Cobalt dependency.
+boost/1.84.0:without_cobalt=True
 fmt/*:header_only=True
 giflib/*:utils=False
 libtiff/*:jpeg=libjpeg-turbo
