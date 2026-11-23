@@ -12,7 +12,11 @@ on:
         type: boolean
         default: false
       build-emscripten-w32:
-        description: WebAssembly
+        description: Emscripten (WASM32)
+        type: boolean
+        default: false
+      build-emscripten-w64:
+        description: Emscripten (WASM64)
         type: boolean
         default: false
       build-ios-a64:
@@ -84,7 +88,6 @@ jobs:
               if (!name.startsWith(prefix) || enabled !== true) {
                 continue;
               }
-
               const profile = name.slice(prefix.length);
               const platform = profile.split("-", 1)[0];
               if (!Object.hasOwn(runners, platform)) {
@@ -92,7 +95,6 @@ jobs:
               }
               targets.push({ profile, runner: runners[platform] });
             }
-
             if (targets.length === 0) {
               throw new Error("Select at least one target profile.");
             }
