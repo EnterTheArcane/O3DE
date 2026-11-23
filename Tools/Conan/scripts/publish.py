@@ -169,6 +169,27 @@ def publish_catalog(profile, output, registry, push):
                 print(f'Publishing {repo}@{digest}', flush=True)
                 if username:
                     authenticate_push(client, repo, username, password)
+                if repo.endswith("/openexr"):
+                    host, _, repository = repo.partition("/")
+                    url = f"https://{host}/v2/{repository}"
+                    headers = client.auth.get_auth_header()
+                    for method, endpoint in (
+                        ("GET", "tags/list"),
+                        ("GET", "blobs/sha256:0984328dc6553b7a0a20fc2c011bcd89bb0f54dcd8e3fb8338485985e588858c"),
+                        ("POST", "blobs/uploads/"),
+                    ):
+                        response = client.session.request(
+                            method, f"{url}/{endpoint}", headers=headers,
+                            allow_redirects=False, stream=method == "GET",
+                        )
+                        with response:
+                            if response.status_code >= 400:
+                                try:
+                                    print(response.json().get("errors", []), flush=True)
+                                except ValueError:
+                                    pass
+                        if method == "POST":
+                            response.raise_for_status()
                 push_manifest(client, output / "oci", repo, digest)
                 print(f"Published {repo}@{digest}")
             else:
