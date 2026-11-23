@@ -6,11 +6,11 @@ libclang:
   "6.12.0":
     Windows:
       x86_64:
-        url: "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_20.1.3-based-windows-vs2019_64.7z"
-        sha256: "979a59e3ac64f2fd2722462fdec0b404788acb8b145cc8de1d123ab50192747f"
+        url: "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_23.1.1-based-windows-vs2022_64.7z"
+        sha256: "8c94cd5d3d3fc0513f6112638ef165de7dc74871d7092387a7fc9920d125abff"
       armv8:
-        url: "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_20.1.3-based-windows-vs2022_arm64.7z"
-        sha256: "7018738332d34a2c95106c1463dacca7c1d13e3ae80a03103e629129f378d03d"
+        url: "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_23.1.1-based-windows-vs2022_arm64.7z"
+        sha256: "a04af4ee048609a5d72f2c32a156c9d26fc7d42d494c2fce851f72c5b632c6a5"
     Linux:
       x86_64:
         url: "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_20.1.3-based-linux-Ubuntu22.04-gcc11.4-x86_64.7z"
