@@ -13,7 +13,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from conan.internal.model.cpp_info import CppInfo
 from conan.internal.model.pkg_type import PackageType
@@ -416,15 +416,26 @@ class PackagingTests(unittest.TestCase):
             client.get_container.return_value.manifest_url.return_value = (
                 "ghcr.io/v2/test/test/expat/manifests/test"
             )
-            client.do_request.return_value.content = manifest
-            push_manifest(client, layout, "ghcr.io/test/test/expat", f"sha256:{digest}")
+            client.do_request.side_effect = [
+                Mock(status_code=201),
+                Mock(status_code=404),
+                Mock(status_code=200, content=manifest),
+            ]
+            with patch("publish.sleep") as wait:
+                push_manifest(
+                    client, layout, "ghcr.io/test/test/expat", f"sha256:{digest}"
+                )
+            wait.assert_called_once_with(1)
             self.assertEqual(client.upload_blob.call_count, 2)
             upload = client.do_request.call_args_list[0]
             self.assertEqual(upload.args[1], "PUT")
             self.assertEqual(upload.kwargs["data"], manifest)
             self.assertEqual(upload.kwargs["headers"], {"Content-Type": IMAGE_MANIFEST})
 
-            client.do_request.return_value.content = manifest + b"\n"
+            client.do_request.side_effect = None
+            client.do_request.return_value = Mock(
+                status_code=200, content=manifest + b"\n"
+            )
             with self.assertRaisesRegex(ValueError, "Expected sha256:"):
                 check_manifest(client, "ghcr.io/test/test/expat", f"sha256:{digest}")
 
