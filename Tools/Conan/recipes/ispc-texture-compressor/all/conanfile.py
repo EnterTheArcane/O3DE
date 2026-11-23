@@ -37,7 +37,7 @@ class Recipe(ConanFile):
             self,
             **self.conan_data["sources"][self.version],
             destination="upstream",
-            strip_root=True
+            strip_root=True,
         )
 
     def generate(self):
@@ -54,6 +54,8 @@ class Recipe(ConanFile):
             flags.append("--target-os=android")
         elif self.settings.os == "iOS":
             flags.append("--target-os=ios")
+            if self.settings.os.sdk == "iphonesimulator":
+                tc.variables["ISPC_TEXCOMP_IOS_SIMULATOR"] = True
         if self.settings.arch == "armv8":
             tc.variables["ISPC_TEXCOMP_TARGETS"] = "neon-i32x4"
             flags.append("--arch=aarch64")
