@@ -16,8 +16,6 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP_PROFILES = ("windows-x64", "windows-a64", "linux-x64", "linux-a64", "macos-a64")
 ANDROID_PROFILES = ("android-a64", "android-x64")
@@ -95,6 +93,8 @@ def cache_folder(output, exclusions):
 def export_cache(env, archive):
     if not (Path(env["CONAN_HOME"]) / "p").is_dir():
         return
+
+    import yaml
 
     excluded = set()
     for conandata in (ROOT / "recipes").glob("*/*/conandata.yml"):
