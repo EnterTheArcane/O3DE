@@ -1,0 +1,13 @@
+--- a/src/core/CMakeLists.txt
++++ b/src/core/CMakeLists.txt
+@@ -203,9 +203,6 @@
+ if (MSVC)
+-  set(OJPH_LIB_NAME_STRING "openjph.${OPENJPH_VERSION_MAJOR}.${OPENJPH_VERSION_MINOR}")
+-  set_target_properties(openjph
+-    PROPERTIES
+-      OUTPUT_NAME "openjph.${OPENJPH_VERSION_MAJOR}.${OPENJPH_VERSION_MINOR}")
++  set(OJPH_LIB_NAME_STRING "openjph")
+ else()
+   set(OJPH_LIB_NAME_STRING "openjph.${OPENJPH_VERSION_MAJOR}.${OPENJPH_VERSION_MINOR}")
+   set_target_properties(openjph
+     PROPERTIES

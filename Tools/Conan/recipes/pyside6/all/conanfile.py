@@ -70,7 +70,7 @@ class PySide6(ConanFile):
             tc = CMakeToolchain(self)
             # setup.py owns the staging prefix for its separate CMake projects.
             tc.blocks.remove("output_dirs")
-            host_qt = Path(self.dependencies.build["qt"].package_folder) / "qt"
+            host_qt = Path(self.dependencies.build["qt"].package_folder)
             host_pyside = (
                 Path(self.dependencies.build[self.name].package_folder) / "pyside6"
             )
@@ -149,10 +149,10 @@ class PySide6(ConanFile):
                 (clang / "bin" / alias).symlink_to("clang")
             rm(self, archive.name, archive.parent)
 
-        qt = Path(self.dependencies["qt"].package_folder) / "qt"
+        qt = Path(self.dependencies["qt"].package_folder)
         host_qt = qt
         if cross:
-            host_qt = Path(self.dependencies.build["qt"].package_folder) / "qt"
+            host_qt = Path(self.dependencies.build["qt"].package_folder)
         qtpaths = host_qt / "bin" / ("qtpaths6.exe" if windows else "qtpaths6")
         venv = build / "pyside"
         venv_python = venv / ("Scripts/python.exe" if windows else "bin/python")

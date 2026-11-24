@@ -12,7 +12,6 @@ from conan.errors import ConanInvalidConfiguration
 from conan.tools.cmake import CMake, CMakeToolchain
 from conan.tools.files import get
 
-CONFIGURATIONS = ("Debug", "Checked", "Profile", "Release")
 CUDA_TOOLKIT = "cuda-toolkit/13.5.0"
 
 
@@ -61,9 +60,11 @@ class Recipe(ConanFile):
         if self.options.get_safe("with_cuda"):
             self.tool_requires(CUDA_TOOLKIT)
 
-    def package_id(self):
-        self.info.settings.rm_safe("build_type")
-        self.info.settings.rm_safe("compiler.runtime_type")
+    @property
+    def _configuration(self):
+        return {"Debug": "Debug", "RelWithDebInfo": "Profile"}.get(
+            str(self.settings.build_type), "Release"
+        )
 
     def layout(self):
         self.folders.source = "src"
@@ -75,7 +76,7 @@ class Recipe(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.generator = "Ninja Multi-Config"
-        tc.cache_variables["CMAKE_CONFIGURATION_TYPES"] = ";".join(CONFIGURATIONS)
+        tc.cache_variables["CMAKE_CONFIGURATION_TYPES"] = self._configuration
         tc.cache_variables["CMAKE_INSTALL_LIBDIR"] = "lib"
         tc.cache_variables["BUILD_SHARED_LIBS"] = False
         physx = self.dependencies.host["physx"]
@@ -102,22 +103,16 @@ class Recipe(ConanFile):
     def build(self):
         cmake = CMake(self)
         cmake.configure()
-        for config in CONFIGURATIONS:
-            cmake.build(build_type=config)
+        cmake.build(build_type=self._configuration)
 
     def package(self):
-        cmake = CMake(self)
-        for config in CONFIGURATIONS:
-            cmake.install(build_type=config)
+        CMake(self).install(build_type=self._configuration)
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "NvCloth")
         self.cpp_info.set_property("cmake_find_mode", "none")
         self.cpp_info.set_property("cmake_target_name", "NvCloth::NvCloth")
         self.cpp_info.builddirs = ["lib/cmake/NvCloth"]
-        config = {"Debug": "debug", "RelWithDebInfo": "profile"}.get(
-            str(self.settings.build_type), "release"
-        )
-        self.cpp_info.libdirs = [f"lib/{config}"]
+        self.cpp_info.libdirs = [f"lib/{self._configuration.lower()}"]
         self.cpp_info.libs = ["NvCloth"]
         self.cpp_info.defines = ["NV_CLOTH_STATIC"]

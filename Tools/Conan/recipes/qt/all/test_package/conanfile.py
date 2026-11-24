@@ -36,7 +36,7 @@ class Recipe(ConanFile):
     def generate(self):
         VirtualRunEnv(self).generate()
         qt = self.dependencies.host["qt"]
-        sdk = Path(qt.package_folder) / "qt"
+        sdk = Path(qt.package_folder)
         tc = CMakeToolchain(self)
         tc.user_presets_path = False
         tc.variables["Qt6_ROOT"] = sdk.as_posix()
@@ -49,7 +49,7 @@ class Recipe(ConanFile):
             ).as_posix()
         if cross_building(self):
             tc.variables["QT_HOST_PATH"] = (
-                Path(self.dependencies.build["qt"].package_folder) / "qt"
+                Path(self.dependencies.build["qt"].package_folder)
             ).as_posix()
         tc.generate()
 
@@ -57,7 +57,7 @@ class Recipe(ConanFile):
         cmake = CMake(self)
         cli_args = []
         if self.settings.os == "Emscripten":
-            sdk = Path(self.dependencies.host["qt"].package_folder) / "qt"
+            sdk = Path(self.dependencies.host["qt"].package_folder)
             toolchain = sdk / "lib/cmake/Qt6/qt.toolchain.cmake"
             cli_args.append(f'-DCMAKE_TOOLCHAIN_FILE="{toolchain.as_posix()}"')
         cmake.configure(cli_args=cli_args)

@@ -10,3 +10,6 @@ patches:
     - patch_file: patches/clang-cl-sse41-tools.patch
       patch_description: Enable SSE4.1 for the dispatched CLI translation units under clang-cl
       patch_type: portability
+    - patch_file: patches/windows-library-name.patch
+      patch_description: Omit the version suffix from Windows libraries
+      patch_type: conan

@@ -107,7 +107,7 @@ class Recipe(ConanFile):
         tc.variables["INPUT_libjpeg"] = "qt"
         tc.variables["INPUT_openssl"] = "linked" if linux else "no"
         if cross_building(self):
-            host_qt = Path(self.dependencies.build["qt"].package_folder) / "qt"
+            host_qt = Path(self.dependencies.build["qt"].package_folder)
             tc.variables["QT_HOST_PATH"] = host_qt.as_posix()
             tc.variables["QT_BUILD_TOOLS_WHEN_CROSSCOMPILING"] = desktop
             if windows:
@@ -168,16 +168,14 @@ class Recipe(ConanFile):
 
     def package(self):
         package = Path(self.package_folder)
-        sdk = package / "qt"
         cmake = CMake(self)
-        install_args = ["--prefix", sdk.as_posix()]
         if self.settings.os == "Windows":
-            cmake.install(build_type="Release", cli_args=install_args)
-            cmake.install(build_type="Debug", cli_args=install_args)
+            cmake.install(build_type="Release")
+            cmake.install(build_type="Debug")
         else:
-            cmake.install(cli_args=install_args)
+            cmake.install()
         assets = Path(self.source_folder).parent
-        if not copy(self, "LICENSE", assets, sdk):
+        if not copy(self, "LICENSE", assets, package):
             raise ConanException("Missing the Qt license")
         for folder in Path(self.source_folder).glob("qt*"):
             if (folder / "LICENSES").is_dir():
@@ -189,8 +187,3 @@ class Recipe(ConanFile):
                 )
         if self.settings.os == "Linux" and self.conf.get("user.package:prune_build"):
             rm(self, "cmake_pch*.gch", self.build_folder, recursive=True)
-
-    def package_info(self):
-        self.cpp_info.bindirs = ["qt/bin"]
-        self.cpp_info.libdirs = ["qt/lib"]
-        self.cpp_info.includedirs = ["qt/include"]

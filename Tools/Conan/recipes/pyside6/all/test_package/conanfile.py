@@ -5,10 +5,11 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 #
 
-from pathlib import Path
 import struct
+from pathlib import Path
 
 from conan import ConanFile
+from conan.tools.env import VirtualBuildEnv, VirtualRunEnv
 from conan.tools.layout import basic_layout
 
 
@@ -22,12 +23,17 @@ class TestPySide6(ConanFile):
     def layout(self):
         basic_layout(self)
 
+    def generate(self):
+        # The test reads PE headers directly and has no subprocess environment.
+        VirtualBuildEnv(self, auto_generate=False)
+        VirtualRunEnv(self, auto_generate=False)
+
     def test(self):
         if self.settings.os != "Windows" or self.settings.arch != "armv8":
             return
 
         pyside = Path(self.dependencies["pyside6"].package_folder) / "pyside6"
-        qt = Path(self.dependencies["qt"].package_folder) / "qt"
+        qt = Path(self.dependencies["qt"].package_folder)
         modules = pyside / "lib/site-packages/PySide6"
         binaries = [
             qt / "bin/Qt6Core.dll",

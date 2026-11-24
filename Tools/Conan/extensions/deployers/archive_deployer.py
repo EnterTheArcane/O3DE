@@ -23,6 +23,8 @@ from package_cps import CPS_DIRECTORY, package_manifest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from hooks.hook_sbom import SBOM_FILENAME, package_sbom
 
+CONAN_METADATA = {"conaninfo.txt", "conanmanifest.txt"}
+
 
 def archive_package(
     folder,
@@ -35,6 +37,7 @@ def archive_package(
     standalone=False,
 ):
     root = folder.resolve()
+    prefix = Path() if standalone else Path("payload")
     links = []
     checksums = []
 
@@ -44,6 +47,8 @@ def archive_package(
         tar.addfile(info, io.BytesIO(data))
 
     def add(source, relative, parents, boundary):
+        if relative.name.casefold() in CONAN_METADATA:
+            return
         resolved = source.resolve(strict=True)
         if not resolved.is_relative_to(boundary) or resolved in parents:
             raise ValueError(f"Invalid package link: {source}")
@@ -54,7 +59,7 @@ def archive_package(
             char in name for char in "\\:\r\n"
         ):
             raise ValueError(f"Unsupported archive path: {relative}")
-        if relative == Path("payload/.o3de-symlinks.json"):
+        if relative == prefix / ".o3de-symlinks.json":
             raise ValueError("Reserved archive metadata path")
         if preserve_links and source.is_symlink():
             target = os.readlink(source)
@@ -72,7 +77,7 @@ def archive_package(
                 info.mode = 0o777
                 tar.addfile(info)
             else:
-                links.append([relative.relative_to("payload").as_posix(), target])
+                links.append([relative.relative_to(prefix).as_posix(), target])
             return
         info = tar.gettarinfo(str(resolved), name)
         info.type = tarfile.DIRTYPE if resolved.is_dir() else tarfile.REGTYPE
@@ -102,9 +107,13 @@ def archive_package(
             compressed,
             tarfile.open(fileobj=compressed, mode="w|", dereference=True) as tar,
         ):
-            add(root, Path("payload"), set(), root)
+            if standalone:
+                for child in sorted(root.iterdir()):
+                    add(child, Path(child.name), {root}, root)
+            else:
+                add(root, prefix, set(), root)
             if sbom is not None:
-                name = f"payload/{SBOM_FILENAME}"
+                name = (prefix / SBOM_FILENAME).as_posix()
                 data = sbom.encode("utf-8")
                 add_bytes(name, data)
                 if standalone:
@@ -112,7 +121,7 @@ def archive_package(
             if licenses:
                 add(
                     licenses,
-                    Path("payload/licenses/dependencies"),
+                    prefix / "licenses/dependencies",
                     set(),
                     licenses.resolve(),
                 )
@@ -123,7 +132,7 @@ def archive_package(
                     raise ValueError(f"CPS manifest path is a directory: {existing}")
                 if not existing.is_file():
                     data = (json.dumps(cps, indent=2, sort_keys=True) + "\n").encode()
-                    name = (Path("payload") / manifest).as_posix()
+                    name = (prefix / manifest).as_posix()
                     add_bytes(name, data)
                     if standalone:
                         checksums.append(
@@ -131,11 +140,9 @@ def archive_package(
                         )
             if links:
                 data = json.dumps(links, separators=(",", ":")).encode()
-                add_bytes("payload/.o3de-symlinks.json", data)
-            if standalone:
-                content = "".join(checksums).encode()
-                add_bytes("content.SHA256SUMS", content)
-                return content
+                add_bytes((prefix / ".o3de-symlinks.json").as_posix(), data)
+    if standalone:
+        return "".join(checksums).encode()
 
 
 def deploy_packages(graph, output_folder, *, standalone=False):

@@ -89,7 +89,7 @@ class PackagingTests(unittest.TestCase):
     def test_cps_describes_static_frameworks_as_archives(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
-            artifact = root / "qt/lib/QtCore.framework/QtCore"
+            artifact = root / "lib/QtCore.framework/QtCore"
             artifact.parent.mkdir(parents=True)
             artifact.touch()
             dependency = Mock(languages=None, package_type="static-library")
@@ -187,17 +187,19 @@ class PackagingTests(unittest.TestCase):
             )
             with tarfile.open(archive) as tar:
                 tar.extractall(root / "extracted", filter="data")
-            extracted = root / "extracted/payload/Python.framework"
+            extracted = root / "extracted/Python.framework"
             self.assertTrue((extracted / "Versions/Current").is_symlink())
             self.assertTrue((extracted / "Python").is_symlink())
             self.assertEqual((extracted / "Python").read_bytes(), b"code")
 
-    def test_standalone_deploy_matches_oci_payload(self):
+    def test_standalone_deploy_flattens_oci_payload(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
             package = root / "cache"
             (package / "bin").mkdir(parents=True)
             (package / "bin" / "tool").write_bytes(b"tool")
+            (package / "conaninfo.txt").write_bytes(b"package settings")
+            (package / "conanmanifest.txt").write_bytes(b"cache checksums")
             (package / "licenses").mkdir()
             (package / "licenses" / "LICENSE").write_bytes(b"license")
             dependency = Mock(
@@ -251,6 +253,8 @@ class PackagingTests(unittest.TestCase):
                 tarfile.open(archive, "r:xz") as tar,
             ):
                 payload = [member.name for member in layer if member.isfile()]
+                self.assertNotIn("payload/conaninfo.txt", payload)
+                self.assertNotIn("payload/conanmanifest.txt", payload)
                 self.assertIn("payload/lib/cps/example.cps", payload)
                 bom = json.load(layer.extractfile(f"payload/{SBOM_FILENAME}"))
                 self.assertEqual(bom["specVersion"], "1.6")
@@ -262,17 +266,17 @@ class PackagingTests(unittest.TestCase):
                 self.assertFalse((package / SBOM_FILENAME).exists())
                 self.assertEqual(
                     sorted(member.name for member in tar if member.isfile()),
-                    sorted([*payload, "content.SHA256SUMS"]),
+                    sorted(name.removeprefix("payload/") for name in payload),
                 )
                 checksums = []
-                for name in payload:
+                for member in payload:
+                    name = member.removeprefix("payload/")
                     contents = tar.extractfile(name).read()
-                    self.assertEqual(contents, layer.extractfile(name).read())
+                    self.assertEqual(contents, layer.extractfile(member).read())
                     checksums.append(
                         f"{hashlib.sha256(contents).hexdigest()}  {name}\n"
                     )
                 content = "".join(checksums).encode()
-                self.assertEqual(tar.extractfile("content.SHA256SUMS").read(), content)
                 self.assertEqual(
                     archive.with_suffix(".xz.content.SHA256SUMS").read_bytes(), content
                 )

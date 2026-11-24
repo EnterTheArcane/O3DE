@@ -47,6 +47,7 @@ class Recipe(ConanFile):
 
     def generate(self):
         tc = CMakeToolchain(self)
+        tc.cache_variables["OPENEXR_LIB_SUFFIX"] = ""
         tc.variables["BUILD_SHARED_LIBS"] = False
         tc.variables["BUILD_TESTING"] = False
         tc.variables["BUILD_WEBSITE"] = False
@@ -81,7 +82,7 @@ class Recipe(ConanFile):
             config.set_property("cmake_target_name", f"OpenEXR::{name}")
             config.includedirs = ["include", "include/OpenEXR"]
 
-        suffix = "-3_5_d" if self.settings.build_type == "Debug" else "-3_5"
+        suffix = "_d" if self.settings.build_type == "Debug" else ""
         for name, requires in {
             "Iex": ["openexr_iexconfig"],
             "IlmThread": ["openexr_ilmthreadconfig", "openexr_iex"],

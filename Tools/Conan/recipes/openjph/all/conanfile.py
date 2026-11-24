@@ -96,7 +96,7 @@ class OpenJPH(ConanFile):
         self.cpp_info.set_property("cmake_file_name", "openjph")
         self.cpp_info.set_property("cmake_target_name", "openjph::openjph")
         self.cpp_info.set_property("pkg_config_name", "openjph")
-        # Upstream's filename suffix varies by compiler ABI and build type.
+        # Upstream's debug postfix varies by compiler ABI.
         self.cpp_info.libs = collect_libs(self)
         if self.settings.os in ("Linux", "FreeBSD"):
             self.cpp_info.system_libs.append("pthread")

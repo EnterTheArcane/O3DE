@@ -42,7 +42,6 @@ def installed_components(dependency, root):
         "physx": root / "release",
         "pyside6": root / "pyside6",
         "python": root / "python",
-        "qt": root / "qt",
     }.get(name, root)
     libdirs = (
         sdk / "lib",
