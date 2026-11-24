@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from hooks.hook_sbom import SBOM_FILENAME, format_sbom, package_sbom
 
 CONAN_METADATA = {"conaninfo.txt", "conanmanifest.txt"}
-SYMLINK_MANIFEST = ".package-symlinks.json"
+LEGACY_LINK_MANIFESTS = {".o3de-symlinks.json", ".package-symlinks.json"}
 MSVC_RUNTIME_DLLS = {
     "concrt140.dll",
     "msvcp140.dll",
@@ -49,7 +49,6 @@ def archive_package(
     omit_msvc_runtime=False,
 ):
     root = folder.resolve()
-    links = []
     checksums = []
 
     def add_bytes(name, data):
@@ -83,25 +82,22 @@ def archive_package(
             char in name for char in "\\:\r\n"
         ):
             raise ValueError(f"Unsupported archive path: {relative}")
-        if relative in (Path(SYMLINK_MANIFEST), Path(".o3de-symlinks.json")):
+        if name in LEGACY_LINK_MANIFESTS:
             raise ValueError("Reserved archive metadata path")
         if preserve_links and source.is_symlink():
             target = os.readlink(source)
             if Path(target).is_absolute():
                 raise ValueError(f"Expected a relative link: {source}")
-            if standalone:
-                destination = Path(os.path.normpath(source.parent / target))
-                if not destination.is_relative_to(boundary) or any(
-                    char in target for char in "\\:\r\n"
-                ):
-                    raise ValueError(f"Invalid archive link target: {source}")
-                info = tarfile.TarInfo(name)
-                info.type = tarfile.SYMTYPE
-                info.linkname = target
-                info.mode = 0o777
-                tar.addfile(info)
-            else:
-                links.append([name, target])
+            destination = Path(os.path.normpath(source.parent / target))
+            if not destination.is_relative_to(boundary) or any(
+                char in target for char in "\\:\r\n"
+            ):
+                raise ValueError(f"Invalid archive link target: {source}")
+            info = tarfile.TarInfo(name)
+            info.type = tarfile.SYMTYPE
+            info.linkname = target
+            info.mode = 0o777
+            tar.addfile(info)
             return
         info = tar.gettarinfo(str(resolved), name)
         info.type = tarfile.DIRTYPE if resolved.is_dir() else tarfile.REGTYPE
@@ -159,9 +155,6 @@ def archive_package(
                         checksums.append(
                             f"{hashlib.sha256(data).hexdigest()}  {name}\n"
                         )
-            if links:
-                data = json.dumps(links, separators=(",", ":")).encode()
-                add_bytes(SYMLINK_MANIFEST, data)
     if standalone:
         return "".join(checksums).encode()
 

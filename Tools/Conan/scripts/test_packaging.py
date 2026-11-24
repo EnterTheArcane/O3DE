@@ -260,7 +260,7 @@ class PackagingTests(unittest.TestCase):
                     self.assertEqual(tar.extractfile("python").read(), b"signed")
 
     @unittest.skipIf(sys.platform == "win32", "Apple packages use Unix symlinks")
-    def test_framework_links_survive_as_metadata(self):
+    def test_framework_links_use_native_tar_entries(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             framework = root / "source/Python.framework"
@@ -268,30 +268,29 @@ class PackagingTests(unittest.TestCase):
             (framework / "Versions/3.15/Python").write_bytes(b"code")
             (framework / "Versions/Current").symlink_to("3.15")
             (framework / "Python").symlink_to("Versions/Current/Python")
-            archive = root / "framework.tar.gz"
-            archive_package(framework.parent, archive, preserve_links=True)
-            with tarfile.open(archive) as tar:
-                self.assertTrue(all(entry.isfile() or entry.isdir() for entry in tar))
-                self.assertNotIn(".o3de-symlinks.json", tar.getnames())
-                metadata = tar.extractfile(".package-symlinks.json")
-                self.assertEqual(
-                    dict(json.load(metadata)),
-                    {
-                        "Python.framework/Python": "Versions/Current/Python",
-                        "Python.framework/Versions/Current": "3.15",
-                    },
-                )
-
-            archive = root / "framework.tar.xz"
-            archive_package(
-                framework.parent, archive, preserve_links=True, standalone=True
-            )
-            with tarfile.open(archive) as tar:
-                tar.extractall(root / "extracted", filter="data")
-            extracted = root / "extracted/Python.framework"
-            self.assertTrue((extracted / "Versions/Current").is_symlink())
-            self.assertTrue((extracted / "Python").is_symlink())
-            self.assertEqual((extracted / "Python").read_bytes(), b"code")
+            for compression in ("gz", "xz"):
+                with self.subTest(compression=compression):
+                    archive = root / f"framework.tar.{compression}"
+                    archive_package(
+                        framework.parent,
+                        archive,
+                        preserve_links=True,
+                        standalone=compression == "xz",
+                    )
+                    destination = root / compression
+                    with tarfile.open(archive) as tar:
+                        self.assertNotIn(".o3de-symlinks.json", tar.getnames())
+                        self.assertNotIn(".package-symlinks.json", tar.getnames())
+                        tar.extractall(destination, filter="data")
+                    extracted = destination / "Python.framework"
+                    self.assertEqual(
+                        (extracted / "Versions/Current").readlink(), Path("3.15")
+                    )
+                    self.assertEqual(
+                        (extracted / "Python").readlink(),
+                        Path("Versions/Current/Python"),
+                    )
+                    self.assertEqual((extracted / "Python").read_bytes(), b"code")
 
     def test_oci_and_standalone_deploy_share_package_root(self):
         with tempfile.TemporaryDirectory() as folder:
