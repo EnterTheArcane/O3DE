@@ -30,7 +30,7 @@ if [[ ${1:-native} == cross ]]; then
     sources=$(sed '/^Architectures:/d; /^Types: deb$/a Architectures: amd64' "$ubuntu_sources")
     printf '%s\n' "$sources" | sudo tee "$ubuntu_sources" >/dev/null
     suite=$(. /etc/os-release && printf '%s' "$VERSION_CODENAME")
-    sudo tee /etc/apt/sources.list.d/o3de-arm64.sources >/dev/null <<EOF
+sudo tee /etc/apt/sources.list.d/cross-compile-arm64.sources >/dev/null <<EOF
 Types: deb
 URIs: http://ports.ubuntu.com/ubuntu-ports/
 Suites: $suite $suite-updates $suite-security

@@ -6,3 +6,4 @@
 [conf]
 user.toolchain:windows_sdk={{ sdk_version }}
 tools.info.package_id:confs+=["user.toolchain:windows_sdk"]
+tools.cmake.cmaketoolchain:extra_variables*={"CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP": 1}

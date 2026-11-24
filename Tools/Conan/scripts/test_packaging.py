@@ -24,6 +24,7 @@ sys.path.insert(
 
 from archive_deployer import SBOM_FILENAME, archive_package
 from archive_deployer import deploy as deploy_archive
+from hooks.hook_sbom import format_sbom
 from oci_deployer import deploy
 from package_cps import package_manifest
 from publish import (
@@ -38,6 +39,49 @@ from build import cache_folder
 
 
 class PackagingTests(unittest.TestCase):
+    def test_sbom_uses_package_manager_neutral_references(self):
+        package = {
+            "name": "example",
+            "version": "1.2.3",
+            "purl": "pkg:conan/example@1.2.3",
+            "bom-ref": "pkg:conan/example@1.2.3?rrev=recipe",
+        }
+        dependency = {
+            "name": "dependency",
+            "version": "4.0.0+patch",
+            "purl": "pkg:conan/dependency@4.0.0+patch",
+            "bom-ref": "pkg:conan/dependency@4.0.0+patch?rrev=other",
+        }
+        bom = {
+            "metadata": {
+                "component": package,
+                "tools": {"components": [{"name": "Conan-io"}]},
+            },
+            "components": [dependency],
+            "dependencies": [
+                {"ref": package["bom-ref"], "dependsOn": [dependency["bom-ref"]]},
+                {"ref": dependency["bom-ref"]},
+            ],
+        }
+
+        text = format_sbom(bom)
+        self.assertNotIn("conan", text.casefold())
+        result = json.loads(text)
+        self.assertEqual(
+            result["metadata"]["component"]["purl"], "pkg:generic/example@1.2.3"
+        )
+        self.assertEqual(
+            result["components"][0]["purl"], "pkg:generic/dependency@4.0.0%2Bpatch"
+        )
+        self.assertEqual(
+            result["dependencies"],
+            [
+                {"ref": package["bom-ref"], "dependsOn": [dependency["bom-ref"]]},
+                {"ref": dependency["bom-ref"]},
+            ],
+        )
+        self.assertEqual(format_sbom(result), text)
+
     def test_cps_describes_import_libraries_and_components(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
@@ -102,6 +146,34 @@ class PackagingTests(unittest.TestCase):
             manifest = package_manifest(dependency, root, {"qt"})
             self.assertEqual(manifest["components"]["QtCore"]["type"], "archive")
 
+    def test_cps_describes_flat_pyside6_sdk(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = Path(folder)
+            for relative in (
+                "bin/shiboken6.exe",
+                "bin/pyside6.abi3.dll",
+                "lib/pyside6.abi3.lib",
+                "PySide6/pyside6.abi3.dll",
+            ):
+                path = package / relative
+                path.parent.mkdir(exist_ok=True)
+                path.touch()
+            dependency = Mock(languages=None, package_type="shared-library")
+            dependency.ref.name = "pyside6"
+            dependency.ref.version = "6.12.0"
+            dependency.cpp_info = CppInfo()
+            dependency.dependencies.host = {}
+            dependency.dependencies.direct_host = {}
+
+            manifest = package_manifest(dependency, package.resolve(), {"pyside6"})
+            components = manifest["components"]
+            self.assertEqual(
+                components["shiboken6"]["location"], "@prefix@/bin/shiboken6.exe"
+            )
+            self.assertEqual(
+                components["pyside6.abi3"]["location"], "@prefix@/bin/pyside6.abi3.dll"
+            )
+
     def test_apple_deploy_signs_the_staged_package(self):
         for platform in ("Macos", "iOS"):
             with (
@@ -152,12 +224,10 @@ class PackagingTests(unittest.TestCase):
                     self.assertIsNone(options["entitlements"])
                 self.assertEqual((package / "python").read_bytes(), b"cached")
                 with tarfile.open(output / "python.tar.gz") as tar:
-                    cps = json.load(tar.extractfile("payload/lib/cps/python.cps"))
+                    cps = json.load(tar.extractfile("lib/cps/python.cps"))
                     self.assertEqual(cps["cps_path"], "@prefix@/lib/cps")
                     self.assertEqual(cps["version"], "3.15.2")
-                    self.assertEqual(
-                        tar.extractfile("payload/python").read(), b"signed"
-                    )
+                    self.assertEqual(tar.extractfile("python").read(), b"signed")
 
     @unittest.skipIf(sys.platform == "win32", "Apple packages use Unix symlinks")
     def test_framework_links_survive_as_metadata(self):
@@ -172,7 +242,8 @@ class PackagingTests(unittest.TestCase):
             archive_package(framework.parent, archive, preserve_links=True)
             with tarfile.open(archive) as tar:
                 self.assertTrue(all(entry.isfile() or entry.isdir() for entry in tar))
-                metadata = tar.extractfile("payload/.o3de-symlinks.json")
+                self.assertNotIn(".o3de-symlinks.json", tar.getnames())
+                metadata = tar.extractfile(".package-symlinks.json")
                 self.assertEqual(
                     dict(json.load(metadata)),
                     {
@@ -192,14 +263,21 @@ class PackagingTests(unittest.TestCase):
             self.assertTrue((extracted / "Python").is_symlink())
             self.assertEqual((extracted / "Python").read_bytes(), b"code")
 
-    def test_standalone_deploy_flattens_oci_payload(self):
+    def test_oci_and_standalone_deploy_share_package_root(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
             package = root / "cache"
             (package / "bin").mkdir(parents=True)
             (package / "bin" / "tool").write_bytes(b"tool")
+            (package / "bin" / "MSVCP140.DLL").write_bytes(b"system runtime")
+            (package / "bin" / "tool.dll").write_bytes(b"package library")
             (package / "conaninfo.txt").write_bytes(b"package settings")
             (package / "conanmanifest.txt").write_bytes(b"cache checksums")
+            (package / "bin/tool.py").write_bytes(b"print('tool')")
+            (package / "bin/__pycache__").mkdir()
+            (package / "bin/__pycache__/tool.cpython-315.pyc").write_bytes(
+                b"build path"
+            )
             (package / "licenses").mkdir()
             (package / "licenses" / "LICENSE").write_bytes(b"license")
             dependency = Mock(
@@ -213,7 +291,7 @@ class PackagingTests(unittest.TestCase):
             dependency.context = "host"
             dependency.license = "mit"
             dependency.author = dependency.description = dependency.homepage = None
-            dependency.settings.get_safe.return_value = "Linux"
+            dependency.settings.get_safe.return_value = "Windows"
             dependency.pref.repr_notime.return_value = "example/1.2.3#recipe:id#package"
             dependency.cpp_info = CppInfo()
             dependency.dependencies.host = {}
@@ -252,12 +330,16 @@ class PackagingTests(unittest.TestCase):
                 tarfile.open(output / "example.tar.gz") as layer,
                 tarfile.open(archive, "r:xz") as tar,
             ):
-                payload = [member.name for member in layer if member.isfile()]
-                self.assertNotIn("payload/conaninfo.txt", payload)
-                self.assertNotIn("payload/conanmanifest.txt", payload)
-                self.assertIn("payload/lib/cps/example.cps", payload)
-                bom = json.load(layer.extractfile(f"payload/{SBOM_FILENAME}"))
+                files = [member.name for member in layer if member.isfile()]
+                self.assertNotIn("conaninfo.txt", files)
+                self.assertNotIn("conanmanifest.txt", files)
+                self.assertNotIn("bin/MSVCP140.DLL", files)
+                self.assertIn("bin/tool.dll", files)
+                self.assertNotIn("bin/__pycache__/tool.cpython-315.pyc", files)
+                self.assertIn("lib/cps/example.cps", files)
+                bom = json.load(layer.extractfile(SBOM_FILENAME))
                 self.assertEqual(bom["specVersion"], "1.6")
+                self.assertNotIn("conan", json.dumps(bom).casefold())
                 self.assertEqual(
                     bom["metadata"]["component"]["licenses"],
                     [{"license": {"id": "MIT", "acknowledgement": "declared"}}],
@@ -265,14 +347,13 @@ class PackagingTests(unittest.TestCase):
                 self.assertEqual(bom["components"], [])
                 self.assertFalse((package / SBOM_FILENAME).exists())
                 self.assertEqual(
-                    sorted(member.name for member in tar if member.isfile()),
-                    sorted(name.removeprefix("payload/") for name in payload),
+                    [(entry.name, entry.type) for entry in tar],
+                    [(entry.name, entry.type) for entry in layer],
                 )
                 checksums = []
-                for member in payload:
-                    name = member.removeprefix("payload/")
+                for name in files:
                     contents = tar.extractfile(name).read()
-                    self.assertEqual(contents, layer.extractfile(member).read())
+                    self.assertEqual(contents, layer.extractfile(name).read())
                     checksums.append(
                         f"{hashlib.sha256(contents).hexdigest()}  {name}\n"
                     )
@@ -325,7 +406,7 @@ class PackagingTests(unittest.TestCase):
             for index in (output / "packages.json", output / "archives/packages.json"):
                 self.assertEqual(set(json.loads(index.read_text())), {"openimageio"})
             with tarfile.open(output / "openimageio.tar.gz") as archive:
-                cps = json.load(archive.extractfile("payload/lib/cps/openimageio.cps"))
+                cps = json.load(archive.extractfile("lib/cps/openimageio.cps"))
                 self.assertEqual(cps["requires"]["zstd"]["version"], "1.5.7")
 
     def test_deploy_includes_transitive_sdk_dependencies(self):
@@ -412,7 +493,7 @@ class PackagingTests(unittest.TestCase):
             archive_package(source, repeat)
             self.assertEqual(archive.read_bytes(), repeat.read_bytes())
             with tarfile.open(archive) as tar:
-                self.assertEqual(tar.extractfile("payload/bin/tool").read(), b"tool")
+                self.assertEqual(tar.extractfile("bin/tool").read(), b"tool")
             (stage / "packages.json").write_text(
                 json.dumps({"expat": {"archive": archive.name}}), encoding="utf-8"
             )

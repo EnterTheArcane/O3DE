@@ -15,7 +15,7 @@ fi
 : "${APPLE_CODE_SIGN_IDENTITY:?Set the Apple signing identity}"
 : "${APPLE_SIGNING_CERTIFICATE_BASE64:?Set the Apple signing certificate}"
 
-directory=$(mktemp -d "$RUNNER_TEMP/o3de-signing.XXXXXX")
+directory=$(mktemp -d "$RUNNER_TEMP/package-signing.XXXXXX")
 certificate="$directory/certificate.p12"
 keychain="$directory/signing.keychain-db"
 password=$(openssl rand -hex 32)

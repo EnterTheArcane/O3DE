@@ -38,11 +38,13 @@ def installed_components(dependency, root):
     # Some SDK recipes provide native CMake configs instead of Conan targets.
     # Describe their binary entry points from the installed package layout.
     name = dependency.ref.name
-    sdk = {
-        "physx": root / "release",
-        "pyside6": root / "pyside6",
-        "python": root / "python",
-    }.get(name, root)
+    sdk = root
+    if (name == "python" and (root / "python").is_dir()) or (
+        name == "pyside6" and (root / "pyside6/lib").is_dir()
+    ):
+        sdk = root / name
+    if name == "physx" and (root / "release/lib").is_dir():
+        sdk = root / "release"
     libdirs = (
         sdk / "lib",
         sdk / "libs",

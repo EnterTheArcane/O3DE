@@ -21,9 +21,20 @@ from tempfile import TemporaryDirectory
 from package_cps import CPS_DIRECTORY, package_manifest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from hooks.hook_sbom import SBOM_FILENAME, package_sbom
+from hooks.hook_sbom import SBOM_FILENAME, format_sbom, package_sbom
 
 CONAN_METADATA = {"conaninfo.txt", "conanmanifest.txt"}
+SYMLINK_MANIFEST = ".package-symlinks.json"
+MSVC_RUNTIME_DLLS = {
+    "concrt140.dll",
+    "msvcp140.dll",
+    "msvcp140_1.dll",
+    "msvcp140_2.dll",
+    "msvcp140_atomic_wait.dll",
+    "msvcp140_codecvt_ids.dll",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+}
 
 
 def archive_package(
@@ -35,9 +46,9 @@ def archive_package(
     cps=None,
     sbom=None,
     standalone=False,
+    omit_msvc_runtime=False,
 ):
     root = folder.resolve()
-    prefix = Path() if standalone else Path("payload")
     links = []
     checksums = []
 
@@ -49,6 +60,19 @@ def archive_package(
     def add(source, relative, parents, boundary):
         if relative.name.casefold() in CONAN_METADATA:
             return
+        if omit_msvc_runtime and relative.name.casefold() in MSVC_RUNTIME_DLLS:
+            return
+        if sbom is not None and relative == Path(SBOM_FILENAME):
+            return
+        if (
+            not preserve_links
+            and source.suffix == ".pyc"
+            and source.parent.name == "__pycache__"
+        ):
+            # Imports during a build can leave bytecode with absolute source paths.
+            module, tag, _ = source.name.rpartition(".cpython-")
+            if tag and (source.parent.parent / f"{module}.py").is_file():
+                return
         resolved = source.resolve(strict=True)
         if not resolved.is_relative_to(boundary) or resolved in parents:
             raise ValueError(f"Invalid package link: {source}")
@@ -59,7 +83,7 @@ def archive_package(
             char in name for char in "\\:\r\n"
         ):
             raise ValueError(f"Unsupported archive path: {relative}")
-        if relative == prefix / ".o3de-symlinks.json":
+        if relative in (Path(SYMLINK_MANIFEST), Path(".o3de-symlinks.json")):
             raise ValueError("Reserved archive metadata path")
         if preserve_links and source.is_symlink():
             target = os.readlink(source)
@@ -77,7 +101,7 @@ def archive_package(
                 info.mode = 0o777
                 tar.addfile(info)
             else:
-                links.append([relative.relative_to(prefix).as_posix(), target])
+                links.append([name, target])
             return
         info = tar.gettarinfo(str(resolved), name)
         info.type = tarfile.DIRTYPE if resolved.is_dir() else tarfile.REGTYPE
@@ -107,13 +131,10 @@ def archive_package(
             compressed,
             tarfile.open(fileobj=compressed, mode="w|", dereference=True) as tar,
         ):
-            if standalone:
-                for child in sorted(root.iterdir()):
-                    add(child, Path(child.name), {root}, root)
-            else:
-                add(root, prefix, set(), root)
+            for child in sorted(root.iterdir()):
+                add(child, Path(child.name), {root}, root)
             if sbom is not None:
-                name = (prefix / SBOM_FILENAME).as_posix()
+                name = SBOM_FILENAME
                 data = sbom.encode("utf-8")
                 add_bytes(name, data)
                 if standalone:
@@ -121,7 +142,7 @@ def archive_package(
             if licenses:
                 add(
                     licenses,
-                    prefix / "licenses/dependencies",
+                    Path("licenses/dependencies"),
                     set(),
                     licenses.resolve(),
                 )
@@ -132,7 +153,7 @@ def archive_package(
                     raise ValueError(f"CPS manifest path is a directory: {existing}")
                 if not existing.is_file():
                     data = (json.dumps(cps, indent=2, sort_keys=True) + "\n").encode()
-                    name = (prefix / manifest).as_posix()
+                    name = manifest.as_posix()
                     add_bytes(name, data)
                     if standalone:
                         checksums.append(
@@ -140,7 +161,7 @@ def archive_package(
                         )
             if links:
                 data = json.dumps(links, separators=(",", ":")).encode()
-                add_bytes((prefix / ".o3de-symlinks.json").as_posix(), data)
+                add_bytes(SYMLINK_MANIFEST, data)
     if standalone:
         return "".join(checksums).encode()
 
@@ -155,9 +176,9 @@ def deploy_packages(graph, output_folder, *, standalone=False):
         for node in graph.nodes
         if node.context == "host" and node.ref
     }
-    engine_provided = set(
-        getattr(consumer, "extension_properties", {}).get("engine_provided", ())
-    )
+    properties = getattr(consumer, "extension_properties", {})
+    engine_provided = set(properties.get("engine_provided", ()))
+    bundle_msvc_runtime = properties.get("bundle_msvc_runtime", ())
     dependencies = {
         dependency.ref.name: dependency
         for dependency in consumer.dependencies.direct_host.values()
@@ -224,9 +245,10 @@ def deploy_packages(graph, output_folder, *, standalone=False):
                 raise ValueError(f"Expected a built host artifact for {dependency.ref}")
             folder = Path(dependency.package_folder)
             cps = package_manifest(dependency, folder, available)
-            sbom = None
-            if not (folder / SBOM_FILENAME).is_file():
-                # Older cached binaries can be deployed without changing their revision.
+            cached_sbom = folder / SBOM_FILENAME
+            if cached_sbom.is_file():
+                sbom = format_sbom(json.loads(cached_sbom.read_bytes()))
+            else:
                 sbom = package_sbom(host_nodes[dependency.pref])
             notices = None
             if name in imaging:
@@ -257,6 +279,8 @@ def deploy_packages(graph, output_folder, *, standalone=False):
                 cps=cps,
                 sbom=sbom,
                 standalone=standalone,
+                omit_msvc_runtime=platform == "Windows"
+                and name not in bundle_msvc_runtime,
             )
             if standalone:
                 with target.open("rb") as stream:

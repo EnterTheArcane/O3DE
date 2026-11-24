@@ -15,7 +15,11 @@ from conan.tools.env import VirtualBuildEnv
 class Packages(ConanFile):
     settings = "os", "arch", "build_type"
     python_requires = "apple-signing/1.0"
-    extension_properties: ClassVar = {"engine_provided": ("zlib", "zstd")}
+    extension_properties: ClassVar = {
+        "engine_provided": ("zlib", "zstd"),
+        # Python's bootstrap runs before engine prerequisites can be set up.
+        "bundle_msvc_runtime": ("python",),
+    }
 
     def generate(self):
         VirtualBuildEnv(self).generate()

@@ -7,6 +7,8 @@
 
 import json
 from pathlib import Path
+from urllib.parse import quote
+from uuid import NAMESPACE_URL, uuid5
 
 from conan.tools.files import save
 from conan.tools.sbom import cyclonedx_1_6
@@ -14,6 +16,31 @@ from conan.tools.sbom.spdx_licenses import VALID_SPDX_LICENSES
 
 SBOM_FILENAME = "sbom.cdx.json"
 SPDX_IDS = {license_id.lower(): license_id for license_id in VALID_SPDX_LICENSES}
+
+
+def format_sbom(bom):
+    metadata = bom.get("metadata", {})
+    metadata.pop("tools", None)
+    components = list(bom.get("components", ()))
+    if "component" in metadata:
+        components.append(metadata["component"])
+
+    references = {}
+    for component in components:
+        if not component.get("purl", "").startswith("pkg:conan/"):
+            continue
+        name = quote(component["name"], safe="")
+        version = quote(component["version"], safe="")
+        component["purl"] = f"pkg:generic/{name}@{version}"
+        ref = component["bom-ref"]
+        component["bom-ref"] = references[ref] = uuid5(NAMESPACE_URL, ref).urn
+
+    for edge in bom.get("dependencies", ()):
+        edge["ref"] = references.get(edge["ref"], edge["ref"])
+        if "dependsOn" in edge:
+            edge["dependsOn"] = [references.get(ref, ref) for ref in edge["dependsOn"]]
+
+    return json.dumps(bom, indent=2, sort_keys=True) + "\n"
 
 
 def package_sbom(conanfile):
@@ -44,7 +71,7 @@ def package_sbom(conanfile):
         {"ref": ref, "dependsOn": sorted(dependencies[ref] - {ref})}
         for ref in sorted(dependencies)
     ]
-    return json.dumps(bom, indent=2, sort_keys=True) + "\n"
+    return format_sbom(bom)
 
 
 def post_package(conanfile):
