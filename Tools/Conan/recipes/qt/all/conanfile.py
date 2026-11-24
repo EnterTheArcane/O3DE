@@ -35,10 +35,6 @@ class Recipe(ConanFile):
     def layout(self):
         cmake_layout(self, src_folder="src")
 
-    def configure(self):
-        if self.settings.os in ("iOS", "Emscripten"):
-            self.package_type = "static-library"
-
     def package_id(self):
         # The Windows SDK contains both Release and Debug builds.
         if self.info.settings.os == "Windows":
@@ -63,13 +59,17 @@ class Recipe(ConanFile):
         windows = self.settings.os == "Windows"
         linux = self.settings.os == "Linux"
         macos = self.settings.os == "Macos"
+        ios = self.settings.os == "iOS"
         desktop = windows or linux or macos
         tc = CMakeToolchain(self)
         if windows:
             tc.generator = "Ninja Multi-Config"
         tc.absolute_paths = True
         tc.blocks.remove("cppstd")
-        tc.variables["BUILD_SHARED_LIBS"] = self.package_type == "shared-library"
+        # Qt reads this before loading the WebAssembly toolchain.
+        tc.cache_variables["BUILD_SHARED_LIBS"] = True
+        if macos or ios:
+            tc.variables["FEATURE_framework"] = True
         tc.variables["BUILD_qtactiveqt"] = False
         tc.variables["BUILD_qtdeclarative"] = False
         tc.variables["BUILD_qtlanguageserver"] = False
@@ -132,12 +132,10 @@ class Recipe(ConanFile):
             tc.variables["CMAKE_TRY_COMPILE_CONFIGURATION"] = str(
                 self.settings.build_type
             )
-        elif macos:
-            tc.variables["FEATURE_framework"] = True
         elif self.settings.os == "Emscripten":
             tc.cache_variables["QT_QMAKE_TARGET_MKSPEC"] = "wasm-emscripten"
             tc.variables["FEATURE_thread"] = False
-        elif self.settings.os == "iOS":
+        elif ios:
             # Qt initializes its deployment target before loading the toolchain.
             tc.cache_variables["CMAKE_OSX_DEPLOYMENT_TARGET"] = str(
                 self.settings.os.version

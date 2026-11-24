@@ -8,5 +8,7 @@ patches:
     - patch_file: "patches/ios-assets-library.patch"
     - patch_file: "patches/terminate-header.patch"
       patch_description: "Include the declaration of std::terminate with Emscripten 7 libc++"
+    - patch_file: "patches/wasm-resize-observer-pointer.patch"
+      patch_description: "Pass resize observer pointers as integers supported by Emscripten embind"
     - patch_file: "patches/installed-build-metadata.patch"
       patch_description: "Keep the build workspace out of Qt SPDX and toolchain files"

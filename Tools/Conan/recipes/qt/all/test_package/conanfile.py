@@ -6,7 +6,6 @@
 #
 #
 
-import shlex
 from pathlib import Path
 
 from conan import ConanFile
@@ -67,9 +66,9 @@ class Recipe(ConanFile):
         if self.settings.os == "Emscripten":
             executable = Path(self.build_folder) / "test_package.js"
             node = VirtualBuildEnv(self).vars().get("EMSDK_NODE")
-            self.run(
-                shlex.join([node, "-e", "require(process.argv[1])()", str(executable)])
-            )
+            libraries = Path(self.dependencies.host["qt"].package_folder) / "lib"
+            loader = Path(self.source_folder) / "run_wasm.cjs"
+            self.run(f'"{node}" "{loader}" "{executable}" "{libraries}"')
             return
         if can_run(self):
             executable = (
