@@ -1,0 +1,21 @@
+--- a/qtbase/cmake/QtPublicSbomHelpers.cmake
++++ b/qtbase/cmake/QtPublicSbomHelpers.cmake
+@@ -933,7 +933,6 @@
+ 
+     _qt_internal_sbom_begin_project(
+         INSTALL_SBOM_DIR "${INSTALL_SBOMDIR}"
+-        USE_GIT_VERSION
+         __QT_INTERNAL_HANDLE_QT_REPO
+         ${sbom_project_args}
+     )
+--- a/qtbase/cmake/QtToolchainHelpers.cmake
++++ b/qtbase/cmake/QtToolchainHelpers.cmake
+@@ -5,7 +5,7 @@
+ # as well as CMake application projects.
+ # Expects various global variables to be set.
+ function(qt_internal_create_toolchain_file)
+-    if(CMAKE_TOOLCHAIN_FILE)
++    if(CMAKE_TOOLCHAIN_FILE AND NOT CMAKE_TOOLCHAIN_FILE MATCHES "conan_toolchain[.]cmake$")
+         # For OHOS, CMAKE_TOOLCHAIN_FILE is replaced with a build-dir wrapper during configure.
+         # Store the real SDK toolchain path so builds on other machines (e.g. CI prefix builds)
+         # can resolve it from the installed qt.toolchain.cmake.

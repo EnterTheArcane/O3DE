@@ -139,7 +139,11 @@ class Recipe(ConanFile):
         )
         self.run(f'{self._make} {target} -j1 DESTDIR="{package.as_posix()}"')
         if self.settings.os == "Windows":
-            rename(self, package / "Program Files/Common Files/SSL", package / "ssl")
+            config = package / "Program Files/Common Files/SSL"
+            rename(self, config, package / "ssl")
+            for parent in (config.parent, config.parent.parent):
+                if not any(parent.iterdir()):
+                    rmdir(self, parent)
         copy(self, "LICENSE.txt", self.source_folder, package / "licenses")
         rmdir(self, package / "lib/pkgconfig")
         rmdir(self, package / "lib/cmake")

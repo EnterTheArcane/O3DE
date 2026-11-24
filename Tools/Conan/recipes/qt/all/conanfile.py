@@ -9,7 +9,6 @@
 from pathlib import Path
 
 from conan import ConanFile
-from conan.errors import ConanException
 from conan.tools.build import cross_building
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
 from conan.tools.env import Environment
@@ -18,7 +17,9 @@ from conan.tools.files import (
     copy,
     export_conandata_patches,
     get,
+    load,
     rm,
+    save,
 )
 
 
@@ -29,8 +30,6 @@ class Recipe(ConanFile):
     package_type = "shared-library"
 
     def export_sources(self):
-        for pattern in ("QT-NOTICE.TXT", "LICENSE"):
-            copy(self, pattern, self.recipe_folder, self.export_sources_folder)
         export_conandata_patches(self)
 
     def layout(self):
@@ -79,6 +78,8 @@ class Recipe(ConanFile):
         tc.variables["CMAKE_INSTALL_LIBDIR"] = "lib"
         tc.variables["QT_BUILD_EXAMPLES"] = False
         tc.variables["QT_BUILD_TESTS"] = False
+        # Generated source relationship comments can expose absolute build paths.
+        tc.variables["QT_SBOM_SKIP_SOURCE_FILES"] = True
         modules = ["qtbase", "qtimageformats", "qtsvg"]
         if desktop:
             modules.extend(("qttools", "qttranslations"))
@@ -174,10 +175,11 @@ class Recipe(ConanFile):
             cmake.install(build_type="Debug")
         else:
             cmake.install()
-        assets = Path(self.source_folder).parent
-        if not copy(self, "LICENSE", assets, package):
-            raise ConanException("Missing the Qt license")
-        for folder in Path(self.source_folder).glob("qt*"):
+        source = Path(self.source_folder)
+        save(
+            self, package / "LICENSE", load(self, source / "LICENSES/LGPL-3.0-only.txt")
+        )
+        for folder in source.glob("qt*"):
             if (folder / "LICENSES").is_dir():
                 copy(
                     self,
