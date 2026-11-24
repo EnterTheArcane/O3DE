@@ -197,9 +197,9 @@ def main():
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     local_packages = sorted(
-        f"{recipe.parent.name}/*" for recipe in (ROOT / "recipes").glob("*/config.yml")
+        recipe.parent.name for recipe in (ROOT / "recipes").glob("*/config.yml")
     )
-    exclusions = [f"~{package}" for package in local_packages]
+    exclusions = [f"~{package}/*" for package in local_packages]
     env = dict(os.environ, CONAN_HOME=str(cache_folder(output, exclusions)))
     env.pop("CONAN_USER_HOME", None)
     if args.command == "export-cache":
@@ -244,7 +244,7 @@ def main():
         "--index",
         0,
         "--force",
-        *(f"--allowed-packages={package}" for package in local_packages),
+        *(f"--allowed-packages={package}/*" for package in local_packages),
     )
     conan(
         "remote",
@@ -287,12 +287,15 @@ def main():
             "--build=missing",
             "-r",
             "o3de",
+            "--update=android-ndk",
             "--output-folder",
             output / "release",
         )
         return
 
     deployer_dir = ROOT / "extensions" / "deployers"
+    # Restored binaries can be reused, but cached recipes must follow the checkout.
+    recipe_updates = [f"--update={package}" for package in local_packages]
     deployers = []
     if args.deploy in ("oci", "both"):
         deployers.extend(("--deployer", deployer_dir / "oci_deployer.py"))
@@ -324,6 +327,7 @@ def main():
             ROOT,
             *profile_args,
             *remotes,
+            *recipe_updates,
             "--output-folder",
             stage,
             *deployers,
