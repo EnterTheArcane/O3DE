@@ -14,3 +14,5 @@ patches:
     - patch_file: patches/clang-cl-svml-guard.patch
       patch_description: Use the existing precise fallback with clang-cl instead of MSVC's SVML intrinsic
       patch_type: portability
+    - patch_file: patches/relocatable-install-paths.patch
+      patch_description: Resolve pkg-config and Windows setup paths relative to the SDK

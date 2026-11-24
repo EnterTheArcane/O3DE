@@ -291,12 +291,11 @@ class Recipe(ConanFile):
             # make must preserve the dollar signs for the runtime loader.
             env.define("LDFLAGS", r"-Wl,-rpath,\$$ORIGIN/../lib")
         if cross_building(self):
-            native = Path(self.dependencies.build[self.name].package_folder) / "python"
-            interpreter = native / "bin/python3"
-            if windows_android:
-                interpreter = native / "python.exe"
-            elif self.settings_build.os == "Macos":
-                interpreter = native / "Python.framework/Versions/Current/bin/python3"
+            native = self.dependencies.build[self.name]
+            name = "python.exe" if self.settings_build.os == "Windows" else "python3"
+            interpreter = (
+                Path(native.package_folder) / native.cpp_info.bindirs[0] / name
+            )
             args.append(f"--with-build-python={interpreter.as_posix()}")
         install = "make install"
         if android or wasm:
@@ -366,7 +365,7 @@ class Recipe(ConanFile):
     def package(self):
         package = Path(self.package_folder)
         source = Path(self.source_folder)
-        if not copy(self, "*", Path(self.build_folder) / "image", package / "python"):
+        if not copy(self, "*", Path(self.build_folder) / "image", package):
             raise ConanException("Missing the CPython installation")
         copy(self, "LICENSE", source, package / "licenses")
         platform = str(self.settings.os).lower()
@@ -386,24 +385,24 @@ class Recipe(ConanFile):
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "O3DEVendoredPython")
         if self.settings.os == "Windows":
-            self.cpp_info.bindirs = ["python"]
-            self.cpp_info.includedirs = ["python/include"]
-            self.cpp_info.libdirs = ["python/libs"]
+            self.cpp_info.bindirs = ["."]
+            self.cpp_info.includedirs = ["include"]
+            self.cpp_info.libdirs = ["libs"]
         elif self.settings.os == "Macos":
-            framework = "python/Python.framework/Versions/Current"
+            framework = "Python.framework/Versions/Current"
             self.cpp_info.bindirs = [f"{framework}/bin"]
             self.cpp_info.includedirs = [f"{framework}/Headers"]
             self.cpp_info.libdirs = [framework]
         elif self.settings.os == "iOS":
             self.cpp_info.bindirs = []
-            self.cpp_info.includedirs = ["python/Python.framework/Headers"]
-            self.cpp_info.libdirs = ["python/Python.framework"]
+            self.cpp_info.includedirs = ["Python.framework/Headers"]
+            self.cpp_info.libdirs = ["Python.framework"]
         elif self.settings.os == "Android":
             self.cpp_info.bindirs = []
-            self.cpp_info.includedirs = ["python/include/python3.15"]
-            self.cpp_info.libdirs = ["python/lib"]
+            self.cpp_info.includedirs = ["include/python3.15"]
+            self.cpp_info.libdirs = ["lib"]
             self.cpp_info.libs = ["python3.15"]
         else:
-            self.cpp_info.bindirs = ["python/bin"]
-            self.cpp_info.includedirs = ["python/include/python3.15"]
-            self.cpp_info.libdirs = ["python/lib"]
+            self.cpp_info.bindirs = ["bin"]
+            self.cpp_info.includedirs = ["include/python3.15"]
+            self.cpp_info.libdirs = ["lib"]

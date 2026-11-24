@@ -1,0 +1,37 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -331,6 +331,8 @@
+ # through the macro install_target().
+ export (EXPORT OIIO_EXPORTED_TARGETS FILE "${CMAKE_BINARY_DIR}/${OIIO_TARGETS_EXPORT_NAME}")
+ 
++file (RELATIVE_PATH OIIO_INCLUDEDIR_FROM_LIBDIR
++      "${CMAKE_INSTALL_FULL_LIBDIR}" "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
+ # generate the config file from the template in the binary dir
+ configure_package_config_file ("${PROJECT_SOURCE_DIR}/src/cmake/Config.cmake.in"
+         "${OIIO_PROJECT_CONFIG}"
+--- a/src/cmake/Config.cmake.in
++++ b/src/cmake/Config.cmake.in
+@@ -8,8 +8,7 @@
+ 
+ # add here all the find_dependency() whenever switching to config based dependencies
+ if (NOT @OPENIMAGEIO_CONFIG_DO_NOT_FIND_IMATH@ AND NOT OPENIMAGEIO_CONFIG_DO_NOT_FIND_IMATH)
+-    find_dependency(Imath @Imath_VERSION@
+-                    HINTS @Imath_DIR@)
++    find_dependency(Imath @Imath_VERSION@)
+ endif ()
+ 
+ if (NOT @fmt_LOCAL_BUILD@ AND (NOT @OIIO_INTERNALIZE_FMT@ OR @OIIO_USE_COMPILED_FMT@))
+@@ -102,12 +101,8 @@
+ # Compute the installation prefix relative to this file. Note that cmake files are installed
+ # to ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME} (see OIIO_CONFIG_INSTALL_DIR)
+ get_filename_component(_CURR_INSTALL_LIBDIR "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
+-get_filename_component(_ABS_CMAKE_INSTALL_LIBDIR "@CMAKE_INSTALL_FULL_LIBDIR@" ABSOLUTE)
+-get_filename_component(_ABS_CMAKE_INSTALL_INCLUDEDIR "@CMAKE_INSTALL_FULL_INCLUDEDIR@" ABSOLUTE)
+-file(RELATIVE_PATH _INCLUDEDIR_RELATIVE_TO_LIBDIR
+-     "${_ABS_CMAKE_INSTALL_LIBDIR}" "${_ABS_CMAKE_INSTALL_INCLUDEDIR}")
+ get_filename_component(_CURR_INSTALL_INCLUDE_DIR
+-                       "${_CURR_INSTALL_LIBDIR}/${_INCLUDEDIR_RELATIVE_TO_LIBDIR}" ABSOLUTE)
++                       "${_CURR_INSTALL_LIBDIR}/@OIIO_INCLUDEDIR_FROM_LIBDIR@" ABSOLUTE)
+ 
+ set_and_check (@PROJECT_NAME@_INCLUDE_DIR "${_CURR_INSTALL_INCLUDE_DIR}")
+ set_and_check (@PROJECT_NAME@_INCLUDES    "${_CURR_INSTALL_INCLUDE_DIR}")

@@ -14,7 +14,7 @@ endif()
 # Install the pyside6 site-packages into Python
 add_library(${TARGET_WITH_NAMESPACE} SHARED IMPORTED GLOBAL)
 
-set(PYSIDE_BASE_PATH ${CMAKE_CURRENT_LIST_DIR}/pyside6)
+set(PYSIDE_BASE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 
 # In addition to the libraries, create a Pyside6::Tools library that handles the shiboken and pyside6-lupdate executables that are part
 # of the pyside6 package
@@ -56,7 +56,7 @@ ly_target_include_system_directories(TARGET ${TARGET_WITH_NAMESPACE}
 
 if (PAL_PLATFORM_NAME STREQUAL "Windows")
     set_target_properties(${TARGET_WITH_NAMESPACE} PROPERTIES 
-        ${MY_NAME}_SHARE_DIR ${CMAKE_CURRENT_LIST_DIR}/pyside6/share
+        ${MY_NAME}_SHARE_DIR ${PYSIDE_BASE_PATH}/share
         IMPORTED_IMPLIB_DEBUG "${${MY_NAME}_LIB_DIR}/pyside6_d${CMAKE_STATIC_LIBRARY_SUFFIX}"
         IMPORTED_LOCATION_DEBUG "${${MY_NAME}_BIN_DIR}/pyside6_d${CMAKE_SHARED_LIBRARY_SUFFIX}"
         IMPORTED_IMPLIB "${${MY_NAME}_LIB_DIR}/pyside6.abi3${CMAKE_STATIC_LIBRARY_SUFFIX}"
@@ -67,7 +67,7 @@ if (PAL_PLATFORM_NAME STREQUAL "Windows")
     )
 elseif (PAL_PLATFORM_NAME STREQUAL "Linux" OR PAL_PLATFORM_NAME STREQUAL "Mac")
     set_target_properties(${TARGET_WITH_NAMESPACE} PROPERTIES 
-        ${MY_NAME}_SHARE_DIR ${CMAKE_CURRENT_LIST_DIR}/pyside6/share
+        ${MY_NAME}_SHARE_DIR ${PYSIDE_BASE_PATH}/share
         IMPORTED_LOCATION "${${MY_NAME}_LIB_DIR}/libpyside6.abi3${CMAKE_SHARED_LIBRARY_SUFFIX}"
     )   
 endif()

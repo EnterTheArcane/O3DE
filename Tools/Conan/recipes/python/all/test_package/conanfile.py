@@ -42,7 +42,7 @@ class TestPython(ConanFile):
             cmake.build()
 
     def test(self):
-        original = Path(self.dependencies["python"].package_folder) / "python"
+        original = Path(self.dependencies["python"].package_folder)
         windows = self.settings.os == "Windows"
         apple = self.settings.os == "Macos"
         if self.settings.os == "Android":

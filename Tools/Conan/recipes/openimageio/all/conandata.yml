@@ -11,3 +11,5 @@ patches:
     - patch_file: "patches/clang-cl-simd-flags.patch"
       patch_description: Request SIMD target features instead of defining feature macros under clang-cl
       patch_type: portability
+    - patch_file: "patches/relocatable-package-config.patch"
+      patch_description: "Resolve installed headers and dependencies without build-directory hints"

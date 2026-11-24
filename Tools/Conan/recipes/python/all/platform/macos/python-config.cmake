@@ -9,7 +9,7 @@
 set(Python_VERSION 3.15.2)
 set(Python_INTERPRETER_ID Python)
 set(Python_FOUND TRUE)
-set(Python_HOME "${CMAKE_CURRENT_LIST_DIR}/python/Python.framework/Versions/3.15")
+set(Python_HOME "${CMAKE_CURRENT_LIST_DIR}/Python.framework/Versions/3.15")
 set(Python_EXECUTABLE "${Python_HOME}/bin/python3")
 set(Python_INCLUDE_DIR "${Python_HOME}/Headers")
 set(Python_LIBRARY "${Python_HOME}/Python")

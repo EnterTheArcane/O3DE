@@ -142,16 +142,12 @@ class Recipe(ConanFile):
             cross = cross_building(self)
             interpreter = self.dependencies.build["python"] if cross else python
             executable = "python.exe" if self.settings.os == "Windows" else "python3"
-            sdk = Path(python.package_folder) / "python"
-            headers = sdk / "include/python3.15"
-            library = sdk / "lib/libpython3.15.so"
-            if self.settings.os == "Windows":
-                headers = sdk / "include"
-                library = sdk / "libs/python315.lib"
-            elif self.settings.os == "Macos":
-                framework = sdk / "Python.framework/Versions/Current"
-                headers = framework / "Headers"
-                library = framework / "Python"
+            sdk = Path(python.package_folder)
+            headers = sdk / python.cpp_info.includedirs[0]
+            filename = {"Windows": "python315.lib", "Macos": "Python"}.get(
+                str(self.settings.os), "libpython3.15.so"
+            )
+            library = sdk / python.cpp_info.libdirs[0] / filename
             tc.variables["CMAKE_POLICY_DEFAULT_CMP0190"] = "OLD"
             tc.variables["Python3_EXECUTABLE"] = (
                 Path(interpreter.package_folder)

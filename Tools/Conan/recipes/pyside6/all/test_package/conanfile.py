@@ -13,7 +13,7 @@ from conan.tools.env import VirtualBuildEnv, VirtualRunEnv
 from conan.tools.layout import basic_layout
 
 
-class TestPySide6(ConanFile):
+class TestPackage(ConanFile):
     settings = "os", "arch", "compiler", "build_type"
     test_type = "explicit"
 
@@ -32,7 +32,7 @@ class TestPySide6(ConanFile):
         if self.settings.os != "Windows" or self.settings.arch != "armv8":
             return
 
-        pyside = Path(self.dependencies["pyside6"].package_folder) / "pyside6"
+        pyside = Path(self.dependencies["pyside6"].package_folder)
         qt = Path(self.dependencies["qt"].package_folder)
         modules = pyside / "lib/site-packages/PySide6"
         binaries = [

@@ -9,7 +9,7 @@
 set(Python_VERSION 3.15.2)
 set(Python_FOUND TRUE)
 set(Python_Development_FOUND TRUE)
-set(Python_HOME "${CMAKE_CURRENT_LIST_DIR}/python")
+set(Python_HOME "${CMAKE_CURRENT_LIST_DIR}")
 set(Python_INCLUDE_DIR "${Python_HOME}/include/python3.15")
 set(Python_LIBRARY "${Python_HOME}/lib/libpython3.15.so")
 set(Python_PATHS

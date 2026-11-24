@@ -35,7 +35,7 @@ from conan.tools.microsoft import VCVars
 MODULES = "Core,Gui,Widgets,Network,Concurrent,OpenGL,OpenGLWidgets,Svg,SvgWidgets,Test,UiTools,Xml"
 
 
-class PySide6(ConanFile):
+class Recipe(ConanFile):
     name = "pyside6"
     license = "LGPL-3.0-only"
     settings = "os", "arch", "compiler", "build_type"
@@ -71,15 +71,11 @@ class PySide6(ConanFile):
             # setup.py owns the staging prefix for its separate CMake projects.
             tc.blocks.remove("output_dirs")
             host_qt = Path(self.dependencies.build["qt"].package_folder)
-            host_pyside = (
-                Path(self.dependencies.build[self.name].package_folder) / "pyside6"
-            )
+            host_pyside = Path(self.dependencies.build[self.name].package_folder)
             windows = self.settings.os == "Windows"
             runtime_dir = "bin" if windows else "lib"
             if windows:
-                python = (
-                    Path(self.dependencies.host["python"].package_folder) / "python"
-                )
+                python = self.dependencies.host["python"]
                 tc.blocks.remove("vs_runtime")
                 tc.variables["CMAKE_SYSTEM_NAME"] = "Windows"
                 tc.variables["CMAKE_SYSTEM_PROCESSOR"] = "ARM64"
@@ -88,7 +84,9 @@ class PySide6(ConanFile):
                 )
                 tc.variables["Python_FIND_REGISTRY"] = "NEVER"
                 tc.variables["PYTHON_LIMITED_LIBRARIES"] = (
-                    python / "libs/python3.lib"
+                    Path(python.package_folder)
+                    / python.cpp_info.libdirs[0]
+                    / "python3.lib"
                 ).as_posix()
             tc.variables["QT_HOST_PATH"] = host_qt.as_posix()
             tc.variables["SHIBOKEN_WRAPPER_HOST_QT_LIB_PATH"] = (
@@ -202,12 +200,19 @@ class PySide6(ConanFile):
             "--parallel=8",
         ]
         if cross:
-            python_target = Path(python_sdk.package_folder) / "python"
-            if windows:
-                env.prepend_path("LIB", str(python_target / "libs"))
-            shiboken = (
-                Path(self.dependencies.build[self.name].package_folder) / "pyside6"
+            python_target = (
+                Path(python_sdk.package_folder) / python_sdk.cpp_info.bindirs[0]
             )
+            if windows:
+                env.prepend_path(
+                    "LIB",
+                    str(
+                        Path(python_sdk.package_folder) / python_sdk.cpp_info.libdirs[0]
+                    ),
+                )
+            else:
+                python_target = python_target.parent
+            shiboken = Path(self.dependencies.build[self.name].package_folder)
             args.extend(
                 (
                     f"--cmake-toolchain-file={Path(self.generators_folder) / 'conan_toolchain.cmake'}",
@@ -245,8 +250,7 @@ class PySide6(ConanFile):
 
     def package(self):
         source = Path(self.source_folder)
-        package = Path(self.package_folder)
-        sdk = package / "pyside6"
+        sdk = Path(self.package_folder)
         assets = source.parent
         clang = Path(self.build_folder) / "libclang"
         windows = self.settings.os == "Windows"
@@ -264,15 +268,15 @@ class PySide6(ConanFile):
         )
         if not copy(self, "README.md", source, sdk):
             raise ConanException("Missing the PySide README")
-        if not copy(self, "Findpyside6.cmake", assets, package):
+        if not copy(self, "Findpyside6.cmake", assets, sdk):
             raise ConanException("Missing Findpyside6.cmake")
         for name in ("__init__.py", "setup.py"):
             if not copy(self, name, assets, sdk / site_packages):
                 raise ConanException(f"Missing {name}")
-        copy(self, "*.txt", source / "LICENSES", package / "licenses")
+        copy(self, "*.txt", source / "LICENSES", sdk / "licenses")
         save(
             self,
-            package / "licenses/libclang.txt",
+            sdk / "licenses/libclang.txt",
             load(self, clang / "include/llvm/Support/LICENSE.TXT"),
         )
 
