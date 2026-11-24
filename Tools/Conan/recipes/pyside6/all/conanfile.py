@@ -254,9 +254,10 @@ class Recipe(ConanFile):
         assets = source.parent
         clang = Path(self.build_folder) / "libclang"
         windows = self.settings.os == "Windows"
-        site_packages = Path(
-            "lib/site-packages" if windows else "lib/python3.15/site-packages"
-        )
+        if windows:
+            site_packages = Path("lib/site-packages")
+        else:
+            site_packages = Path("lib/python/site-packages")
         (release,) = (
             folder
             for folder in (source / "build").glob("*/install")

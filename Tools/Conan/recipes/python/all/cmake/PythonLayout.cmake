@@ -1,0 +1,46 @@
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+if(EXISTS "${_python_home}/python.exe")
+    set(_python_executable "${_python_home}/python.exe")
+    set(_python_include "${_python_home}/include")
+    set(_python_library "${_python_home}/libs/python${_python_version_digits}.lib")
+    set(_python_library_debug "${_python_home}/libs/python${_python_version_digits}_d.lib")
+    set(_python_dll "${_python_home}/python${_python_version_digits}.dll")
+    set(_python_dll_debug "${_python_home}/python${_python_version_digits}_d.dll")
+    set(_python_stdlib "${_python_home}/Lib")
+    set(_python_paths "${_python_stdlib}" "${_python_stdlib}/site-packages" "${_python_home}/DLLs")
+    set(_python_soabi "cp${_python_version_digits}-win_amd64")
+    if("@PYTHON_ARCH@" STREQUAL "armv8")
+        set(_python_soabi "cp${_python_version_digits}-win_arm64")
+    endif()
+    set(_python_runtime_files
+        "${_python_home}/python${_python_version_digits}$<$<CONFIG:Debug>:_d>.dll"
+        "${_python_home}/python${_python_version_digits}$<$<CONFIG:Debug>:_d>.pdb"
+        "${_python_home}/python3$<$<CONFIG:Debug>:_d>.dll"
+        "${_python_home}/python3$<$<CONFIG:Debug>:_d>.pdb")
+    return()
+endif()
+
+set(_python_framework "${_python_home}/Python.framework")
+if(EXISTS "${_python_framework}/Python")
+    set(_python_include "${_python_framework}/Headers")
+    set(_python_library "${_python_framework}/Python")
+    if(IS_DIRECTORY "${_python_framework}/lib/python")
+        set(_python_home "${_python_framework}")
+        set(_python_soabi "cpython-${_python_version_digits}-darwin")
+    endif()
+else()
+    set(_python_include "${_python_home}/include/python")
+    set(_python_library "${_python_home}/lib/libpython.so")
+    if(NOT EXISTS "${_python_library}" AND EXISTS "${_python_home}/lib/libpython.a")
+        set(_python_library "${_python_home}/lib/libpython.a")
+        set(_python_dynamic_modules FALSE)
+    endif()
+endif()
+set(_python_stdlib "${_python_home}/lib/python")
+set(_python_paths "${_python_home}/lib" "${_python_stdlib}" "${_python_stdlib}/lib-dynload" "${_python_stdlib}/site-packages")
+set(_python_executable "${_python_home}/bin/python3")
+if(_python_dynamic_modules)
+    set(_python_runtime_files "${_python_library}")
+endif()

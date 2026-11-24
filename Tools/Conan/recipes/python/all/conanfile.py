@@ -7,6 +7,7 @@
 #
 
 import os
+import re
 import shlex
 import sys
 from io import StringIO
@@ -24,6 +25,7 @@ from conan.tools.files import (
     copy,
     export_conandata_patches,
     get,
+    load,
     mkdir,
     rename,
     save,
@@ -41,7 +43,7 @@ class Recipe(ConanFile):
     settings = "os", "arch", "compiler", "build_type"
 
     def export_sources(self):
-        for pattern in ("platform/*/python-config.cmake", "platform/macos/relocate.py"):
+        for pattern in ("cmake/*", "platform/macos/relocate.py"):
             copy(self, pattern, self.recipe_folder, self.export_sources_folder)
         export_conandata_patches(self)
 
@@ -188,6 +190,8 @@ class Recipe(ConanFile):
         build_env = VirtualBuildEnv(self, auto_generate=True)
         symbols = self.conf.get("user.package:debug_symbols")
         self._set_unix_debug_flags(env)
+        env.define("PYTHON_UNVERSIONED_INSTALL", "yes")
+        env.append("CPPFLAGS", "-DPYTHON_UNVERSIONED_INSTALL")
         env.define_path("PKG_CONFIG_PATH", self.generators_folder)
         env.define(
             "PKG_CONFIG_LIBDIR", self.generators_folder if cross_building(self) else ""
@@ -320,8 +324,7 @@ class Recipe(ConanFile):
         if wasm:
             if not copy(self, "python.wasm", build, build / "image/bin"):
                 raise ConanException("Missing python.wasm")
-        if self.settings.os == "Linux":
-            (build / "image/bin/python").symlink_to("python3")
+        self._normalize_unix_tools(build / "image")
 
     def _build_macos(self):
         source = Path(self.source_folder)
@@ -358,16 +361,60 @@ class Recipe(ConanFile):
         rename(self, staging / "_root/Library/Frameworks/Python.framework", framework)
         signing = self.python_requires["apple-signing"].module
         relocate = run_path(str(scripts / "relocate.py"))["relocate"]
-        relocate(self, framework, self.version.rsplit(".", 1)[0], signing.is_macho)
+        version = self.version.rsplit(".", 1)[0]
+        relocate(self, framework, version, signing.is_macho)
+        self._normalize_unix_tools(framework)
         signing.sign_tree(self, framework, identity="-")
-        interpreter = framework / "Versions/3.15/bin/python3.15"
+        interpreter = framework / "bin/python3"
+        stdlib = framework / "lib/python"
         self.run(
             f"{shlex.quote(str(interpreter))} -B -m compileall -q -f "
             "--invalidation-mode checked-hash -o 0 -o 1 -o 2 "
             f"-x 'bad_coding|badsyntax' -s {shlex.quote(str(image))} "
-            f"{shlex.quote(str(framework / 'Versions/3.15/lib/python3.15'))}"
+            f"{shlex.quote(str(stdlib))}"
         )
         signing.sign_tree(self, framework, identity="-")
+
+    def _normalize_unix_tools(self, sdk):
+        version = self.version.rsplit(".", 1)[0]
+        scripts = ("bin/idle3", "bin/pydoc3")
+        pkg_config = ("lib/pkgconfig/python3.pc", "lib/pkgconfig/python3-embed.pc")
+        for name in (
+            "bin/python3",
+            "bin/python3.mjs",
+            "bin/python3-config",
+            "share/man/man1/python3.1",
+            *scripts,
+            *pkg_config,
+        ):
+            path = sdk / name
+            if path.is_symlink():
+                original = path.resolve(strict=True)
+                path.unlink()
+                rename(self, original, path)
+            if not path.is_file():
+                continue
+            if name in scripts:
+                shebang, _, body = load(self, path).partition("\n")
+                if shebang.startswith("#!") and f"/bin/python{version}" in shebang:
+                    launcher = """#!/bin/sh
+'''exec' "$(dirname "$0")/python3" "$0" "$@"
+' '''
+"""
+                    save(self, path, launcher + body)
+            if name in pkg_config:
+                data = load(self, path)
+                data = re.sub(
+                    r"^prefix=.*", r"prefix=${pcfiledir}/../..", data, flags=re.M
+                )
+                data = data.replace(
+                    f"${{includedir}}/python{version}", "${includedir}/python"
+                )
+                data = data.replace(f"-lpython{version}", "-lpython")
+                if sdk.name == "Python.framework":
+                    data = data.replace("${includedir}/python", "${prefix}/Headers")
+                    data = data.replace("-lpython", "-F${prefix}/.. -framework Python")
+                save(self, path, data)
 
     def _set_unix_debug_flags(self, env):
         if self.conf.get("user.package:debug_symbols"):
@@ -380,11 +427,28 @@ class Recipe(ConanFile):
         if not copy(self, "*", Path(self.build_folder) / "image", package):
             raise ConanException("Missing the CPython installation")
         copy(self, "LICENSE", source, package / "licenses")
-        platform = str(self.settings.os).lower()
-        if not copy(
-            self, "python-config.cmake", source.parent / "platform" / platform, package
-        ):
-            raise ConanException(f"Missing python-config.cmake for {platform}")
+        cmake = source.parent / "cmake"
+        layout = cmake / "PythonLayout.cmake"
+        save(
+            self,
+            package / layout.name,
+            load(self, layout).replace("@PYTHON_ARCH@", str(self.settings.arch)),
+        )
+        for name in ("Python3Config.cmake", "PythonAddLibrary.cmake"):
+            copy(self, name, cmake, package)
+        config = load(self, cmake / "PythonConfig.cmake")
+        version = load(self, cmake / "PythonConfigVersion.cmake.in")
+        save(
+            self,
+            package / "PythonConfig.cmake",
+            config.replace("@PYTHON_VERSION@", str(self.version)),
+        )
+        for name in ("Python", "Python3"):
+            save(
+                self,
+                package / f"{name}ConfigVersion.cmake",
+                version.replace("@PYTHON_VERSION@", str(self.version)),
+            )
         for name, dependency in self.dependencies.host.items():
             if dependency.package_folder:
                 copy(
@@ -395,26 +459,25 @@ class Recipe(ConanFile):
                 )
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "O3DEVendoredPython")
+        self.cpp_info.set_property("cmake_find_mode", "none")
         if self.settings.os == "Windows":
             self.cpp_info.bindirs = ["."]
             self.cpp_info.includedirs = ["include"]
             self.cpp_info.libdirs = ["libs"]
         elif self.settings.os == "Macos":
-            framework = "Python.framework/Versions/Current"
-            self.cpp_info.bindirs = [f"{framework}/bin"]
-            self.cpp_info.includedirs = [f"{framework}/Headers"]
-            self.cpp_info.libdirs = [framework]
+            self.cpp_info.bindirs = ["Python.framework/bin"]
+            self.cpp_info.includedirs = ["Python.framework/Headers"]
+            self.cpp_info.libdirs = ["Python.framework"]
         elif self.settings.os == "iOS":
             self.cpp_info.bindirs = []
             self.cpp_info.includedirs = ["Python.framework/Headers"]
             self.cpp_info.libdirs = ["Python.framework"]
         elif self.settings.os == "Android":
             self.cpp_info.bindirs = []
-            self.cpp_info.includedirs = ["include/python3.15"]
+            self.cpp_info.includedirs = ["include/python"]
             self.cpp_info.libdirs = ["lib"]
-            self.cpp_info.libs = ["python3.15"]
+            self.cpp_info.libs = ["python"]
         else:
             self.cpp_info.bindirs = ["bin"]
-            self.cpp_info.includedirs = ["include/python3.15"]
+            self.cpp_info.includedirs = ["include/python"]
             self.cpp_info.libdirs = ["lib"]

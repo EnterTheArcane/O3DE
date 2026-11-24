@@ -1,0 +1,128 @@
+--- a/Modules/getpath.py
++++ b/Modules/getpath.py
+@@ -177,11 +177,17 @@
+ if os_name == 'posix' or os_name == 'darwin':
+     BUILDDIR_TXT = 'pybuilddir.txt'
+     DEFAULT_PROGRAM_NAME = f'python{VERSION_MAJOR}'
+-    STDLIB_SUBDIR = f'{platlibdir}/python{VERSION_MAJOR}.{VERSION_MINOR}{ABI_THREAD}'
++    flat_framework = (
++        os_name == 'darwin' and WITH_NEXT_FRAMEWORK and library
++        and isfile(joinpath(dirname(library), platlibdir, 'python', 'os.py'))
++    )
++    stdlib_name = 'python' if flat_framework else f'python{VERSION_MAJOR}.{VERSION_MINOR}{ABI_THREAD}'
++    STDLIB_SUBDIR = f'{platlibdir}/{stdlib_name}'
+     STDLIB_LANDMARKS = [f'{STDLIB_SUBDIR}/os.py', f'{STDLIB_SUBDIR}/os.pyc']
+-    PLATSTDLIB_LANDMARK = f'{platlibdir}/python{VERSION_MAJOR}.{VERSION_MINOR}{ABI_THREAD}/lib-dynload'
++    PLATSTDLIB_LANDMARK = f'{STDLIB_SUBDIR}/lib-dynload'
+     BUILDSTDLIB_LANDMARKS = ['Lib/os.py']
+     VENV_LANDMARK = 'pyvenv.cfg'
+-    ZIP_LANDMARK = f'{platlibdir}/python{VERSION_MAJOR}{VERSION_MINOR}{ABI_THREAD}.zip'
++    zip_name = 'python' if flat_framework else f'python{VERSION_MAJOR}{VERSION_MINOR}{ABI_THREAD}'
++    ZIP_LANDMARK = f'{platlibdir}/{zip_name}.zip'
+     DELIM = ':'
+     SEP = '/'
+@@ -309,7 +315,8 @@
+         # a stub executable that execs the real interpreter in an
+         # embedded app bundle. That bundle is an implementation detail
+         # and should not affect base_executable.
+-        base_executable = f"{dirname(library)}/bin/python{VERSION_MAJOR}.{VERSION_MINOR}"
++        launcher = DEFAULT_PROGRAM_NAME if flat_framework else f'python{VERSION_MAJOR}.{VERSION_MINOR}'
++        base_executable = joinpath(dirname(library), 'bin', launcher)
+     else:
+         # Use the real executable as our base, or argv[0] otherwise
+         # (on Windows, argv[0] is likely to be ENV___PYVENV_LAUNCHER__; on
+--- a/Lib/sysconfig/__init__.py
++++ b/Lib/sysconfig/__init__.py
+@@ -106,6 +106,19 @@
+ else:
+     _INSTALL_SCHEMES['venv'] = _INSTALL_SCHEMES['posix_venv']
+ 
++_MACOS_FLAT_FRAMEWORK = (
++    sys.platform == 'darwin' and sys._framework
++    and '_PYTHON_PROJECT_BASE' not in os.environ
++    and os.path.basename(sys._stdlib_dir or '') == 'python'
++)
++if _MACOS_FLAT_FRAMEWORK:
++    for name in ('posix_prefix', 'posix_venv'):
++        scheme = _INSTALL_SCHEMES[name]
++        for key in ('stdlib', 'platstdlib', 'purelib', 'platlib'):
++            scheme[key] = scheme[key].replace('{py_version_short}{abi_thread}', '')
++        scheme['include'] = '{installed_base}/Headers'
++        scheme['platinclude'] = '{installed_platbase}/Headers'
++
+ _IOS_FRAMEWORK = (
+     os.environ.get('_PYTHON_HOST_PLATFORM', sys.platform).split('-', 1)[0] == 'ios'
+ )
+@@ -334,7 +347,7 @@
+     if _PYTHON_BUILD:
+         return os.path.join(_PROJECT_BASE, "Makefile")
+ 
+-    if hasattr(sys, 'abiflags'):
++    if hasattr(sys, 'abiflags') and not _MACOS_FLAT_FRAMEWORK:
+         config_dir_name = f'config-{_PY_VERSION_SHORT}{sys.abiflags}'
+     else:
+         config_dir_name = 'config'
+@@ -558,6 +571,16 @@
+     _CONFIG_VARS['implementation'] = _get_implementation()
+     _CONFIG_VARS['implementation_lower'] = _get_implementation().lower()
+     _CONFIG_VARS['abiflags'] = abiflags
++    if _MACOS_FLAT_FRAMEWORK:
++        libdir = os.path.join(base_prefix, sys.platlibdir)
++        stdlib = os.path.join(libdir, 'python')
++        _CONFIG_VARS['BINDIR'] = os.path.join(base_prefix, 'bin')
++        _CONFIG_VARS['LIBDIR'] = libdir
++        _CONFIG_VARS['LIBDEST'] = stdlib
++        _CONFIG_VARS['BINLIBDEST'] = stdlib
++        _CONFIG_VARS['LIBPL'] = os.path.join(stdlib, 'config-darwin')
++        _CONFIG_VARS['INCLUDEPY'] = os.path.join(base_prefix, 'Headers')
++        _CONFIG_VARS['CONFINCLUDEPY'] = os.path.join(base_exec_prefix, 'Headers')
+     if _IOS_FRAMEWORK:
+         framework = _CONFIG_VARS['PYTHONFRAMEWORKDIR']
+         _CONFIG_VARS['INCLUDEPY'] = os.path.join(base_prefix, framework, 'Headers')
+--- a/Lib/site.py
++++ b/Lib/site.py
+@@ -764,10 +764,12 @@
+             if sys.platlibdir != "lib":
+                 libdirs.append("lib")
+ 
++            dirname = f"{implementation}{ver[0]}.{ver[1]}{abi_thread}"
++            if (sys.platform == 'darwin' and sys._framework
++                and os.path.basename(sys._stdlib_dir or '') == 'python'):
++                dirname = 'python'
+             for libdir in libdirs:
+-                path = os.path.join(prefix, libdir,
+-                                    f"{implementation}{ver[0]}.{ver[1]}{abi_thread}",
+-                                    "site-packages")
++                path = os.path.join(prefix, libdir, dirname, "site-packages")
+                 sitepackages.append(path)
+         else:
+             sitepackages.append(prefix)
+--- a/Lib/venv/__init__.py
++++ b/Lib/venv/__init__.py
+@@ -309,8 +309,10 @@
+             copier(context.executable, path)
+             if not os.path.islink(path):
+                 os.chmod(path, 0o755)
+-            for suffix in ('python', 'python3',
+-                           f'python3.{sys.version_info[1]}'):
++            names = ['python', 'python3']
++            if not sysconfig._MACOS_FLAT_FRAMEWORK:
++                names.append(f'python3.{sys.version_info[1]}')
++            for suffix in names:
+                 path = os.path.join(binpath, suffix)
+                 if not os.path.exists(path):
+                     # Issue 18807: make copies if
+--- a/Misc/python-config.in
++++ b/Misc/python-config.in
+@@ -50,7 +50,10 @@
+     elif opt in ('--libs', '--ldflags'):
+         libs = []
+         if '--embed' in opt_flags:
+-            libs.append('-lpython' + pyver + sys.abiflags)
++            if sysconfig._MACOS_FLAT_FRAMEWORK:
++                libs.extend(('-L' + getvar('LIBDIR'), '-lpython'))
++            else:
++                libs.append('-lpython' + pyver + sys.abiflags)
+         else:
+             libpython = getvar('LIBPYTHON')
+             if libpython:

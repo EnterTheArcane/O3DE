@@ -91,27 +91,11 @@ class Recipe(ConanFile):
         tc.variables["OCIO_DIRECTX_ENABLED"] = False
         if self.settings.os in ("iOS", "Emscripten"):
             tc.extra_cxxflags.append("-DOCIO_HEADLESS_ENABLED")
-        tc.variables["OCIO_PYTHON_VERSION"] = "3.15"
         tc.variables["Python_FIND_REGISTRY"] = "NEVER"
         if self._build_tools:
             python = self.dependencies.host["python"]
-            cross = cross_building(self)
-            interpreter = self.dependencies.build["python"] if cross else python
-            executable = "python.exe" if self.settings.os == "Windows" else "python3"
-            sdk = Path(python.package_folder)
-            headers = sdk / python.cpp_info.includedirs[0]
-            filename = {"Windows": "python315.lib", "Macos": "Python"}.get(
-                str(self.settings.os), "libpython3.15.so"
-            )
-            library = sdk / python.cpp_info.libdirs[0] / filename
-            tc.variables["CMAKE_POLICY_DEFAULT_CMP0190"] = "OLD"
-            tc.variables["Python_EXECUTABLE"] = (
-                Path(interpreter.package_folder)
-                / interpreter.cpp_info.bindirs[0]
-                / executable
-            ).as_posix()
-            tc.variables["Python_INCLUDE_DIR"] = headers.as_posix()
-            tc.variables["Python_LIBRARY"] = library.as_posix()
+            version = str(python.ref.version).rsplit(".", 1)[0]
+            tc.variables["OCIO_PYTHON_VERSION"] = version
         if self.settings.os == "Linux":
             tc.variables["CMAKE_INSTALL_RPATH"] = "$ORIGIN;$ORIGIN/..;$ORIGIN/../lib"
         elif self.settings.os == "Macos":

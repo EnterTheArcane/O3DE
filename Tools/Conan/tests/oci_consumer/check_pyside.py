@@ -11,7 +11,10 @@ if sys.platform == "win32":
     pyside_dlls = os.add_dll_directory(str(sdk / "bin"))
     qt_dlls = os.add_dll_directory(str(qt / "bin"))
 else:
-    packages = sdk / "lib/python3.15/site-packages"
+    packages = sdk / "lib/python/site-packages"
+    if not packages.is_dir():
+        major, minor = sys.version_info[:2]
+        packages = sdk / f"lib/python{major}.{minor}/site-packages"
 sys.path.insert(0, str(packages))
 
 from PySide6 import QtCore, QtGui, QtUiTools

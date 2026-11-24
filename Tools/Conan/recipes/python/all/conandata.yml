@@ -6,4 +6,7 @@ sources:
 patches:
   "3.15.2":
     - patch_file: "patches/macos-framework.patch"
+    - patch_file: "patches/ios-framework-layout.patch"
+    - patch_file: "patches/macos-unversioned-layout.patch"
     - patch_file: "patches/emscripten-static-runtime.patch"
+    - patch_file: "patches/unversioned-unix-install.patch"

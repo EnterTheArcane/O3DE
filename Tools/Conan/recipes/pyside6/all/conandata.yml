@@ -41,3 +41,6 @@ patches:
     - patch_file: "patches/windows-stub-runtime-path.patch"
       patch_description: Prepend DLL directories to the inherited Windows PATH at build time
       patch_type: portability
+    - patch_file: "patches/macos-flat-python-framework.patch"
+      patch_description: Find the library in an unversioned macOS Python framework
+      patch_type: portability

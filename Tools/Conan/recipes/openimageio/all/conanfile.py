@@ -137,25 +137,6 @@ class Recipe(ConanFile):
             tc.variables["EMBEDPLUGINS"] = True
             tc.variables["USE_TBB"] = False
             tc.variables["USE_OpenVDB"] = False
-        if self._build_tools:
-            python = self.dependencies.host["python"]
-            cross = cross_building(self)
-            interpreter = self.dependencies.build["python"] if cross else python
-            executable = "python.exe" if self.settings.os == "Windows" else "python3"
-            sdk = Path(python.package_folder)
-            headers = sdk / python.cpp_info.includedirs[0]
-            filename = {"Windows": "python315.lib", "Macos": "Python"}.get(
-                str(self.settings.os), "libpython3.15.so"
-            )
-            library = sdk / python.cpp_info.libdirs[0] / filename
-            tc.variables["CMAKE_POLICY_DEFAULT_CMP0190"] = "OLD"
-            tc.variables["Python3_EXECUTABLE"] = (
-                Path(interpreter.package_folder)
-                / interpreter.cpp_info.bindirs[0]
-                / executable
-            ).as_posix()
-            tc.variables["Python3_INCLUDE_DIR"] = headers.as_posix()
-            tc.variables["Python3_LIBRARY"] = library.as_posix()
         for name in ("FFmpeg", "hwy", "Nuke", "OpenCV", "OpenGL", "R3DSDK"):
             tc.variables[f"CMAKE_DISABLE_FIND_PACKAGE_{name}"] = True
         if self.settings.os == "Linux":

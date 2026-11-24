@@ -1,0 +1,53 @@
+--- a/Makefile.pre.in
++++ b/Makefile.pre.in
+@@ -3147,9 +3147,6 @@
+ 	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)
+ 	sed 's/%VERSION%/'"`$(RUNSHARED) $(PYTHON_FOR_BUILD) -c 'import platform; print(platform.python_version())'`"'/g' < $(RESSRCDIR)/Info.plist > $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Info.plist
+ 	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
+-	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(LIBDIR)
+-	$(LN) -fs "../$(LDLIBRARY)" "$(DESTDIR)$(prefix)/lib/libpython$(LDVERSION).dylib"
+-	$(LN) -fs "../$(LDLIBRARY)" "$(DESTDIR)$(prefix)/lib/libpython$(VERSION).dylib"
+ 	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(BINDIR)
+ 	for file in $(srcdir)/$(RESSRCDIR)/bin/* ; do \
+ 		$(INSTALL) -m $(EXEMODE) $$file $(DESTDIR)$(BINDIR); \
+@@ -3206,7 +3203,7 @@
+ 		rm -rf $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Headers; \
+ 	fi
+ 	mv "$(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/include/python$(LDVERSION)" "$(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Headers"
+-	$(LN) -fs "../$(PYTHONFRAMEWORKDIR)/Headers" "$(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/include/python$(LDVERSION)"
++	rmdir "$(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/include"
+ 
+ # Build the toplevel Makefile
+ Makefile.pre: $(srcdir)/Makefile.pre.in config.status
+--- a/Lib/sysconfig/__init__.py
++++ b/Lib/sysconfig/__init__.py
+@@ -106,6 +106,18 @@
+ else:
+     _INSTALL_SCHEMES['venv'] = _INSTALL_SCHEMES['posix_venv']
+ 
++_IOS_FRAMEWORK = (
++    os.environ.get('_PYTHON_HOST_PLATFORM', sys.platform).split('-', 1)[0] == 'ios'
++)
++if _IOS_FRAMEWORK:
++    _INSTALL_SCHEMES['posix_prefix']['include'] = (
++        '{installed_base}/{PYTHONFRAMEWORKDIR}/Headers'
++    )
++    _INSTALL_SCHEMES['posix_prefix']['platinclude'] = (
++        '{installed_platbase}/{PYTHONFRAMEWORKDIR}/Headers'
++    )
++
++
+ def _get_implementation():
+     return 'Python'
+ 
+@@ -546,6 +558,10 @@
+     _CONFIG_VARS['implementation'] = _get_implementation()
+     _CONFIG_VARS['implementation_lower'] = _get_implementation().lower()
+     _CONFIG_VARS['abiflags'] = abiflags
++    if _IOS_FRAMEWORK:
++        framework = _CONFIG_VARS['PYTHONFRAMEWORKDIR']
++        _CONFIG_VARS['INCLUDEPY'] = os.path.join(base_prefix, framework, 'Headers')
++        _CONFIG_VARS['CONFINCLUDEPY'] = os.path.join(base_exec_prefix, framework, 'Headers')
+     try:
+         _CONFIG_VARS['py_version_nodot_plat'] = sys.winver.replace('.', '')
+     except AttributeError:

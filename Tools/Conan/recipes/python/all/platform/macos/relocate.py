@@ -7,10 +7,13 @@
 #
 
 import os
-from io import StringIO
-from pathlib import Path
 import re
 import shlex
+from io import StringIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from conan.tools.files import rename, rmdir
 
 
 def relocate(conanfile, framework, version, is_macho):
@@ -24,11 +27,7 @@ def relocate(conanfile, framework, version, is_macho):
         )
         return output.getvalue()
 
-    versions = framework / "Versions"
-    current = versions / "Current"
-    if not current.exists():
-        current.symlink_to(version)
-    sdk = versions / version
+    sdk = framework / "Versions" / version
     library = sdk / "Python"
     name = otool("-D", library).splitlines()[1]
     installed = Path(name).parents[2]
@@ -36,7 +35,7 @@ def relocate(conanfile, framework, version, is_macho):
         raise ValueError(f"Unexpected Python framework install name {name}")
     prefix = f"{installed}/"
 
-    for path in sorted(framework.rglob("*")):
+    for path in sorted(sdk.rglob("*")):
         if not is_macho(path):
             continue
         name_lines = otool("-D", path).splitlines()
@@ -44,9 +43,7 @@ def relocate(conanfile, framework, version, is_macho):
         command = []
         if names and names[0].startswith(prefix):
             relative = path.relative_to(sdk)
-            command.extend(
-                ("-id", f"@rpath/Python.framework/Versions/Current/{relative}")
-            )
+            command.extend(("-id", f"@rpath/Python.framework/{relative}"))
         dependencies = otool("-L", path)
         for line in dependencies.splitlines()[1 + len(names) :]:
             dependency = line.strip().partition(" (compatibility version ")[0]
@@ -86,6 +83,8 @@ def relocate(conanfile, framework, version, is_macho):
                 installed
             )
             interpreter = os.path.relpath(target, script.parent)
+            if interpreter == f"python{version}":
+                interpreter = "python3"
             source = stream.read()
         launcher = f"""#!/bin/sh
 '''exec' "$(dirname "$0")/{interpreter}" "$0" "$@"
@@ -93,3 +92,40 @@ def relocate(conanfile, framework, version, is_macho):
 """
         # Keep the original script body in its existing encoding.
         script.write_bytes(launcher.encode() + source)
+
+    # Move the version's contents out before discarding the framework aliases.
+    with TemporaryDirectory(dir=framework.parent) as staging:
+        flat = Path(staging) / framework.name
+        rename(conanfile, sdk, flat)
+        rmdir(conanfile, framework)
+        rename(conanfile, flat, framework)
+
+    bindir = framework / "bin"
+    (bindir / f"pip{version}").unlink()
+    dsym = bindir / f"python{version}.dSYM"
+    if dsym.is_dir():
+        dwarf = dsym / "Contents/Resources/DWARF"
+        rename(conanfile, dwarf / f"python{version}", dwarf / "python3")
+        rename(conanfile, dsym, bindir / "python3.dSYM")
+
+    headers = framework / "Headers"
+    original = headers.resolve(strict=True)
+    headers.unlink()
+    rename(conanfile, original, headers)
+    original.parent.rmdir()
+
+    libdir = framework / "lib"
+    stdlib = libdir / "python"
+    rename(conanfile, libdir / f"python{version}", stdlib)
+    config = stdlib / "config-darwin"
+    rename(conanfile, stdlib / f"config-{version}-darwin", config)
+    (libdir / f"libpython{version}.dylib").unlink()
+    for extension in ("a", "dylib"):
+        (config / f"libpython{version}.{extension}").unlink()
+    # The curses extensions use the real dylib install names.
+    for name in ("curses", "form", "menu", "ncurses", "panel"):
+        alias = libdir / f"lib{name}.dylib"
+        if alias.is_symlink():
+            alias.unlink()
+    docs = framework / "share/doc"
+    rename(conanfile, docs / f"python{version}", docs / "python")

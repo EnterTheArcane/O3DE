@@ -9,8 +9,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const [, , sdk, bits] = process.argv;
-const modulePath = pathToFileURL(resolve(sdk, "bin/python3.15.mjs"));
+const [, , sdk, bits, version] = process.argv;
+const modulePath = pathToFileURL(resolve(sdk, "bin/python3.mjs"));
 const { default: python } = await import(modulePath);
 
 function copyLibrary(FS, source, destination) {
@@ -27,15 +27,15 @@ function copyLibrary(FS, source, destination) {
 }
 
 await python({
-  thisProgram: "/python/bin/python3.15",
+  thisProgram: "/python/bin/python3",
   preRun({ FS }) {
-    copyLibrary(FS, join(sdk, "lib/python3.15"), "/python/lib/python3.15");
+    copyLibrary(FS, join(sdk, "lib/python"), "/python/lib/python");
   },
   arguments: [
     "-IB",
     "-c",
     `import bz2, compression.zstd, hashlib, sys, zlib
-assert sys.version_info[:3] == (3, 15, 2)
+assert sys.version.split()[0] == ${JSON.stringify(version)}
 assert (sys.maxsize.bit_length() + 1) == ${bits}
 assert sys.base_prefix == "/python"
 print("CPython wasm${bits} passed")`,

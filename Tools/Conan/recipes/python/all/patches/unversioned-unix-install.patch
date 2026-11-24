@@ -1,0 +1,303 @@
+--- a/configure
++++ b/configure
+@@ -7572,6 +7572,9 @@
+ if test -z "$LIBRARY"
+ then
+ 	LIBRARY='libpython$(VERSION)$(ABIFLAGS).a'
++	if test "$PYTHON_UNVERSIONED_INSTALL" = yes; then
++		LIBRARY=libpython.a
++	fi
+ fi
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $LIBRARY" >&5
+ printf "%s\n" "$LIBRARY" >&6; }
+@@ -7820,7 +7823,15 @@
+ 
+       # The Android Gradle plugin will only package libraries whose names end
+       # with ".so".
+-      if test "$ac_sys_system" != "Linux-android"; then
++      if test "$PYTHON_UNVERSIONED_INSTALL" = yes; then
++          LDLIBRARY=libpython.so
++          INSTSONAME=$LDLIBRARY
++          BLDLIBRARY='-L. -lpython'
++          # The build interpreter may have the same ELF architecture and SONAME.
++          if test "$cross_compiling" = yes; then
++              RUNSHARED=
++          fi
++      elif test "$ac_sys_system" != "Linux-android"; then
+           INSTSONAME="$LDLIBRARY".$SOVERSION
+       fi
+ 
+@@ -27764,6 +27775,9 @@
+ if test "$PY_ENABLE_SHARED" = "1" && ( test -n "$ANDROID_API_LEVEL" || test "$MACHDEP" = "cygwin"); then
+   MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(LDLIBRARY)"
+   LIBPYTHON="-lpython${VERSION}${ABIFLAGS}"
++  if test "$PYTHON_UNVERSIONED_INSTALL" = yes; then
++    LIBPYTHON=-lpython
++  fi
+ fi
+ 
+ # On iOS the shared libraries must be linked with the Python framework
+@@ -27814,6 +27828,15 @@
+   LIBPL='$(LIBDEST)'"/config-${LDVERSION}-${PLATFORM_TRIPLET}"
+ fi
+ 
++
++if test "$PYTHON_UNVERSIONED_INSTALL" = yes; then
++  LIBDEST='${prefix}/${PLATLIBDIR}/python'
++  BINLIBDEST='${exec_prefix}/${PLATLIBDIR}/python'
++  LIBPL='$(LIBDEST)/config'
++  if test -n "$PLATFORM_TRIPLET"; then
++    LIBPL="$LIBPL-$PLATFORM_TRIPLET"
++  fi
++fi
+ 
+ # Check for --with-wheel-pkg-dir=PATH
+ 
+--- a/configure.ac
++++ b/configure.ac
+@@ -1421,6 +1421,9 @@
+ if test -z "$LIBRARY"
+ then
+ 	LIBRARY='libpython$(VERSION)$(ABIFLAGS).a'
++	if test "$PYTHON_UNVERSIONED_INSTALL" = yes; then
++		LIBRARY=libpython.a
++	fi
+ fi
+ AC_MSG_RESULT([$LIBRARY])
+ 
+@@ -1624,7 +1627,15 @@
+ 
+       # The Android Gradle plugin will only package libraries whose names end
+       # with ".so".
+-      if test "$ac_sys_system" != "Linux-android"; then
++      if test "$PYTHON_UNVERSIONED_INSTALL" = yes; then
++          LDLIBRARY=libpython.so
++          INSTSONAME=$LDLIBRARY
++          BLDLIBRARY='-L. -lpython'
++          # The build interpreter may have the same ELF architecture and SONAME.
++          if test "$cross_compiling" = yes; then
++              RUNSHARED=
++          fi
++      elif test "$ac_sys_system" != "Linux-android"; then
+           INSTSONAME="$LDLIBRARY".$SOVERSION
+       fi
+ 
+@@ -6688,6 +6699,9 @@
+ if test "$PY_ENABLE_SHARED" = "1" && ( test -n "$ANDROID_API_LEVEL" || test "$MACHDEP" = "cygwin"); then
+   MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(LDLIBRARY)"
+   LIBPYTHON="-lpython${VERSION}${ABIFLAGS}"
++  if test "$PYTHON_UNVERSIONED_INSTALL" = yes; then
++    LIBPYTHON=-lpython
++  fi
+ fi
+ 
+ # On iOS the shared libraries must be linked with the Python framework
+@@ -6733,6 +6747,15 @@
+   LIBPL='$(LIBDEST)'"/config-${LDVERSION}-${PLATFORM_TRIPLET}"
+ fi
+ AC_SUBST([LIBPL])
++
++if test "$PYTHON_UNVERSIONED_INSTALL" = yes; then
++  LIBDEST='${prefix}/${PLATLIBDIR}/python'
++  BINLIBDEST='${exec_prefix}/${PLATLIBDIR}/python'
++  LIBPL='$(LIBDEST)/config'
++  if test -n "$PLATFORM_TRIPLET"; then
++    LIBPL="$LIBPL-$PLATFORM_TRIPLET"
++  fi
++fi
+ 
+ # Check for --with-wheel-pkg-dir=PATH
+ AC_SUBST([WHEEL_PKG_DIR])
+--- a/Makefile.pre.in
++++ b/Makefile.pre.in
+@@ -173,8 +173,9 @@
+ # Detailed destination directories
+ BINLIBDEST=	@BINLIBDEST@
+ LIBDEST=	@LIBDEST@
+-INCLUDEPY=	$(INCLUDEDIR)/python$(LDVERSION)
+-CONFINCLUDEPY=	$(CONFINCLUDEDIR)/python$(LDVERSION)
++PYTHONHEADERDIR=	$(if $(filter python,$(notdir $(LIBDEST))),python,python$(LDVERSION))
++INCLUDEPY=	$(INCLUDEDIR)/$(PYTHONHEADERDIR)
++CONFINCLUDEPY=	$(CONFINCLUDEDIR)/$(PYTHONHEADERDIR)
+ 
+ # Symbols used for using shared libraries
+ SHLIB_SUFFIX=	@SHLIB_SUFFIX@
+@@ -1035,7 +1036,9 @@
+ 	-rm -f $@
+ 	$(AR) $(ARFLAGS) $@ $(LIBRARY_OBJS)
+ 
+-libpython$(LDVERSION).so: $(LIBRARY_OBJS) $(DTRACE_OBJS)
++PYTHON_ELF_LIBRARY=$(if $(filter libpython.so,$(LDLIBRARY)),libpython.so,libpython$(LDVERSION).so)
++
++$(PYTHON_ELF_LIBRARY): $(LIBRARY_OBJS) $(DTRACE_OBJS)
+ 	# AIX Linker don't support "-h" option
+ 	if test "$(MACHDEP)" != "aix"; then \
+ 		$(BLDSHARED) -Wl,-h$(INSTSONAME) -o $(INSTSONAME) $(LIBRARY_OBJS) $(MODLIBS) $(SHLIBS) $(LIBC) $(LIBM); \
+@@ -1046,7 +1049,7 @@
+ 		$(LN) -f $(INSTSONAME) $@; \
+ 	fi
+ 
+-libpython3.so:	libpython$(LDVERSION).so
++libpython3.so:	$(PYTHON_ELF_LIBRARY)
+ 	$(BLDSHARED) $(NO_AS_NEEDED) -o $@ -Wl,-h$@ $^
+ 
+ libpython$(LDVERSION).dylib: $(LIBRARY_OBJS)
+@@ -3202,7 +3205,7 @@
+ 		echo "Removing old framework headers"; \
+ 		rm -rf $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Headers; \
+ 	fi
+-	mv "$(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/include/python$(LDVERSION)" "$(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Headers"
++	mv "$(DESTDIR)$(INCLUDEPY)" "$(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Headers"
+ 	rmdir "$(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/include"
+ 
+ # Build the toplevel Makefile
+--- a/Modules/getpath.c
++++ b/Modules/getpath.c
+@@ -929,6 +929,11 @@
+         !int_to_dict(dict, "WITH_NEXT_FRAMEWORK", 1) ||
+ #else
+         !int_to_dict(dict, "WITH_NEXT_FRAMEWORK", 0) ||
++#endif
++#ifdef PYTHON_UNVERSIONED_INSTALL
++        !int_to_dict(dict, "UNVERSIONED_INSTALL", 1) ||
++#else
++        !int_to_dict(dict, "UNVERSIONED_INSTALL", 0) ||
+ #endif
+         !decode_to_dict(dict, "PREFIX", PREFIX) ||
+         !decode_to_dict(dict, "EXEC_PREFIX", EXEC_PREFIX) ||
+--- a/Modules/getpath.py
++++ b/Modules/getpath.py
+@@ -34,6 +34,7 @@
+ # EXEC_PREFIX       -- [in] sysconfig.get_config_var(...)
+ # PYTHONPATH        -- [in] sysconfig.get_config_var(...)
+ # WITH_NEXT_FRAMEWORK   -- [in] sysconfig.get_config_var(...)
++# UNVERSIONED_INSTALL   -- [in] use the packaged Unix layout
+ # VPATH             -- [in] sysconfig.get_config_var(...)
+ # PLATLIBDIR        -- [in] sysconfig.get_config_var(...)
+ # PYDEBUGEXT        -- [in, opt] '_d' on Windows for debug builds
+@@ -181,13 +182,14 @@
+         os_name == 'darwin' and WITH_NEXT_FRAMEWORK and library
+         and isfile(joinpath(dirname(library), platlibdir, 'python', 'os.py'))
+     )
+-    stdlib_name = 'python' if flat_framework else f'python{VERSION_MAJOR}.{VERSION_MINOR}{ABI_THREAD}'
++    unversioned_install = UNVERSIONED_INSTALL or flat_framework
++    stdlib_name = 'python' if unversioned_install else f'python{VERSION_MAJOR}.{VERSION_MINOR}{ABI_THREAD}'
+     STDLIB_SUBDIR = f'{platlibdir}/{stdlib_name}'
+     STDLIB_LANDMARKS = [f'{STDLIB_SUBDIR}/os.py', f'{STDLIB_SUBDIR}/os.pyc']
+     PLATSTDLIB_LANDMARK = f'{STDLIB_SUBDIR}/lib-dynload'
+     BUILDSTDLIB_LANDMARKS = ['Lib/os.py']
+     VENV_LANDMARK = 'pyvenv.cfg'
+-    zip_name = 'python' if flat_framework else f'python{VERSION_MAJOR}{VERSION_MINOR}{ABI_THREAD}'
++    zip_name = 'python' if unversioned_install else f'python{VERSION_MAJOR}{VERSION_MINOR}{ABI_THREAD}'
+     ZIP_LANDMARK = f'{platlibdir}/{zip_name}.zip'
+     DELIM = ':'
+     SEP = '/'
+--- a/Lib/sysconfig/__init__.py
++++ b/Lib/sysconfig/__init__.py
+@@ -106,18 +106,19 @@
+ else:
+     _INSTALL_SCHEMES['venv'] = _INSTALL_SCHEMES['posix_venv']
+ 
+-_MACOS_FLAT_FRAMEWORK = (
+-    sys.platform == 'darwin' and sys._framework
+-    and '_PYTHON_PROJECT_BASE' not in os.environ
++_UNVERSIONED_INSTALL = (
++    os.name == 'posix' and '_PYTHON_PROJECT_BASE' not in os.environ
+     and os.path.basename(sys._stdlib_dir or '') == 'python'
+ )
+-if _MACOS_FLAT_FRAMEWORK:
++_MACOS_FLAT_FRAMEWORK = _UNVERSIONED_INSTALL and sys.platform == 'darwin' and sys._framework
++if _UNVERSIONED_INSTALL:
+     for name in ('posix_prefix', 'posix_venv'):
+         scheme = _INSTALL_SCHEMES[name]
+         for key in ('stdlib', 'platstdlib', 'purelib', 'platlib'):
+             scheme[key] = scheme[key].replace('{py_version_short}{abi_thread}', '')
+-        scheme['include'] = '{installed_base}/Headers'
+-        scheme['platinclude'] = '{installed_platbase}/Headers'
++        headers = 'Headers' if _MACOS_FLAT_FRAMEWORK else 'include/python'
++        scheme['include'] = '{installed_base}/' + headers
++        scheme['platinclude'] = '{installed_platbase}/' + headers
+ 
+ _IOS_FRAMEWORK = (
+     os.environ.get('_PYTHON_HOST_PLATFORM', sys.platform).split('-', 1)[0] == 'ios'
+@@ -347,7 +348,7 @@
+     if _PYTHON_BUILD:
+         return os.path.join(_PROJECT_BASE, "Makefile")
+ 
+-    if hasattr(sys, 'abiflags') and not _MACOS_FLAT_FRAMEWORK:
++    if hasattr(sys, 'abiflags') and not _UNVERSIONED_INSTALL:
+         config_dir_name = f'config-{_PY_VERSION_SHORT}{sys.abiflags}'
+     else:
+         config_dir_name = 'config'
+@@ -571,16 +572,18 @@
+     _CONFIG_VARS['implementation'] = _get_implementation()
+     _CONFIG_VARS['implementation_lower'] = _get_implementation().lower()
+     _CONFIG_VARS['abiflags'] = abiflags
+-    if _MACOS_FLAT_FRAMEWORK:
++    if _UNVERSIONED_INSTALL:
+         libdir = os.path.join(base_prefix, sys.platlibdir)
+         stdlib = os.path.join(libdir, 'python')
+         _CONFIG_VARS['BINDIR'] = os.path.join(base_prefix, 'bin')
+         _CONFIG_VARS['LIBDIR'] = libdir
+         _CONFIG_VARS['LIBDEST'] = stdlib
+         _CONFIG_VARS['BINLIBDEST'] = stdlib
+-        _CONFIG_VARS['LIBPL'] = os.path.join(stdlib, 'config-darwin')
+-        _CONFIG_VARS['INCLUDEPY'] = os.path.join(base_prefix, 'Headers')
+-        _CONFIG_VARS['CONFINCLUDEPY'] = os.path.join(base_exec_prefix, 'Headers')
++        config_dir = 'config-darwin' if _MACOS_FLAT_FRAMEWORK else os.path.basename(_CONFIG_VARS['LIBPL'])
++        _CONFIG_VARS['LIBPL'] = os.path.join(stdlib, config_dir)
++        headers = 'Headers' if _MACOS_FLAT_FRAMEWORK else 'include/python'
++        _CONFIG_VARS['INCLUDEPY'] = os.path.join(base_prefix, headers)
++        _CONFIG_VARS['CONFINCLUDEPY'] = os.path.join(base_exec_prefix, headers)
+     if _IOS_FRAMEWORK:
+         framework = _CONFIG_VARS['PYTHONFRAMEWORKDIR']
+         _CONFIG_VARS['INCLUDEPY'] = os.path.join(base_prefix, framework, 'Headers')
+--- a/Lib/site.py
++++ b/Lib/site.py
+@@ -765,8 +765,7 @@
+                 libdirs.append("lib")
+ 
+             dirname = f"{implementation}{ver[0]}.{ver[1]}{abi_thread}"
+-            if (sys.platform == 'darwin' and sys._framework
+-                and os.path.basename(sys._stdlib_dir or '') == 'python'):
++            if os.path.basename(sys._stdlib_dir or '') == 'python':
+                 dirname = 'python'
+             for libdir in libdirs:
+                 path = os.path.join(prefix, libdir, dirname, "site-packages")
+--- a/Lib/venv/__init__.py
++++ b/Lib/venv/__init__.py
+@@ -310,7 +310,7 @@
+             if not os.path.islink(path):
+                 os.chmod(path, 0o755)
+             names = ['python', 'python3']
+-            if not sysconfig._MACOS_FLAT_FRAMEWORK:
++            if not sysconfig._UNVERSIONED_INSTALL:
+                 names.append(f'python3.{sys.version_info[1]}')
+             for suffix in names:
+                 path = os.path.join(binpath, suffix)
+--- a/Misc/python-config.in
++++ b/Misc/python-config.in
+@@ -51,6 +51,8 @@
+         libs = []
+         if '--embed' in opt_flags:
+             if sysconfig._MACOS_FLAT_FRAMEWORK:
++                libs.extend(('-F' + sys.base_prefix.rsplit('/', 1)[0], '-framework', 'Python'))
++            elif sysconfig._UNVERSIONED_INSTALL:
+                 libs.extend(('-L' + getvar('LIBDIR'), '-lpython'))
+             else:
+                 libs.append('-lpython' + pyver + sys.abiflags)
+--- a/Misc/python-config.sh.in
++++ b/Misc/python-config.sh.in
+@@ -77,6 +77,12 @@
+ PYTHONFRAMEWORK="@PYTHONFRAMEWORK@"
+ INCDIR="-I$includedir/python${VERSION}${ABIFLAGS}"
+ PLATINCDIR="-I$includedir/python${VERSION}${ABIFLAGS}"
++if [ -f "$prefix_real/lib/python/os.py" ]; then
++    LIBPL="$prefix_real/lib/python/${LIBPL##*/}"
++    INCDIR="-I$includedir/python"
++    PLATINCDIR="$INCDIR"
++    LIBS_EMBED="-lpython @LIBS@ $SYSLIBS"
++fi
+ PY_EMBED=0
+ 
+ # Scan for --help or unknown argument.

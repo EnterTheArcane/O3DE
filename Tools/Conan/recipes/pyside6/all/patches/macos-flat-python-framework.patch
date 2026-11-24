@@ -1,0 +1,31 @@
+--- a/build_scripts/build_info_collector.py
++++ b/build_scripts/build_info_collector.py
+@@ -65,6 +65,15 @@
+ def _get_py_library_unix(build_type, py_version, py_prefix, py_libdir,
+                          py_include_dir):
+     """Helper for finding the Python library on UNIX"""
++    if sys.platform == 'darwin' and sys._framework:
++        framework = Path(sys.base_prefix)
++        if framework.suffix == '.framework' and (framework / sys._framework).is_file():
++            return framework / sys._framework
++    if sys.platform.startswith('linux') and py_libdir:
++        library = Path(py_libdir) / 'libpython.so'
++        if Path(sys._stdlib_dir or '').name == 'python' and library.is_file():
++            return library
++
+     if py_libdir is None or not Path(py_libdir).exists():
+         py_libdir = Path(py_prefix) / "lib"
+     if py_include_dir is None or not Path(py_include_dir).exists():
+--- a/build_scripts/main.py
++++ b/build_scripts/main.py
+@@ -640,6 +640,10 @@
+             cmake_cmd.append(f"-DPython_EXECUTABLE={self.py_executable}")
+             cmake_cmd.append(f"-DPython_INCLUDE_DIR={self.py_include_dir}")
+             cmake_cmd.append(f"-DPython_LIBRARY={self.py_library}")
++        if python_sdk_cmake := os.environ.get("CONAN_PYTHON_SDK_CMAKE"):
++            cmake_cmd.append(
++                f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES={python_sdk_cmake}"
++            )
+ 
+         # If a custom shiboken cmake config directory path was provided, pass it to CMake.
+         if OPTION["SHIBOKEN_CONFIG_DIR"] and config.is_internal_pyside_build():
