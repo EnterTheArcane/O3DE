@@ -53,11 +53,11 @@ class Recipe(ConanFile):
 
     def build_requirements(self):
         if self.settings.os == "Windows":
-            self.tool_requires("winflexbison/2.5.25")
+            self.tool_requires("msys2/cci.latest", options={"packages": "bison,flex"})
         else:
             self.tool_requires("bison/3.8.2")
             self.tool_requires("flex/2.6.4")
-        self.tool_requires("m4/1.4.19")
+            self.tool_requires("m4/1.4.19")
         self.tool_requires("emsdk/7.0.1")
 
     def layout(self):
@@ -79,11 +79,10 @@ class Recipe(ConanFile):
         emcc = sdk / "upstream/emscripten/emcc"
         if windows:
             llvm_config = llvm_config.with_suffix(".exe")
-            parser_bin = (
-                Path(self.dependencies.build["winflexbison"].package_folder) / "bin"
-            )
-            tc.variables["BISON_EXECUTABLE"] = (parser_bin / "win_bison.exe").as_posix()
-            tc.variables["FLEX_EXECUTABLE"] = (parser_bin / "win_flex.exe").as_posix()
+            msys2 = self.dependencies.build["msys2"]
+            parser_bin = Path(msys2.conf_info.get("tools.microsoft.bash:path")).parent
+            tc.variables["BISON_EXECUTABLE"] = (parser_bin / "bison.exe").as_posix()
+            tc.variables["FLEX_EXECUTABLE"] = (parser_bin / "flex.exe").as_posix()
             python = Path(sys.executable).as_posix()
             tc.variables["EMCC_EXECUTABLE"] = (
                 f"{python};{emcc.with_suffix('.py').as_posix()}"

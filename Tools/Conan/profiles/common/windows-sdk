@@ -6,7 +6,3 @@
 [conf]
 user.toolchain:windows_sdk={{ sdk_version }}
 tools.info.package_id:confs+=["user.toolchain:windows_sdk"]
-# m4's configure emits -lbcrypt, which clang-cl ignores.
-m4/*:tools.build:exelinkflags+=["-clang:-Wl,bcrypt.lib"]
-# m4's compatibility tests use Windows handles with the socket FD macros.
-m4/*:tools.build:cflags+=["-clang:-Wno-error=int-conversion"]
