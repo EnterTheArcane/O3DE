@@ -11,6 +11,7 @@ import shlex
 from base64 import b64decode
 from pathlib import Path
 from shutil import which
+from subprocess import list2cmdline
 
 from conan import ConanFile
 from conan.errors import ConanException, ConanInvalidConfiguration
@@ -182,7 +183,8 @@ source_set("zlib") {{
                 "simulator" if self.settings.os.sdk == "iphonesimulator" else "device"
             )
             args["ios_deployment_target"] = str(self.settings.os.version)
-        args["extra_cflags"] = " ".join(flags) if windows else shlex.join(flags)
+        flags.extend(self.conf.get("user.package:debug_path_flags", default=[]))
+        args["extra_cflags"] = list2cmdline(flags) if windows else shlex.join(flags)
         save(
             self,
             source / "out/args.gn",

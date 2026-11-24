@@ -1,0 +1,10 @@
+--- a/tools/system_libs.py
++++ b/tools/system_libs.py
+@@ -79,6 +79,7 @@
+   source_dir = utils.path_from_root()
+   relative_source_dir = os.path.relpath(source_dir, build_dir)
+   flags += [f'-ffile-prefix-map={source_dir}={DETERMINISTIC_PREFIX}',
++            f'-ffile-prefix-map={cache.get_path("sysroot")}={DETERMINISTIC_PREFIX}/sysroot',
+             f'-ffile-prefix-map={relative_source_dir}={DETERMINISTIC_PREFIX}',
+             f'-fdebug-compilation-dir={DETERMINISTIC_PREFIX}']
+   return flags

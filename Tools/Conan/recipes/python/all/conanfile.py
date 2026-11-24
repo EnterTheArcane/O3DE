@@ -26,6 +26,7 @@ from conan.tools.files import (
     get,
     mkdir,
     rename,
+    save,
 )
 from conan.tools.gnu import PkgConfigDeps
 from conan.tools.layout import basic_layout
@@ -131,6 +132,14 @@ class Recipe(ConanFile):
         env.unset("PYTHON")
         env.define("PYTHON_FOR_BUILD", str(python))
         env.define("PYTHONNOUSERSITE", "1")
+        path_flags = self.conf.get("user.package:debug_path_flags", default=[])
+        if path_flags:
+            if self.settings.compiler == "msvc":
+                # MSVC limits the length of flags supplied through its environment.
+                response = Path(self.generators_folder) / "debug-paths.rsp"
+                save(self, response, list2cmdline(path_flags))
+                path_flags = [f"@{response}"]
+            env.append("_CL_", list2cmdline(path_flags))
         with env.vars(self).apply():
             for config in ("Release", "Debug"):
                 self.run(
@@ -178,8 +187,7 @@ class Recipe(ConanFile):
         env = Environment()
         build_env = VirtualBuildEnv(self, auto_generate=True)
         symbols = self.conf.get("user.package:debug_symbols")
-        if symbols:
-            env.append("CFLAGS_NODIST", "-g")
+        self._set_unix_debug_flags(env)
         env.define_path("PKG_CONFIG_PATH", self.generators_folder)
         env.define(
             "PKG_CONFIG_LIBDIR", self.generators_folder if cross_building(self) else ""
@@ -323,8 +331,7 @@ class Recipe(ConanFile):
         zstd = Path(self.dependencies["zstd"].package_folder)
         python = self._host_interpreter()
         env = Environment()
-        if self.conf.get("user.package:debug_symbols"):
-            env.append("CFLAGS_NODIST", "-g")
+        self._set_unix_debug_flags(env)
         env.define_path("OPENSSL_ROOT_DIR", self.dependencies["openssl"].package_folder)
         env.define_path("SDK_TOOLS_BIN", str(python.parent))
         env.define("ac_cv_header_libintl_h", "no")
@@ -361,6 +368,11 @@ class Recipe(ConanFile):
             f"{shlex.quote(str(framework / 'Versions/3.15/lib/python3.15'))}"
         )
         signing.sign_tree(self, framework, identity="-")
+
+    def _set_unix_debug_flags(self, env):
+        if self.conf.get("user.package:debug_symbols"):
+            flags = self.conf.get("user.package:debug_path_flags", default=[])
+            env.append("CFLAGS_NODIST", shlex.join(["-g", *flags]))
 
     def package(self):
         package = Path(self.package_folder)

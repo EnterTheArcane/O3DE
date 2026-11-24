@@ -44,21 +44,24 @@ def detect_build_profile():
 
 def symbol_arguments(profile):
     configs = {
-        SYMBOLS_CONF: 1,
+        # A new symbol format must not reuse packages from the previous cache.
+        SYMBOLS_CONF: 3,
         "tools.info.package_id:confs+": [SYMBOLS_CONF],
     }
     if profile.startswith("windows-"):
         # MSYS2 treats slash-prefixed arguments as paths.
         flags = ["-Zi", "-FS"]
-        linker = "/DEBUG:FULL /OPT:REF /OPT:ICF"
+        pdb_path = "/PDBALTPATH:%_PDB%"
+        linker = f"/DEBUG:FULL /OPT:REF /OPT:ICF {pdb_path}"
         variables = {
             "CMAKE_POLICY_DEFAULT_CMP0141": "NEW",
             "CMAKE_MSVC_DEBUG_INFORMATION_FORMAT": "ProgramDatabase",
         }
         for target in ("EXE", "SHARED", "MODULE"):
+            variables[f"CMAKE_{target}_LINKER_FLAGS_DEBUG_INIT"] = pdb_path
             for config in ("RELEASE", "RELWITHDEBINFO", "PROFILE", "CHECKED"):
                 variables[f"CMAKE_{target}_LINKER_FLAGS_{config}_INIT"] = linker
-        configs["tools.cmake.cmaketoolchain:extra_variables"] = variables
+        configs["tools.cmake.cmaketoolchain:extra_variables*"] = variables
     else:
         flags = ["-g"]
         if profile in WASM_PROFILES:

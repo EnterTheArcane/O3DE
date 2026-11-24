@@ -49,8 +49,13 @@ class Recipe(ConanFile):
         tc.variables["CMAKE_CXX_SCAN_FOR_MODULES"] = False
         tc.variables["BUILD_SHARED_LIBS"] = not wasm
         if self.settings.arch == "wasm64":
-            tc.cache_variables["CMAKE_C_FLAGS"] = "-m64"
-            tc.cache_variables["CMAKE_CXX_FLAGS"] = "-m64"
+            for language in ("C", "CXX"):
+                flags = self.conf.get(
+                    f"tools.build:{language.lower()}flags", default=[]
+                )
+                tc.cache_variables[f"CMAKE_{language}_FLAGS"] = " ".join(
+                    ["-m64", *flags]
+                )
         tc.generate()
 
     def build(self):

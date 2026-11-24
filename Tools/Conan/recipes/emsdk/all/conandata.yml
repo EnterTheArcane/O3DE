@@ -1,4 +1,9 @@
 publish: false
+patches:
+  "7.0.1":
+    - patch_file: "patches/portable-sysroot-debug-paths.patch"
+      base_path: "build/upstream/emscripten"
+      patch_description: "Remap generated sysroot paths in system library debug information"
 sources:
   "7.0.1":
     Windows:

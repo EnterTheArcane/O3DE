@@ -13,8 +13,10 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from conan.internal.model.conf import Conf
 from conan.internal.model.cpp_info import CppInfo
 from conan.internal.model.pkg_type import PackageType
 
@@ -24,6 +26,7 @@ sys.path.insert(
 
 from archive_deployer import SBOM_FILENAME, archive_package
 from archive_deployer import deploy as deploy_archive
+from hooks.hook_debug_symbols import pre_generate
 from hooks.hook_sbom import format_sbom
 from oci_deployer import deploy
 from package_cps import package_manifest
@@ -39,6 +42,33 @@ from build import cache_folder
 
 
 class PackagingTests(unittest.TestCase):
+    def test_debug_path_maps_preserve_flags_and_prefer_nested_sources(self):
+        root = Path(tempfile.gettempdir()).resolve() / "example path"
+        conf = Conf()
+        conf.define("user.package:debug_symbols", 3)
+        conf.define("tools.build:cflags", ["-g"])
+        recipe = SimpleNamespace(
+            name="example",
+            version="1.2.3",
+            source_folder=root / "source",
+            build_folder=root,
+            conf=conf,
+            settings=Mock(get_safe={"compiler": "clang", "os": "Linux"}.get),
+            settings_build=Mock(get_safe={"os": "Linux"}.get),
+            dependencies={},
+        )
+        pre_generate(recipe)
+
+        flags = conf.get("user.package:debug_path_flags")
+        self.assertEqual(
+            flags,
+            [
+                f"-ffile-prefix-map={root.as_posix()}=/__debug__/build/example/1.2.3",
+                f"-ffile-prefix-map={(root / 'source').as_posix()}=/__debug__/source/example/1.2.3",
+            ],
+        )
+        self.assertEqual(conf.get("tools.build:cflags")[0], "-g")
+
     def test_sbom_uses_package_manager_neutral_references(self):
         package = {
             "name": "example",

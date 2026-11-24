@@ -10,7 +10,14 @@ from pathlib import Path
 
 from conan import ConanFile
 from conan.errors import ConanInvalidConfiguration
-from conan.tools.files import copy, get, rename, save
+from conan.tools.files import (
+    apply_conandata_patches,
+    copy,
+    export_conandata_patches,
+    get,
+    rename,
+    save,
+)
 from conan.tools.layout import basic_layout
 
 
@@ -23,6 +30,14 @@ class Recipe(ConanFile):
 
     def layout(self):
         basic_layout(self)
+
+    def export_sources(self):
+        export_conandata_patches(self)
+
+    @property
+    def _cache_path(self):
+        # Start a fresh sysroot when changing the system library debug paths.
+        return f"~/.cache/conan-emsdk/{self.version}-portable"
 
     def validate(self):
         sources = self.conan_data["sources"][self.version]
@@ -45,6 +60,7 @@ class Recipe(ConanFile):
                 strip_root=True,
                 extract_filter="data",
             )
+        apply_conandata_patches(self)
 
     def package(self):
         build = Path(self.build_folder)
@@ -70,7 +86,7 @@ EMSCRIPTEN_ROOT = os.path.dirname(__file__) + '/upstream/emscripten'
 LLVM_ROOT = '$CFGDIR/upstream/bin'
 BINARYEN_ROOT = '$CFGDIR/upstream'
 NODE_JS = '$CFGDIR/{node}'
-CACHE = '~/.cache/conan-emsdk/{self.version}'
+CACHE = '{self._cache_path}'
 """,
         )
 
@@ -92,6 +108,10 @@ CACHE = '~/.cache/conan-emsdk/{self.version}'
         # Native tools can call emcc without using it as their own compiler.
         if self.settings_target is None or self.settings_target.os != "Emscripten":
             return
+        self.conf_info.define(
+            "user.toolchain:emscripten_cache",
+            Path(self._cache_path).expanduser().as_posix(),
+        )
         for var, command in (
             ("CC", "emcc"),
             ("CXX", "em++"),

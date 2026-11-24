@@ -6,17 +6,18 @@
 #
 #
 
-from io import StringIO
 import mmap
-from pathlib import Path
+import os
 import re
 import shlex
 import shutil
-from subprocess import list2cmdline
 import sys
+from io import StringIO
+from pathlib import Path
+from subprocess import list2cmdline
 
 from conan.tools.env import VirtualBuildEnv
-
+from conan.tools.files import save
 
 # PE RSDS records and COFF LF_TYPESERVER2 records carry a GUID, age and PDB path.
 PDB_REFERENCE = re.compile(
@@ -30,14 +31,95 @@ MACHO_MAGIC = {
 MACHO_FAT_MAGIC = {bytes.fromhex(magic) for magic in ("cafebabe", "cafebabf")}
 
 
+def pre_generate(conanfile):
+    if (
+        not conanfile.conf.get("user.package:debug_symbols")
+        or not conanfile.source_folder
+    ):
+        return
+    compiler = conanfile.settings.get_safe("compiler")
+    if compiler not in ("clang", "apple-clang", "gcc", "emcc", "msvc"):
+        return
+    target_os = conanfile.settings.get_safe("os")
+    windows = target_os == "Windows"
+    root = "C:/__debug__" if windows else "/__debug__"
+    identity = f"{conanfile.name}/{conanfile.version}"
+    paths = {}
+    if target_os == "Emscripten":
+        # Emscripten generates its sysroot outside the SDK package.
+        env = VirtualBuildEnv(conanfile, auto_generate=True).vars()
+        cache = (
+            env.get("EM_CACHE")
+            or os.getenv("EM_CACHE")
+            or conanfile.conf.get("user.toolchain:emscripten_cache")
+        )
+        if cache:
+            paths[Path(cache).expanduser().resolve().as_posix()] = f"{root}/emscripten"
+    for dependency in conanfile.dependencies.values():
+        if dependency.package_folder:
+            paths[Path(dependency.package_folder).resolve().as_posix()] = (
+                f"{root}/packages/{dependency.ref.name}/{dependency.ref.version}"
+            )
+    if conanfile.build_folder:
+        paths[Path(conanfile.build_folder).resolve().as_posix()] = (
+            f"{root}/build/{identity}"
+        )
+    paths[Path(conanfile.source_folder).resolve().as_posix()] = (
+        f"{root}/source/{identity}"
+    )
+    # The source can be nested in the build tree. Give the narrower prefix priority.
+    mappings = sorted(paths.items(), key=lambda mapping: len(mapping[0]))
+    if compiler == "msvc":
+        flags = ["-experimental:deterministic"]
+        flags.extend(f"-pathmap:{path}={mapped}" for path, mapped in mappings)
+    else:
+        flags = [f"-ffile-prefix-map={path}={mapped}" for path, mapped in mappings]
+        if windows and compiler == "clang":
+            flags.append("-gno-codeview-command-line")
+            flags = [f"-clang:{flag}" for flag in flags]
+
+    conanfile.conf.define("user.package:debug_path_flags", flags)
+    if conanfile.settings_build.get_safe("os") == "Windows" and not conanfile.win_bash:
+        # CMakeToolchain writes these flags inside a double-quoted CMake string.
+        toolchain_flags = [list2cmdline([flag]).replace('"', r"\"") for flag in flags]
+    else:
+        toolchain_flags = [shlex.quote(flag) for flag in flags]
+    for language in ("c", "cxx"):
+        conanfile.conf.append(f"tools.build:{language}flags", toolchain_flags)
+    build_type = conanfile.settings.get_safe("build_type")
+    if build_type:
+        # Conan scopes its CMake flags to the selected build type with multi-config generators.
+        options = "\n".join(
+            f"    [==[$<$<AND:$<NOT:$<CONFIG:{build_type}>>,$<COMPILE_LANGUAGE:C,CXX>>:{flag}>]==]"
+            for flag in flags
+        )
+        cmake = Path(conanfile.generators_folder) / "debug_paths.cmake"
+        save(
+            conanfile,
+            cmake,
+            "include_guard(GLOBAL)\n"
+            "get_property(multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)\n"
+            "if(multi_config)\n"
+            f"  add_compile_options(\n{options}\n  )\n"
+            "endif()\n",
+        )
+        conanfile.conf.append(
+            "tools.cmake.cmaketoolchain:user_toolchain", cmake.as_posix()
+        )
+    if target_os in ("Macos", "iOS"):
+        for variable in ("OBJCFLAGS", "OBJCXXFLAGS"):
+            conanfile.buildenv.append(variable, ["-g", *toolchain_flags])
+
+
 def install_pdbs(binary, roots):
     if binary.suffix.lower() not in (".lib", ".dll", ".exe", ".pyd"):
         return
     if not binary.stat().st_size:
         return
-    with binary.open("rb") as stream, mmap.mmap(
-        stream.fileno(), 0, access=mmap.ACCESS_READ
-    ) as data:
+    with (
+        binary.open("rb") as stream,
+        mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ) as data,
+    ):
         paths = {match.group(1) for match in PDB_REFERENCE.finditer(data)}
     for path in paths:
         pdb = Path(path.decode("utf-8", errors="replace")).resolve()
