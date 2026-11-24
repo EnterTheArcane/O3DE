@@ -1,4 +1,4 @@
 sources:
   "5.13.0":
-    url: "https://github.com/EnterTheArcane/PhysX/archive/b8486eacc9be483afc2b36d17485d69871194b0b.tar.gz"
-    sha256: "f1c3de41d091c708afb56001284eca68db613700ef4c53c9d00c5c23197610a1"
+    url: "https://github.com/EnterTheArcane/PhysX/archive/3f1176083dd07449c38269924387b00c4aec954f.tar.gz"
+    sha256: "136a038b873c936f3fad3a5f75835da3d6a8242f421665f42d63e98a5de8a214"

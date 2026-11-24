@@ -11,7 +11,8 @@ from pathlib import Path
 from conan import ConanFile
 from conan.errors import ConanException
 from conan.tools.cmake import CMake, CMakeToolchain
-from conan.tools.files import copy, get, rename
+from conan.tools.cmake.utils import is_multi_configuration
+from conan.tools.files import get
 
 CONFIGURATIONS = ("debug", "checked", "profile", "release")
 
@@ -25,9 +26,6 @@ class Recipe(ConanFile):
     options = {"with_cuda": [True, False]}
     default_options = {"with_cuda": True}
 
-    def export_sources(self):
-        copy(self, "physx-config.cmake", self.recipe_folder, self.export_sources_folder)
-
     def config_options(self):
         if self.settings.os not in ("Linux", "Windows") or self.settings.arch not in (
             "x86_64",
@@ -39,10 +37,28 @@ class Recipe(ConanFile):
         if self.options.get_safe("with_cuda"):
             self.tool_requires("cuda-toolkit/13.5.0")
 
+    @property
+    def _multi_config(self):
+        return is_multi_configuration(
+            self.conf.get("tools.cmake.cmaketoolchain:generator", default="Ninja")
+        )
+
+    @property
+    def _configuration(self):
+        build_type = str(self.settings.build_type)
+        return {"RelWithDebInfo": "profile", "MinSizeRel": "release"}.get(
+            build_type, build_type.lower()
+        )
+
+    @property
+    def _build_configurations(self):
+        return CONFIGURATIONS if self._multi_config else (None,)
+
     def package_id(self):
-        # Every package includes all four configurations, including the MSVC Debug CRT.
-        self.info.settings.rm_safe("build_type")
-        self.info.settings.rm_safe("compiler.runtime_type")
+        if self._multi_config:
+            self.info.settings.rm_safe("build_type")
+            self.info.settings.rm_safe("compiler.runtime_type")
+            self.info.conf.define("user.physx:multi_config", True)
 
     def layout(self):
         self.folders.source = "src"
@@ -53,10 +69,14 @@ class Recipe(ConanFile):
 
     def generate(self):
         os_name = str(self.settings.os)
-        self.conf.define("tools.cmake.cmaketoolchain:generator", "Ninja Multi-Config")
-        tc = CMakeToolchain(self)
+        tc = CMakeToolchain(self, generator="Ninja")
         tc.blocks.remove("cppstd")
         tc.cache_variables["CMAKE_INSTALL_LIBDIR"] = "lib"
+        tc.cache_variables["CMAKE_INSTALL_DATADIR"] = "."
+        if os_name == "Windows":
+            tc.cache_variables["NV_USE_STATIC_WINCRT"] = (
+                self.settings.get_safe("compiler.runtime") == "static"
+            )
         tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = True
         with_cuda = bool(self.options.get_safe("with_cuda"))
         tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = with_cuda
@@ -65,16 +85,16 @@ class Recipe(ConanFile):
             tc.cache_variables["CMAKE_CUDA_ARCHITECTURES"] = "75-virtual"
         tc.cache_variables["PX_GENERATE_STATIC_LIBRARIES"] = True
         tc.cache_variables["PX_BUILDPVDRUNTIME"] = os_name in (
-            "Windows",
             "Linux",
+            "Windows",
         )
         tc.cache_variables["TARGET_BUILD_PLATFORM"] = {
-            "Windows": "windows",
+            "Android": "android",
+            "Emscripten": "linux",
+            "iOS": "ios",
             "Linux": "linux",
             "Macos": "mac",
-            "Android": "android",
-            "iOS": "ios",
-            "Emscripten": "linux",
+            "Windows": "windows",
         }[os_name]
         if os_name == "Emscripten":
             wasm64 = self.settings.arch == "wasm64"
@@ -83,43 +103,39 @@ class Recipe(ConanFile):
             )
             if wasm64:
                 # The SDK reads the C flags before CMake probes pointer size.
-                tc.cache_variables["CMAKE_C_FLAGS"] = "-m64"
-                tc.cache_variables["CMAKE_CXX_FLAGS"] = "-m64"
+                for language in ("C", "CXX"):
+                    flags = self.conf.get(
+                        f"tools.build:{language.lower()}flags", default=[]
+                    )
+                    tc.cache_variables[f"CMAKE_{language}_FLAGS"] = " ".join(
+                        ["-m64", *flags]
+                    )
         tc.generate()
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=Path(self.source_folder) / "physx")
-        for config in CONFIGURATIONS:
+        variables = {}
+        if not self._multi_config:
+            # Conan presets use Conan's build-type name.
+            variables["CMAKE_BUILD_TYPE"] = self._configuration
+        cmake.configure(
+            variables=variables, build_script_folder=Path(self.source_folder) / "physx"
+        )
+        for config in self._build_configurations:
             cmake.build(build_type=config)
 
     def package(self):
         cmake = CMake(self)
-        package = Path(self.package_folder)
-        for config in CONFIGURATIONS:
-            cmake.install(
-                build_type=config,
-                cli_args=["--prefix", f'"{(package / config).as_posix()}"'],
-            )
-        if not copy(self, "physx-config.cmake", self.export_sources_folder, package):
-            raise ConanException("Missing physx-config.cmake")
-        if not copy(
-            self,
-            "PhysXConfigVersion.cmake",
-            package / "release/lib/cmake/PhysX",
-            package,
-        ):
-            raise ConanException("Missing PhysXConfigVersion.cmake")
-        rename(
-            self,
-            package / "PhysXConfigVersion.cmake",
-            package / "physx-config-version.cmake",
-        )
-        copy(
-            self, "LICENSE.md", Path(self.source_folder) / "physx", package / "licenses"
-        )
+        for config in self._build_configurations:
+            cmake.install(build_type=config)
+            if config and not (Path(self.package_folder) / "lib" / config).is_dir():
+                raise ConanException(
+                    "PhysX source must install multi-config libraries under lib/<config>"
+                )
 
     def package_info(self):
         self.cpp_info.set_property("cmake_find_mode", "none")
-        self.cpp_info.builddirs = ["."]
-        self.cpp_info.includedirs = ["release/include"]
+        self.cpp_info.builddirs = ["lib/cmake/PhysX"]
+        if self._multi_config:
+            self.cpp_info.libdirs = [f"lib/{self._configuration}"]
+            self.cpp_info.bindirs = [f"bin/{self._configuration}"]

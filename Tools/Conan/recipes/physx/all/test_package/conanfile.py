@@ -28,6 +28,9 @@ class Recipe(ConanFile):
         tc = CMakeToolchain(self)
         tc.user_presets_path = False
         physx = self.dependencies.host["physx"]
+        tc.cache_variables["PHYSX_TEST_MULTI_CONFIG"] = (
+            Path(physx.cpp_info.libdirs[0]).parent.name == "lib"
+        )
         tc.cache_variables["PHYSX_TEST_CUDA"] = bool(
             physx.options.get_safe("with_cuda")
         )

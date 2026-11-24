@@ -10,6 +10,7 @@ from pathlib import Path
 from conan import ConanFile
 from conan.errors import ConanInvalidConfiguration
 from conan.tools.cmake import CMake, CMakeToolchain
+from conan.tools.cmake.utils import is_multi_configuration
 from conan.tools.files import get
 
 CUDA_TOOLKIT = "cuda-toolkit/13.5.0"
@@ -61,10 +62,20 @@ class Recipe(ConanFile):
             self.tool_requires(CUDA_TOOLKIT)
 
     @property
+    def _multi_config(self):
+        return is_multi_configuration(
+            self.conf.get("tools.cmake.cmaketoolchain:generator", default="Ninja")
+        )
+
+    @property
     def _configuration(self):
         return {"Debug": "Debug", "RelWithDebInfo": "Profile"}.get(
             str(self.settings.build_type), "Release"
         )
+
+    def package_id(self):
+        if self._multi_config:
+            self.info.conf.define("user.nvcloth:multi_config", True)
 
     def layout(self):
         self.folders.source = "src"
@@ -74,17 +85,24 @@ class Recipe(ConanFile):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
 
     def generate(self):
-        tc = CMakeToolchain(self)
-        tc.generator = "Ninja Multi-Config"
-        tc.cache_variables["CMAKE_CONFIGURATION_TYPES"] = self._configuration
+        tc = CMakeToolchain(self, generator="Ninja")
+        if self._multi_config:
+            tc.cache_variables["CMAKE_CONFIGURATION_TYPES"] = self._configuration
         tc.cache_variables["CMAKE_INSTALL_LIBDIR"] = "lib"
         tc.cache_variables["BUILD_SHARED_LIBS"] = False
         physx = self.dependencies.host["physx"]
-        tc.cache_variables["PhysX_DIR"] = Path(physx.package_folder).as_posix()
+        tc.cache_variables["PhysX_DIR"] = (
+            Path(physx.package_folder) / physx.cpp_info.builddirs[0]
+        ).as_posix()
         if self.settings.arch == "wasm64":
             # Emscripten reads CMAKE_C_FLAGS before checking the PhysX package's pointer size.
-            tc.cache_variables["CMAKE_C_FLAGS"] = "-m64"
-            tc.cache_variables["CMAKE_CXX_FLAGS"] = "-m64"
+            for language in ("C", "CXX"):
+                flags = self.conf.get(
+                    f"tools.build:{language.lower()}flags", default=[]
+                )
+                tc.cache_variables[f"CMAKE_{language}_FLAGS"] = " ".join(
+                    ["-m64", *flags]
+                )
         with_cuda = bool(self.options.get_safe("with_cuda"))
         tc.cache_variables["NV_CLOTH_ENABLE_CUDA"] = with_cuda
         if with_cuda:
@@ -102,7 +120,10 @@ class Recipe(ConanFile):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure()
+        variables = {}
+        if not self._multi_config:
+            variables["CMAKE_BUILD_TYPE"] = self._configuration
+        cmake.configure(variables=variables)
         cmake.build(build_type=self._configuration)
 
     def package(self):
@@ -113,6 +134,7 @@ class Recipe(ConanFile):
         self.cpp_info.set_property("cmake_find_mode", "none")
         self.cpp_info.set_property("cmake_target_name", "NvCloth::NvCloth")
         self.cpp_info.builddirs = ["lib/cmake/NvCloth"]
-        self.cpp_info.libdirs = [f"lib/{self._configuration.lower()}"]
+        if self._multi_config:
+            self.cpp_info.libdirs = [f"lib/{self._configuration.lower()}"]
         self.cpp_info.libs = ["NvCloth"]
         self.cpp_info.defines = ["NV_CLOTH_STATIC"]
