@@ -25,7 +25,7 @@ from io import StringIO
 from conan import ConanFile
 
 
-class AppleSigning(ConanFile):
+class Recipe(ConanFile):
     name = "apple-signing"
     package_type = "python-require"
 

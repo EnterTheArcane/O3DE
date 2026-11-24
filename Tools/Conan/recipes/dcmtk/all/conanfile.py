@@ -27,7 +27,7 @@ from conan.tools.files import (
 from conan.tools.microsoft import is_msvc, is_msvc_static_runtime
 
 
-class DCMTKConan(ConanFile):
+class Recipe(ConanFile):
     name = "dcmtk"
     description = "DCMTK is a collection of libraries and applications implementing large parts the DICOM standard"
     url = "https://github.com/conan-io/conan-center-index"

@@ -24,7 +24,7 @@ from conan.tools.files import (
 )
 
 
-class OpenJPH(ConanFile):
+class Recipe(ConanFile):
     name = "openjph"
     description = "High-throughput JPEG 2000 codec"
     homepage = "https://github.com/aous72/OpenJPH"

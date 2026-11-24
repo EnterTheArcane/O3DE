@@ -24,7 +24,7 @@ from conan.tools.layout import basic_layout
 from conan.tools.microsoft import is_msvc, unix_path
 
 
-class LibiconvConan(ConanFile):
+class Recipe(ConanFile):
     name = "libiconv"
     description = "Convert text to and from Unicode"
     license = "LGPL-2.1-or-later"

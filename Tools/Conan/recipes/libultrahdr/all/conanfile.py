@@ -25,7 +25,7 @@ from conan.tools.files import (
 )
 
 
-class UltraHDR(ConanFile):
+class Recipe(ConanFile):
     name = "libultrahdr"
     description = "JPEG-based Ultra HDR image encoding and decoding"
     homepage = "https://github.com/google/libultrahdr"

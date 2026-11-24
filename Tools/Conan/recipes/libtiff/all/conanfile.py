@@ -29,7 +29,7 @@ from conan.tools.files import (
 required_conan_version = ">=2.0"
 
 
-class LibtiffConan(ConanFile):
+class Recipe(ConanFile):
     name = "libtiff"
     description = "Library for Tag Image File Format (TIFF)"
     url = "https://github.com/conan-io/conan-center-index"
