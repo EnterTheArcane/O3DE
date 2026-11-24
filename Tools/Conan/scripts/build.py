@@ -19,7 +19,6 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP_PROFILES = ("windows-x64", "windows-a64", "linux-x64", "linux-a64", "macos-a64")
 ANDROID_PROFILES = ("android-a64", "android-x64")
-ANDROID_BUILD_PROFILES = ("linux-x64", "windows-x64", "macos-a64")
 IOS_PROFILES = ("ios-a64", "ios-simulator-a64")
 WASM_PROFILES = ("emscripten-w32", "emscripten-w64")
 PROFILES = (*DESKTOP_PROFILES, *ANDROID_PROFILES, *IOS_PROFILES, *WASM_PROFILES)
@@ -156,7 +155,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "command",
-        choices=("lock", "build", "android-ndk", "build-profile", "export-cache"),
+        choices=("build", "android-ndk", "build-profile", "export-cache"),
     )
     parser.add_argument("profile", choices=PROFILES, nargs="?")
     parser.add_argument("--build-profile", choices=DESKTOP_PROFILES)
@@ -273,28 +272,6 @@ def main():
         ):
             toolchain_settings.extend(("-c:a", "user.package:prune_build=True"))
 
-    configurations = ["Release"]
-    if args.profile.startswith("windows-"):
-        configurations.append("Debug")
-
-    def profile_arguments(config, native_profile):
-        common = [
-            "-pr:b",
-            native_profile,
-            "-pr:h",
-            profile,
-            "-s:h",
-            f"build_type={config}",
-            *toolchain_settings,
-            *symbol_arguments(args.profile),
-        ]
-        if config == "Debug":
-            common.extend(("-s:h", "compiler.runtime_type=Debug"))
-        if android and native_profile.name.startswith("windows-"):
-            common.extend(("-c:h", "tools.microsoft.bash:subsystem=msys2"))
-        return common
-
-    lock = ROOT / "locks" / f"{args.profile}.lock"
     remotes = ["--build=missing", "-r", "o3de", "-r", "conancenter"]
     if args.command == "android-ndk":
         conan(
@@ -304,60 +281,12 @@ def main():
             build_profile,
             "-pr:h",
             profile,
-            "--lockfile",
-            lock,
             "--build=missing",
             "-r",
             "o3de",
             "--output-folder",
             output / "release",
         )
-        return
-    if args.command == "lock":
-        lock.parent.mkdir(exist_ok=True)
-        build_profiles = [build_profile]
-        if android:
-            build_profiles = [
-                ROOT / "profiles" / name for name in ANDROID_BUILD_PROFILES
-            ]
-        if wasm:
-            build_profiles = [
-                ROOT / "profiles" / name for name in ("linux-x64", "macos-a64")
-            ]
-        with TemporaryDirectory(dir=lock.parent) as directory:
-            candidates = []
-            for native_profile in build_profiles:
-                for config in configurations:
-                    candidate = (
-                        Path(directory) / f"{native_profile.name}-{config.lower()}.lock"
-                    )
-                    conan(
-                        "lock",
-                        "create",
-                        ROOT,
-                        *profile_arguments(config, native_profile),
-                        *remotes,
-                        "--update",
-                        "--lockfile=",
-                        "--lockfile-out",
-                        candidate,
-                    )
-                    candidates.append(candidate)
-            merged = candidates[0]
-            if len(candidates) > 1:
-                merged = Path(directory) / lock.name
-                conan(
-                    "lock",
-                    "merge",
-                    *(
-                        arg
-                        for candidate in candidates
-                        for arg in ("--lockfile", candidate)
-                    ),
-                    "--lockfile-out",
-                    merged,
-                )
-            merged.replace(lock)
         return
 
     deployer_dir = ROOT / "extensions" / "deployers"
@@ -366,14 +295,31 @@ def main():
         deployers.extend(("--deployer", deployer_dir / "oci_deployer.py"))
     if args.deploy in ("archive", "both"):
         deployers.extend(("--deployer", deployer_dir / "archive_deployer.py"))
+    configurations = (
+        ("Release", "Debug") if args.profile.startswith("windows-") else ("Release",)
+    )
     for config in configurations:
+        profile_args = [
+            "-pr:b",
+            build_profile,
+            "-pr:h",
+            profile,
+            "-s:h",
+            f"build_type={config}",
+            *toolchain_settings,
+            *symbol_arguments(args.profile),
+        ]
+        if config == "Debug":
+            profile_args.extend(("-s:h", "compiler.runtime_type=Debug"))
+        if android and build_profile.name.startswith("windows-"):
+            profile_args.extend(("-c:h", "tools.microsoft.bash:subsystem=msys2"))
+
         stage = output / config.lower()
         packages = stage / "packages"
-        locked = [*profile_arguments(config, build_profile), "--lockfile", lock]
         conan(
             "install",
             ROOT,
-            *locked,
+            *profile_args,
             *remotes,
             "--output-folder",
             stage,
@@ -382,7 +328,7 @@ def main():
             packages,
         )
         deployed = packages / "archives" if args.deploy == "archive" else packages
-        test_packages(conan, stage, deployed, *locked, android=android, wasm=wasm)
+        test_packages(conan, stage, deployed, *profile_args, android=android, wasm=wasm)
 
 
 if __name__ == "__main__":
