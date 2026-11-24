@@ -7,8 +7,10 @@
 #
 
 from pathlib import Path
+from typing import ClassVar
 
 from conan import ConanFile
+from conan.errors import ConanException, ConanInvalidConfiguration
 from conan.tools.build import cross_building
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
 from conan.tools.files import (
@@ -24,6 +26,8 @@ class Recipe(ConanFile):
     license = "NCSA"
     settings = "os", "arch", "compiler", "build_type"
     package_type = "application"
+    options: ClassVar[dict[str, list[bool]]] = {"tablegen_only": [True, False]}
+    default_options: ClassVar[dict[str, bool]] = {"tablegen_only": False}
 
     def layout(self):
         cmake_layout(self, src_folder="src")
@@ -32,8 +36,16 @@ class Recipe(ConanFile):
         export_conandata_patches(self)
 
     def build_requirements(self):
-        if cross_building(self):
-            self.tool_requires(f"{self.name}/{self.version}")
+        if not self.options.tablegen_only and cross_building(self):
+            self.tool_requires(
+                f"{self.name}/{self.version}", options={"tablegen_only": True}
+            )
+
+    def validate(self):
+        if self.options.tablegen_only and cross_building(self):
+            raise ConanInvalidConfiguration(
+                "DXC TableGen tools must run on the build machine"
+            )
 
     def source(self):
         # The fork retains the SPIR-V and specialization-constant extensions used by Atom.
@@ -93,6 +105,10 @@ class Recipe(ConanFile):
     def build(self):
         cmake = CMake(self)
         cmake.configure()
+        if self.options.tablegen_only:
+            cmake.build(target="llvm-tblgen")
+            cmake.build(target="clang-tblgen")
+            return
         cmake.build(target="dxc")
         cmake.build(target="dxsc")
         cmake.build(target="dxcompiler")
@@ -102,13 +118,15 @@ class Recipe(ConanFile):
     def package(self):
         build = Path(self.build_folder)
         package = Path(self.package_folder)
-        if not cross_building(self):
+        if self.options.tablegen_only:
             suffix = ".exe" if self.settings.os == "Windows" else ""
             for tool in ("llvm-tblgen", "clang-tblgen"):
-                copy(self, f"{tool}{suffix}", build / "bin", package / "bin")
-        if self.settings.os == "Windows":
+                if not copy(self, f"{tool}{suffix}", build / "bin", package / "bin"):
+                    raise ConanException(f"Missing DXC build tool {tool}{suffix}")
+        elif self.settings.os == "Windows":
             for name in ("dxc.exe", "dxsc.exe", "dxcompiler.dll", "dxil.dll"):
                 copy(self, name, build / "bin", package / "bin")
+                copy(self, f"{Path(name).stem}.pdb", build / "bin", package / "bin")
         else:
             for name in ("dxc", "dxc-3.7", "dxsc", "dxsc-3.7"):
                 copy(self, name, build / "bin", package / "bin")
