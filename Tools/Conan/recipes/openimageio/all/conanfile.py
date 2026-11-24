@@ -146,6 +146,8 @@ class Recipe(ConanFile):
                 "@loader_path;@loader_path/..;@loader_path/../lib"
             )
         elif self.settings.os == "Windows":
+            # OpenImageIO has no C++ modules. The scan can exceed cmd.exe's command limit.
+            tc.variables["CMAKE_CXX_SCAN_FOR_MODULES"] = False
             tc.extra_cxxflags.append("/bigobj")
         tc.generate()
         deps = CMakeDeps(self)
