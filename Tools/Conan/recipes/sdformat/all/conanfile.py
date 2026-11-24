@@ -57,6 +57,7 @@ class Recipe(ConanFile):
         tc.variables["BUILD_TESTING"] = False
         tc.variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
         tc.variables["CMAKE_INSTALL_LIBDIR"] = "lib"
+        tc.variables["CMAKE_PLATFORM_NO_VERSIONED_SONAME"] = True
         tc.variables["GZ_ENABLE_RELOCATABLE_INSTALL"] = bool(self.options.shared)
         tc.variables["SKIP_PYBIND11"] = True
         tc.variables["USE_INTERNAL_URDF"] = True

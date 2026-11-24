@@ -38,6 +38,7 @@ class Recipe(ConanFile):
         tc.variables["BUILD_TESTING"] = False
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_EIGEN3"] = True
         tc.variables["CMAKE_INSTALL_LIBDIR"] = "lib"
+        tc.variables["CMAKE_PLATFORM_NO_VERSIONED_SONAME"] = True
         tc.variables["SKIP_PYBIND11"] = True
         tc.variables["SKIP_SWIG"] = True
         if self.settings.os == "Linux":

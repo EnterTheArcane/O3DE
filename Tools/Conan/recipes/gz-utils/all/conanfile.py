@@ -37,6 +37,7 @@ class Recipe(ConanFile):
         tc.variables["BUILD_TESTING"] = False
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_spdlog"] = True
         tc.variables["CMAKE_INSTALL_LIBDIR"] = "lib"
+        tc.variables["CMAKE_PLATFORM_NO_VERSIONED_SONAME"] = True
         tc.variables["GZ_UTILS_VENDOR_CLI11"] = True
         tc.generate()
 
