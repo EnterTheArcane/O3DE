@@ -1,24 +1,13 @@
 publish: false
 sources:
   "1.32.0":
-    Windows:
-      x86_64:
-        url: "https://github.com/ispc/ispc/releases/download/v1.32.0/ispc-v1.32.0-windows.zip"
-        sha256: "148d5cd96abe7501c730d5fbd00f1f0c893b96bfeada38d1811c9b6251e86a5c"
-      armv8:
-        url: "https://github.com/ispc/ispc/releases/download/v1.32.0/ispc-v1.32.0-windows.zip"
-        sha256: "148d5cd96abe7501c730d5fbd00f1f0c893b96bfeada38d1811c9b6251e86a5c"
-    Linux:
-      x86_64:
-        url: "https://github.com/ispc/ispc/releases/download/v1.32.0/ispc-v1.32.0-linux.tar.gz"
-        sha256: "faf266bda2b702d68976ffd26bbd36c1ddba43424cc3c44f25b092cd1aa1f64a"
-      armv8:
-        url: "https://github.com/ispc/ispc/releases/download/v1.32.0/ispc-v1.32.0-linux.aarch64.tar.gz"
-        sha256: "ddb892a25ffb2f212a63c59540262556e50cc72b1b0c89bed7735d66da69626d"
-    Macos:
-      armv8:
-        url: "https://github.com/ispc/ispc/releases/download/v1.32.0/ispc-v1.32.0-macOS.arm64.tar.gz"
-        sha256: "efc5180095554628c01022507329ba7a2141c7ba97cf1bccc2df85dc47874e02"
-      x86_64:
-        url: "https://github.com/ispc/ispc/releases/download/v1.32.0/ispc-v1.32.0-macOS.x86_64.tar.gz"
-        sha256: "dc66396d45c73e2c6596d84dc82765e18631f9ebd34533adae400a0a137f9906"
+    url: "https://github.com/ispc/ispc/archive/refs/tags/v1.32.0.tar.gz"
+    sha256: "705b818062602a0c6b62965a8aa011508ef7f9decce716cf1645f2b04ba1e9f8"
+patches:
+  "1.32.0":
+    - patch_file: "patches/freestanding-dispatcher.patch"
+      patch_description: "Use Clang's freestanding headers when generating dispatch bitcode for an unknown target OS"
+    - patch_file: "patches/llvm-compression-dependencies.patch"
+      patch_description: "Link compression libraries required by the static LLVM SDK"
+    - patch_file: "patches/emscripten-builtins.patch"
+      patch_description: "Generate Emscripten builtins with the same LLVM version as ISPC"

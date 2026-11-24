@@ -23,6 +23,7 @@ class Packages(ConanFile):
     def requirements(self):
         self.requires("gz-cmake/5.2.0")
         self.requires("imath/3.2.3")
+        self.requires("ispc-texture-compressor/2026.11.23")
         self.requires("nvcloth/1.1.6")
         self.requires("opencolorio/2.6.0")
         self.requires("openexr/3.5.4")
@@ -34,11 +35,7 @@ class Packages(ConanFile):
         self.requires("sdformat/16.1.0")
 
         desktop = self.settings.os in ("Linux", "Macos", "Windows")
-        mobile = self.settings.os in ("Android", "iOS")
         web = self.settings.os == "Emscripten"
-
-        if desktop or mobile:
-            self.requires("ispc-texture-compressor/2024.09.23")
 
         if desktop:
             self.requires("directxshadercompiler/1.9.2609")

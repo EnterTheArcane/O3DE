@@ -1,0 +1,47 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -437,6 +437,15 @@ if (WASM_ENABLED)
+         message(FATAL_ERROR "emcc not found!")
+     endif()
+     message(STATUS "EMCC_EXECUTABLE: ${EMCC_EXECUTABLE}")
++    set(ispc_emscripten_cache "${CMAKE_CURRENT_BINARY_DIR}/emscripten-cache")
++    execute_process(
++        COMMAND "${CMAKE_COMMAND}" -E env "EM_CACHE=${ispc_emscripten_cache}"
++            ${EMCC_EXECUTABLE} -E -DWASM "-I${CMAKE_SOURCE_DIR}" --std=gnu++17 builtins/builtins-c-cpu.cpp
++        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
++        OUTPUT_QUIET
++        COMMAND_ERROR_IS_FATAL ANY
++    )
++    set(ISPC_EMSCRIPTEN_SYSROOT "${ispc_emscripten_cache}/sysroot")
+ endif()
+ 
+ if (${LLVM_VERSION_NUMBER} VERSION_LESS "20.0.0")
+diff --git a/cmake/GenerateBuiltins.cmake b/cmake/GenerateBuiltins.cmake
+--- a/cmake/GenerateBuiltins.cmake
++++ b/cmake/GenerateBuiltins.cmake
+@@ -169,17 +169,18 @@ function(builtin_wasm_to_cpp bit os arch)
+     write_common_bitcode_lib(${name} ${os} ${arch})
+ 
+     list(APPEND flags
+-        -DWASM -s WASM_OBJECT_FILES=0 -I${CMAKE_SOURCE_DIR} --std=gnu++17 -S -emit-llvm)
+-    if("${bit}" STREQUAL "64")
+-        list(APPEND flags "-sMEMORY64")
+-    endif()
++        "--target=${arch}-unknown-emscripten" "--sysroot=${ISPC_EMSCRIPTEN_SYSROOT}"
++        "-isystem${ISPC_EMSCRIPTEN_SYSROOT}/include/c++/v1"
++        "-isystem${ISPC_EMSCRIPTEN_SYSROOT}/include"
++        -msimd128 -DWASM "-I${CMAKE_SOURCE_DIR}" --std=gnu++17 -emit-llvm -c
++    )
+ 
+     add_custom_command(
+         OUTPUT ${bc}
+-        COMMAND ${EMCC_EXECUTABLE} ${flags} ${input} -o -
+-            | \"${LLVM_AS_EXECUTABLE}\" -o ${bc}
++        COMMAND "${CLANGPP_EXECUTABLE}" ${flags} "${input}" -o "${bc}"
+         DEPENDS ${input} ${BUILTINS_C_CPU_HEADER_DEPS}
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
++        VERBATIM
+     )
+ 
+     add_custom_command(

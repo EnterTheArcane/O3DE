@@ -1,0 +1,21 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -840,4 +840,3 @@ if (WIN32)
+-    # When resolving statically linked import dependencies of the module, limit
+-    # the module search path to %windows%\system32 directory only.
+-    list(APPEND LINK_OPTIONS_PRIVATE /DEPENDENTLOADFLAG:0x800)
++    # Locate bundled compression DLLs beside the executable and system DLLs in System32.
++    list(APPEND LINK_OPTIONS_PRIVATE /DEPENDENTLOADFLAG:0xA00)
+     if (MSVC AND NOT CMAKE_BUILD_TYPE STREQUAL "DEBUG" )
+@@ -934,6 +933,10 @@ else()
+     endif()
+ endif()
+ 
++find_package(ZLIB CONFIG REQUIRED)
++find_package(zstd CONFIG REQUIRED)
++list(APPEND LINK_LIBRARIES ZLIB::ZLIB zstd::libzstd)
++
+ # This function configures compile definitions, options and include dirs.
+ # It can be used for any objects or libraries that are built in the project.
+ function(configure_ispc_obj TARGET)

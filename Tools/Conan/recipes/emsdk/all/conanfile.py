@@ -61,6 +61,7 @@ class Recipe(ConanFile):
             package / "upstream/emscripten",
             package / "licenses/emscripten",
         )
+        node = "node/node.exe" if self.settings.os == "Windows" else "node/bin/node"
         copy(self, "LICENSE", package / "node", package / "licenses/node")
         # Emscripten expands CFGDIR to the location of this file after relocation.
         save(
@@ -72,7 +73,7 @@ class Recipe(ConanFile):
 EMSCRIPTEN_ROOT = os.path.dirname(__file__) + '/upstream/emscripten'
 LLVM_ROOT = '$CFGDIR/upstream/bin'
 BINARYEN_ROOT = '$CFGDIR/upstream'
-NODE_JS = '$CFGDIR/node/bin/node'
+NODE_JS = '$CFGDIR/{node}'
 CACHE = '~/.cache/conan-emsdk/{self.version}'
 """,
         )
@@ -80,13 +81,21 @@ CACHE = '~/.cache/conan-emsdk/{self.version}'
     def package_info(self):
         root = Path(self.package_folder)
         tools = root / "upstream/emscripten"
-        node = root / "node/bin/node"
-        self.cpp_info.bindirs = ["upstream/emscripten", "node/bin"]
+        node = root / (
+            "node/node.exe" if self.settings.os == "Windows" else "node/bin/node"
+        )
+        self.cpp_info.bindirs = [
+            "upstream/emscripten",
+            node.parent.relative_to(root).as_posix(),
+        ]
         self.cpp_info.includedirs = []
         self.cpp_info.libdirs = []
         self.buildenv_info.define_path("EMSDK", root.as_posix())
         self.buildenv_info.define_path("EM_CONFIG", (root / ".emscripten").as_posix())
         self.buildenv_info.define_path("EMSDK_NODE", node.as_posix())
+        # Native tools can call emcc without using it as their own compiler.
+        if self.settings_target is None or self.settings_target.os != "Emscripten":
+            return
         for var, command in (
             ("CC", "emcc"),
             ("CXX", "em++"),

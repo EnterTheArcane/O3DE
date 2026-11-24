@@ -11,7 +11,7 @@ from pathlib import Path
 from conan import ConanFile
 from conan.tools.build import can_run
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
-from conan.tools.env import VirtualRunEnv
+from conan.tools.env import VirtualBuildEnv, VirtualRunEnv
 
 
 class Recipe(ConanFile):
@@ -29,6 +29,9 @@ class Recipe(ConanFile):
         VirtualRunEnv(self).generate()
         tc = CMakeToolchain(self)
         tc.user_presets_path = False
+        if self.settings.arch == "wasm64":
+            tc.cache_variables["CMAKE_C_FLAGS"] = "-m64"
+            tc.cache_variables["CMAKE_CXX_FLAGS"] = "-m64"
         tc.generate()
 
     def build(self):
@@ -37,8 +40,11 @@ class Recipe(ConanFile):
         cmake.build()
 
     def test(self):
-        if can_run(self):
-            executable = (
-                Path(self.build_folder) / self.cpp.build.bindir / "test_package"
-            )
+        executable = Path(self.build_folder) / self.cpp.build.bindir / "test_package"
+        if self.settings.os == "Emscripten":
+            node = VirtualBuildEnv(self).vars().get("EMSDK_NODE")
+            self.run(f'"{node}" "{executable.with_suffix(".js")}"')
+        elif can_run(self):
+            if self.settings.os == "Windows":
+                executable = executable.with_suffix(".exe")
             self.run(f'"{executable}"', env="conanrun")

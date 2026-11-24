@@ -17,17 +17,19 @@ class Recipe(ConanFile):
     name = "ispc-texture-compressor"
     license = "MIT"
     settings = "os", "arch", "compiler", "build_type"
-    package_type = "shared-library"
 
     def set_version(self):
         if self.version is None:
             (self.version,) = self.conan_data["sources"]
 
-    def export_sources(self):
-        copy(self, "CMakeLists.txt", self.recipe_folder, self.export_sources_folder)
+    def configure(self):
+        self.package_type = "shared-library"
+        if self.settings.os == "Emscripten":
+            self.package_type = "static-library"
 
     def layout(self):
         cmake_layout(self)
+        self.cpp.package.includedirs = ["include/ISPC", "include"]
 
     def build_requirements(self):
         self.tool_requires("ispc/1.32.0")
@@ -36,33 +38,23 @@ class Recipe(ConanFile):
         get(
             self,
             **self.conan_data["sources"][self.version],
-            destination="upstream",
             strip_root=True,
         )
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["ISPC_TEXCOMP_SOURCE"] = (
-            Path(self.source_folder) / "upstream"
-        ).as_posix()
-        compiler = Path(self.dependencies.build["ispc"].package_folder) / "bin" / "ispc"
+        wasm = self.settings.os == "Emscripten"
+        ispc = self.dependencies.build["ispc"]
+        compiler = Path(ispc.package_folder) / "bin" / "ispc"
         if self.settings_build.os == "Windows":
             compiler = compiler.with_suffix(".exe")
         tc.variables["CMAKE_ISPC_COMPILER"] = compiler.as_posix()
-        flags = []
-        if self.settings.os == "Android":
-            flags.append("--target-os=android")
-        elif self.settings.os == "iOS":
-            flags.append("--target-os=ios")
-            if self.settings.os.sdk == "iphonesimulator":
-                tc.variables["ISPC_TEXCOMP_IOS_SIMULATOR"] = True
-        if self.settings.arch == "armv8":
-            tc.variables["ISPC_TEXCOMP_TARGETS"] = "neon-i32x4"
-            flags.append("--arch=aarch64")
-        else:
-            tc.variables["ISPC_TEXCOMP_TARGETS"] = "sse2-i32x4;avx1-i32x8"
-        if flags:
-            tc.variables["CMAKE_ISPC_FLAGS"] = " ".join(flags)
+        # The ISPC headers are generated during the build.
+        tc.variables["CMAKE_CXX_SCAN_FOR_MODULES"] = False
+        tc.variables["BUILD_SHARED_LIBS"] = not wasm
+        if self.settings.arch == "wasm64":
+            tc.cache_variables["CMAKE_C_FLAGS"] = "-m64"
+            tc.cache_variables["CMAKE_CXX_FLAGS"] = "-m64"
         tc.generate()
 
     def build(self):
@@ -74,10 +66,15 @@ class Recipe(ConanFile):
         CMake(self).install()
         copy(
             self,
-            "LICENSE*",
-            Path(self.source_folder) / "upstream",
+            "license.txt",
+            self.source_folder,
             Path(self.package_folder) / "licenses",
         )
 
     def package_info(self):
         self.cpp_info.libs = ["ispc_texcomp"]
+        if self.settings.os == "Emscripten":
+            self.cpp_info.exelinkflags = ["-msimd128"]
+            self.cpp_info.sharedlinkflags = ["-msimd128"]
+        else:
+            self.cpp_info.defines = ["ISPC_TEXCOMP_SHARED"]
