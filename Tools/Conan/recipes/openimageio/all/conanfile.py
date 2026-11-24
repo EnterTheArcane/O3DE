@@ -44,10 +44,6 @@ class Recipe(ConanFile):
         "onetbb/*:tbbproxy": False,
     }
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def export_sources(self):
         export_conandata_patches(self)
 

@@ -25,10 +25,6 @@ class Recipe(ConanFile):
     options = {"with_cuda": [True, False]}
     default_options = {"with_cuda": True}
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def config_options(self):
         if self.settings.os not in ("Linux", "Windows") or self.settings.arch not in (
             "x86_64",

@@ -28,10 +28,6 @@ class Recipe(ConanFile):
     settings = "os", "arch", "compiler", "build_type"
     package_type = "shared-library"
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def export_sources(self):
         for pattern in ("QT-NOTICE.TXT", "LICENSE"):
             copy(self, pattern, self.recipe_folder, self.export_sources_folder)

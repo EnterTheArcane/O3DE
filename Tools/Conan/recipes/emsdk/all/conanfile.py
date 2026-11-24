@@ -21,10 +21,6 @@ class Recipe(ConanFile):
     package_type = "application"
     settings = "os", "arch"
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def layout(self):
         basic_layout(self)
 

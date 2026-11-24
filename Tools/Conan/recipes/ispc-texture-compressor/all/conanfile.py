@@ -18,10 +18,6 @@ class Recipe(ConanFile):
     license = "MIT"
     settings = "os", "arch", "compiler", "build_type"
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def configure(self):
         self.package_type = "shared-library"
         if self.settings.os == "Emscripten":

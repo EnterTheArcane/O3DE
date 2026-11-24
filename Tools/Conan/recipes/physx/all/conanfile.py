@@ -25,10 +25,6 @@ class Recipe(ConanFile):
     options = {"with_cuda": [True, False]}
     default_options = {"with_cuda": True}
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def export_sources(self):
         copy(self, "physx-config.cmake", self.recipe_folder, self.export_sources_folder)
 

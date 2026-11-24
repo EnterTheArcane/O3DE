@@ -24,10 +24,6 @@ class Recipe(ConanFile):
     settings = "os", "arch"
     package_type = "application"
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def validate(self):
         if (
             self.settings.os != "Windows"

@@ -39,10 +39,6 @@ class Recipe(ConanFile):
     python_requires = "apple-signing/1.0"
     settings = "os", "arch", "compiler", "build_type"
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def export_sources(self):
         for pattern in ("platform/*/python-config.cmake", "platform/macos/relocate.py"):
             copy(self, pattern, self.recipe_folder, self.export_sources_folder)

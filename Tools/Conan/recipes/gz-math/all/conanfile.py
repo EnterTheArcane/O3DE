@@ -22,10 +22,6 @@ class Recipe(ConanFile):
     options = {"shared": [True, False]}
     default_options = {"shared": True}
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def requirements(self):
         self.requires("gz-cmake/5.2.0", visible=True)
         self.requires("gz-utils/4.0.0", transitive_headers=True, transitive_libs=True)

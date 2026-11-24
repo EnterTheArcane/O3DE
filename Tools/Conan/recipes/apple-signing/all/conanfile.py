@@ -27,7 +27,6 @@ from conan import ConanFile
 
 class AppleSigning(ConanFile):
     name = "apple-signing"
-    version = "1.0"
     package_type = "python-require"
 
 

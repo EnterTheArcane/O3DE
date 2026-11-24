@@ -18,10 +18,6 @@ class Recipe(ConanFile):
     license = "BSD-3-Clause"
     package_type = "build-scripts"
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def layout(self):
         basic_layout(self, src_folder="src")
 

@@ -20,10 +20,6 @@ class Recipe(ConanFile):
     package_type = "application"
     settings = "os", "arch"
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def validate(self):
         archives = self.conan_data["sources"][self.version]["build_tools"]
         if str(self.settings.os) not in archives or (

@@ -39,10 +39,6 @@ class Recipe(ConanFile):
     default_options = dict.fromkeys(options, True)
     default_options["shared"] = False
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     @property
     def _msvc_abi(self):
         return is_msvc(self) or (

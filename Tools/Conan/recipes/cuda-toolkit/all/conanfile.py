@@ -27,10 +27,6 @@ class Recipe(ConanFile):
         "with_compiler": True,
     }
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     def validate(self):
         sources = self.conan_data["sources"][self.version]
         if str(self.settings.arch) not in sources.get(str(self.settings.os), {}):

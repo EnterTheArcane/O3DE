@@ -27,10 +27,6 @@ class Recipe(ConanFile):
     settings = "os", "arch"
     no_copy_source = True
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     @property
     def _archive_arch(self):
         if self.settings.os == "Macos" and self.settings.arch in ("armv8", "x86_64"):

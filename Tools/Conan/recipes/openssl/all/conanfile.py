@@ -37,10 +37,6 @@ class Recipe(ConanFile):
     package_type = "static-library"
     settings = "os", "arch", "compiler", "build_type"
 
-    def set_version(self):
-        if self.version is None:
-            (self.version,) = self.conan_data["sources"]
-
     @property
     def _platform(self):
         platform = (str(self.settings.os), str(self.settings.arch))
