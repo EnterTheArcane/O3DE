@@ -1,4 +1,4 @@
-{% set llvm_version = "23.1.6" %}
+{% set llvm_version = "23.1.5" %}
 
 [settings]
 compiler=clang

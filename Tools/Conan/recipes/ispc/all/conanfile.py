@@ -45,8 +45,7 @@ class Recipe(ConanFile):
             self.settings.os.version = str(max(Version(deployment), Version("14.0")))
 
     def requirements(self):
-        llvm = "23.1.5" if self.settings.os == "Macos" else "23.1.6"
-        self.requires(f"llvm/{llvm}", visible=False)
+        self.requires("llvm/23.1.5", visible=False)
         # Windows import libraries avoid mixing the SDK's static CRT with /MD objects.
         shared = self.settings.os == "Windows"
         self.requires("zlib/1.4", visible=False, options={"shared": shared})

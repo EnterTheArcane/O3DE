@@ -24,7 +24,7 @@ class Recipe(ConanFile):
 
     def set_version(self):
         if self.version is None:
-            self.version = max(self.conan_data["sources"], key=Version)
+            (self.version,) = self.conan_data["sources"]
 
     def layout(self):
         basic_layout(self)
