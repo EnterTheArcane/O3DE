@@ -23,7 +23,7 @@ class Packages(ConanFile):
     def requirements(self):
         self.requires("gz-cmake/5.2.0")
         self.requires("imath/3.2.3")
-        self.requires("ispc-texture-compressor/2026.11.23")
+        self.requires("ispc-texture-compressor/2026.11.24")
         self.requires("nvcloth/1.1.6")
         self.requires("opencolorio/2.6.0")
         self.requires("openexr/3.5.4")

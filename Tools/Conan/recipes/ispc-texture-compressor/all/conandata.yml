@@ -1,4 +1,4 @@
 sources:
-  "2026.11.23":
-    url: "https://github.com/EnterTheArcane/ispc-texture-compressor/archive/9416eade4a08cfdb1e3ec653a534ee78929e8405.tar.gz"
-    sha256: "90289f7e4d1b0c38498cf230adda8c60d482d833fcdc234a6cfc52bce7c5f0ce"
+  "2026.11.24":
+    url: "https://github.com/EnterTheArcane/ispc-texture-compressor/archive/24deca2e6006f4c5893f82404a925a1537d02718.tar.gz"
+    sha256: "6768953a02168b034bffc2d88ed7efb01a1f32a7465e146f642b74ba54417311"

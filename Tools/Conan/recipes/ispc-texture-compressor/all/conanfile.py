@@ -66,7 +66,7 @@ class Recipe(ConanFile):
         CMake(self).install()
         copy(
             self,
-            "license.txt",
+            "LICENSE.txt",
             self.source_folder,
             Path(self.package_folder) / "licenses",
         )
