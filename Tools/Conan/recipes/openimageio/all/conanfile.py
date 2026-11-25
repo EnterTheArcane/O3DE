@@ -86,7 +86,8 @@ class Recipe(ConanFile):
         self.requires("ptex/2.4.2")
         if self._build_tools:
             self.requires("pybind11/[>=3.0.2 <4]", headers=True, libs=False)
-            self.requires("python/3.15.2")
+            # Only the Python bindings use CPython.
+            self.requires("python/3.15.2", visible=False)
         self.requires("tsl-robin-map/[>=1.3.0 <2]")
         self.requires("zlib/[>=1.2.13 <2]")
 
