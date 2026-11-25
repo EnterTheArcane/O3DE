@@ -14,7 +14,7 @@ qt_packages=(
     libwayland-dev libx11-xcb-dev libxcb-cursor-dev libxcb-glx0-dev
     libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev
     libxcb-shape0-dev libxcb-shm0-dev libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev libxcb-xkb-dev
-    libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev libxrender-dev
+    libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
 )
 
 apt_options=(-y)
@@ -41,7 +41,12 @@ EOF
 fi
 
 sudo apt-get update
-sudo apt-get install "${apt_options[@]}" gcc-13 g++-13 wayland-protocols 7zip "${qt_packages[@]}"
+sudo apt-get install "${apt_options[@]}" gcc-13 g++-13 wayland-protocols 7zip libxrender-dev "${qt_packages[@]}"
 if [[ ${1:-native} == cross ]]; then
-    sudo apt-get install "${apt_options[@]}" clang g++-13-aarch64-linux-gnu "${qt_packages[@]/%/:arm64}"
+    # The amd64 and arm64 archives can publish libXrender updates at different times.
+    native_arch=$(dpkg --print-architecture)
+    xrender_version=$(dpkg-query -W -f='${Version}' "libxrender-dev:$native_arch")
+    sudo apt-get install "${apt_options[@]}" clang g++-13-aarch64-linux-gnu \
+        "libxrender-dev:arm64=$xrender_version" "libxrender1:arm64=$xrender_version" \
+        "${qt_packages[@]/%/:arm64}"
 fi
