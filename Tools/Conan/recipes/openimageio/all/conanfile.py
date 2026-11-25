@@ -50,10 +50,6 @@ class Recipe(ConanFile):
     def layout(self):
         cmake_layout(self, src_folder="src")
 
-    def configure(self):
-        if self.settings.os == "Emscripten":
-            self.package_type = "static-library"
-
     @property
     def _build_tools(self):
         return self.settings.os in ("Linux", "Macos", "Windows") and (
@@ -113,7 +109,7 @@ class Recipe(ConanFile):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["BUILD_SHARED_LIBS"] = self.package_type == "shared-library"
+        tc.variables["BUILD_SHARED_LIBS"] = True
         tc.variables["CMAKE_DEBUG_POSTFIX"] = "_d"
         tc.variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
         tc.variables["CMAKE_INSTALL_LIBDIR"] = "lib"
