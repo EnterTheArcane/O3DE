@@ -1,0 +1,33 @@
+--- a/src/libOpenImageIO/CMakeLists.txt
++++ b/src/libOpenImageIO/CMakeLists.txt
+@@ -237,5 +237,5 @@
+ set (OpenImageIO_LINK_FLAGS "${VISIBILITY_MAP_COMMAND} ${EXTRA_DSO_LINK_ARGS}")
+-if (UNIX AND NOT APPLE)
++if (UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+     # Hide symbols from any static dependent libraries embedded here.
+     set (OpenImageIO_LINK_FLAGS "${OpenImageIO_LINK_FLAGS} -Wl,--exclude-libs,ALL")
+ endif ()
+--- a/src/libutil/CMakeLists.txt
++++ b/src/libutil/CMakeLists.txt
+@@ -23,5 +23,5 @@
+ set (OpenImageIO_Util_LINK_FLAGS "${VISIBILITY_MAP_COMMAND} ${EXTRA_DSO_LINK_ARGS}")
+-if (UNIX AND NOT APPLE)
++if (UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+     # Hide symbols from any static dependent libraries embedded here.
+     set (OpenImageIO_Util_LINK_FLAGS "${OpenImageIO_Util_LINK_FLAGS} -Wl,--exclude-libs,ALL")
+ endif ()
+--- a/src/cmake/pythonutils.cmake
++++ b/src/cmake/pythonutils.cmake
+@@ -175,5 +175,5 @@
+     set (_module_LINK_FLAGS "${VISIBILITY_MAP_COMMAND} ${EXTRA_DSO_LINK_ARGS}")
+-    if (UNIX AND NOT APPLE)
++    if (UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+         # Hide symbols from any static dependent libraries embedded here.
+         set (_module_LINK_FLAGS "${_module_LINK_FLAGS} -Wl,--exclude-libs,ALL")
+     endif ()
+@@ -268,4 +268,4 @@
+     set (_module_LINK_FLAGS "${VISIBILITY_MAP_COMMAND} ${EXTRA_DSO_LINK_ARGS}")
+-    if (UNIX AND NOT APPLE)
++    if (UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+         set (_module_LINK_FLAGS "${_module_LINK_FLAGS} -Wl,--exclude-libs,ALL")
+     endif ()

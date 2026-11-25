@@ -13,3 +13,6 @@ patches:
       patch_type: portability
     - patch_file: "patches/relocatable-package-config.patch"
       patch_description: "Resolve installed headers and dependencies without build-directory hints"
+    - patch_file: "patches/emscripten-shared-link.patch"
+      patch_description: Use the ELF dependency visibility flag only on compatible targets
+      patch_type: portability
