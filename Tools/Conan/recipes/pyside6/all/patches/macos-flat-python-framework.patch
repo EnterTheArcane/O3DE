@@ -18,7 +18,7 @@
      if py_include_dir is None or not Path(py_include_dir).exists():
 --- a/build_scripts/main.py
 +++ b/build_scripts/main.py
-@@ -640,6 +640,10 @@
+@@ -653,6 +653,10 @@
              cmake_cmd.append(f"-DPython_EXECUTABLE={self.py_executable}")
              cmake_cmd.append(f"-DPython_INCLUDE_DIR={self.py_include_dir}")
              cmake_cmd.append(f"-DPython_LIBRARY={self.py_library}")
