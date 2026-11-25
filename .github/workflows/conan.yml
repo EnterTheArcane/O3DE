@@ -218,6 +218,9 @@ jobs:
     name: Publish
     if: github.event_name == 'workflow_dispatch' && inputs.publish
     needs: build
+    concurrency:
+      group: conan-package-publish
+      queue: max
     runs-on: ubuntu-26.04
     timeout-minutes: 300
     permissions:
@@ -237,15 +240,11 @@ jobs:
         run: |
           python3 -m venv build/imaging-publish
           build/imaging-publish/bin/python -m pip install -r Tools/Conan/requirements.txt
-      - name: Publish by digest
+      - name: Publish package version indexes
         env:
           OCI_USERNAME: ${{ github.actor }}
           OCI_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          publisher=build/imaging-publish/bin/python
-          for candidate in build/candidates/oci-*; do
-            "$publisher" Tools/Conan/scripts/publish.py push "${candidate##*/oci-}" --output "$candidate" --registry "$REGISTRY"
-          done
+        run: build/imaging-publish/bin/python Tools/Conan/scripts/publish.py push --output build/candidates --registry "$REGISTRY"
       - name: Verify public access by digest
         run: |
           publisher=build/imaging-publish/bin/python

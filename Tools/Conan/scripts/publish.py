@@ -24,6 +24,7 @@ LAYER = "application/vnd.oci.image.layer.v1.tar+gzip"
 IMAGE_CONFIG = "application/vnd.oci.image.config.v1+json"
 IMAGE_MANIFEST = "application/vnd.oci.image.manifest.v1+json"
 IMAGE_INDEX = "application/vnd.oci.image.index.v1+json"
+VARIANT_KEYS = ("platform.os", "platform.architecture", "build.type")
 
 
 def write_json(path, data):
@@ -45,19 +46,35 @@ def layout_json_blob(layout, media_type, data):
     return {"mediaType": media_type, "digest": digest, "size": len(payload)}
 
 
-def catalog_references(profile, output, registry):
+def catalog_references(profile, output, registry, *, push):
     packages = json.loads((output / f"{profile}.json").read_text(encoding="utf-8"))[
         profile
     ]
-    for reference in sorted(
-        {ref for config in packages.values() for ref in config.values()}
-    ):
-        repo, _, digest = reference.rpartition("@")
-        if not repo.startswith(f"{registry}/") or not re.fullmatch(
-            r"sha256:[0-9a-f]{64}", digest
-        ):
-            raise ValueError(f"Unexpected destination: {reference}")
-        yield repo, digest
+    references = set()
+    for config, entries in packages.items():
+        if push:
+            metadata = json.loads(
+                (output / config / "packages" / "packages.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+        for name, reference in entries.items():
+            repo, _, digest = reference.rpartition("@")
+            if not repo.startswith(f"{registry}/") or not re.fullmatch(
+                r"sha256:[0-9a-f]{64}", digest
+            ):
+                raise ValueError(f"Unexpected destination: {reference}")
+            version = None
+            if push:
+                identity = metadata[name]["identity"]
+                recipe = re.split(r"[#@]", identity, maxsplit=1)[0]
+                package, _, version = recipe.partition("/")
+                if package != name or not re.fullmatch(
+                    r"[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}", version
+                ):
+                    raise ValueError(f"Invalid OCI version tag for {identity}")
+            references.add((repo, digest, version, config if push else None))
+    return sorted(references)
 
 
 def check_manifest(client, repo, digest, *, retry_not_found=False):
@@ -85,8 +102,7 @@ def push_manifest(client, layout, repo, digest):
     if manifest.get("mediaType") != IMAGE_MANIFEST:
         raise ValueError(f"Expected an OCI image manifest: {digest}")
 
-    tag = digest.replace(":", "-")
-    container = client.get_container(f"{repo}:{tag}")
+    container = client.get_container(f"{repo}@{digest}")
     for descriptor in (manifest["config"], *manifest["layers"]):
         path = blob_path(layout, descriptor["digest"])
         if path.stat().st_size != descriptor["size"]:
@@ -102,6 +118,57 @@ def push_manifest(client, layout, repo, digest):
     ).raise_for_status()
     # GHCR can return 404 by digest briefly after accepting the manifest.
     check_manifest(client, repo, digest, retry_not_found=True)
+    return {"mediaType": IMAGE_MANIFEST, "digest": digest, "size": len(payload)}
+
+
+def oci_platform(profile):
+    os_name, arch = profile.rsplit("-", 1)
+    return {
+        "os": {"macos": "darwin", "ios-simulator": "ios", "emscripten": "js"}.get(
+            os_name, os_name
+        ),
+        "architecture": {
+            "a64": "arm64",
+            "x64": "amd64",
+            "w32": "wasm",
+            "w64": "wasm64",
+        }[arch],
+    }
+
+
+def variant_key(descriptor):
+    annotations = descriptor.get("annotations", {})
+    key = tuple(annotations.get(name) for name in VARIANT_KEYS)
+    if not all(isinstance(value, str) and value for value in key):
+        raise ValueError(f"Missing package variant metadata for {descriptor['digest']}")
+    return key
+
+
+def push_index(client, repo, version, descriptors):
+    container = client.get_container(f"{repo}:{version}")
+    url = f"{client.prefix}://{container.manifest_url()}"
+    response = client.do_request(url, headers={"Accept": IMAGE_INDEX})
+    if response.status_code == 404:
+        index = {"schemaVersion": 2, "mediaType": IMAGE_INDEX, "manifests": []}
+    else:
+        response.raise_for_status()
+        index = response.json()
+        if index.get("mediaType") != IMAGE_INDEX or index.get("schemaVersion") != 2:
+            raise ValueError(f"Expected a package image index at {repo}:{version}")
+
+    variants = {variant_key(entry): entry for entry in index["manifests"]}
+    if len(variants) != len(index["manifests"]):
+        raise ValueError(f"Duplicate package variants in {repo}:{version}")
+    variants.update((variant_key(entry), entry) for entry in descriptors)
+    # Generic platform selection takes the first match when Debug also exists.
+    index["manifests"] = [
+        variants[key]
+        for key in sorted(variants, key=lambda key: (key[2] != "Release", key))
+    ]
+    payload = json.dumps(index, separators=(",", ":")).encode("utf-8")
+    client.do_request(
+        url, "PUT", data=payload, headers={"Content-Type": IMAGE_INDEX}
+    ).raise_for_status()
 
 
 def authenticate_push(client, repo, username, password):
@@ -136,7 +203,7 @@ def authenticate_push(client, repo, username, password):
     client.auth.set_basic_auth(username, password)
 
 
-def publish_catalog(profile, output, registry, push):
+def publish_catalogs(candidates, registry, push):
     from oras.client import OrasClient
 
     username = os.environ.get("OCI_USERNAME") if push else None
@@ -146,21 +213,50 @@ def publish_catalog(profile, output, registry, push):
             "Set both OCI_USERNAME and OCI_PASSWORD for authenticated publishing"
         )
 
-    for repo, digest in catalog_references(profile, output, registry):
+    groups = {}
+    for profile, output in candidates:
+        for repo, digest, version, config in catalog_references(
+            profile, output, registry, push=push
+        ):
+            groups.setdefault((repo, version), []).append(
+                (profile, config, digest, output)
+            )
+
+    for (repo, version), builds in groups.items():
         # Registry authorization tokens are scoped to a repository.
         client = OrasClient()
         # Keep Requests from taking registry credentials from .netrc.
         client.session.auth = lambda request: request
         client.session.request = partial(client.session.request, timeout=(10, 120))
         with client.session:
-            if push:
-                if username:
-                    authenticate_push(client, repo, username, password)
-                push_manifest(client, output / "oci", repo, digest)
-                print(f"Published {repo}@{digest}")
-            else:
-                check_manifest(client, repo, digest)
-                print(f"Verified public access to {repo}@{digest}")
+            if not push:
+                for digest in sorted({build[2] for build in builds}):
+                    check_manifest(client, repo, digest)
+                    print(f"Verified public access to {repo}@{digest}")
+                continue
+            if username:
+                authenticate_push(client, repo, username, password)
+            uploaded = {}
+            descriptors = []
+            for profile, config, digest, output in builds:
+                if digest not in uploaded:
+                    uploaded[digest] = push_manifest(
+                        client, output / "oci", repo, digest
+                    )
+                os_name, arch = profile.rsplit("-", 1)
+                descriptors.append(
+                    {
+                        **uploaded[digest],
+                        "platform": oci_platform(profile),
+                        "annotations": {
+                            "platform.os": os_name,
+                            "platform.architecture": arch,
+                            "build.type": config.capitalize(),
+                        },
+                    }
+                )
+            push_index(client, repo, version, descriptors)
+            print(f"Published {repo}:{version}")
 
 
 def prepare(profile, output, registry, cache):
@@ -168,11 +264,7 @@ def prepare(profile, output, registry, cache):
     (layout / "blobs" / "sha256").mkdir(parents=True, exist_ok=True)
     manifests = {}
     result = {}
-    os_name, arch = profile.rsplit("-", 1)
-    os_name = {"macos": "darwin", "ios-simulator": "ios", "emscripten": "js"}.get(
-        os_name, os_name
-    )
-    arch = {"a64": "arm64", "x64": "amd64", "w32": "wasm", "w64": "wasm64"}[arch]
+    platform = oci_platform(profile)
     configs = ["release", "debug"] if profile.startswith("windows-") else ["release"]
     for config in configs:
         stage = output / config / "packages"
@@ -197,8 +289,8 @@ def prepare(profile, output, registry, cache):
                 layout,
                 IMAGE_CONFIG,
                 {
-                    "architecture": arch,
-                    "os": os_name,
+                    "architecture": platform["architecture"],
+                    "os": platform["os"],
                     "rootfs": {"type": "layers", "diff_ids": [f"sha256:{tar_hash}"]},
                 },
             )
@@ -251,7 +343,7 @@ def prepare(profile, output, registry, cache):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("prepare", "push", "verify"))
-    parser.add_argument("profile", choices=PROFILES)
+    parser.add_argument("profile", choices=PROFILES, nargs="?")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
         "--registry", required=True, help="Registry and repository prefix"
@@ -263,11 +355,25 @@ def main():
     )
     args = parser.parse_args()
     registry = args.registry.lower().rstrip("/")
-    if args.command == "prepare":
-        prepare(args.profile, args.output.resolve(), registry, args.seed_cache)
+    output = args.output.resolve()
+    if args.profile is None:
+        if args.command != "push":
+            parser.error(f"{args.command} requires a profile")
+        candidates = [
+            (profile, output / f"oci-{profile}")
+            for profile in PROFILES
+            if (output / f"oci-{profile}").is_dir()
+        ]
+        if not candidates:
+            parser.error(
+                "push requires a profile or a directory of oci-<profile> artifacts"
+            )
+        publish_catalogs(candidates, registry, push=True)
+    elif args.command == "prepare":
+        prepare(args.profile, output, registry, args.seed_cache)
     else:
-        publish_catalog(
-            args.profile, args.output.resolve(), registry, push=args.command == "push"
+        publish_catalogs(
+            [(args.profile, output)], registry, push=args.command == "push"
         )
 
 

@@ -8,13 +8,14 @@
 
 import hashlib
 import json
+import os
 import sys
 import tarfile
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from conan.internal.model.conf import Conf
 from conan.internal.model.cpp_info import CppInfo
@@ -31,10 +32,13 @@ from hooks.hook_sbom import format_sbom
 from oci_deployer import deploy
 from package_cps import package_manifest
 from publish import (
+    IMAGE_INDEX,
     IMAGE_MANIFEST,
     authenticate_push,
+    catalog_references,
     check_manifest,
     prepare,
+    publish_catalogs,
     push_manifest,
 )
 
@@ -564,9 +568,15 @@ class PackagingTests(unittest.TestCase):
             ]
             with patch("publish.sleep") as wait:
                 push_manifest(
-                    client, layout, "ghcr.io/test/test/expat", f"sha256:{digest}"
+                    client,
+                    layout,
+                    "ghcr.io/test/test/expat",
+                    f"sha256:{digest}",
                 )
             wait.assert_called_once_with(1)
+            client.get_container.assert_called_with(
+                f"ghcr.io/test/test/expat@sha256:{digest}"
+            )
             self.assertEqual(client.upload_blob.call_count, 2)
             upload = client.do_request.call_args_list[0]
             self.assertEqual(upload.args[1], "PUT")
@@ -579,6 +589,89 @@ class PackagingTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "Expected sha256:"):
                 check_manifest(client, "ghcr.io/test/test/expat", f"sha256:{digest}")
+
+    def test_version_index_preserves_other_builds_on_partial_publish(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            registry = "ghcr.io/test/3rdparty"
+            repo = f"{registry}/qt"
+            metadata = {"qt": {"identity": "qt/6.12.1#recipe:package#revision"}}
+
+            def candidate(profile, configs, digit):
+                output = root / profile
+                digest = "sha256:" + digit * 64
+                entries = {"qt": f"{repo}@{digest}"}
+                output.mkdir(exist_ok=True)
+                (output / f"{profile}.json").write_text(
+                    json.dumps({profile: dict.fromkeys(configs, entries)}),
+                    encoding="utf-8",
+                )
+                for config in configs:
+                    packages = output / config / "packages"
+                    packages.mkdir(parents=True, exist_ok=True)
+                    (packages / "packages.json").write_text(
+                        json.dumps(metadata), encoding="utf-8"
+                    )
+                return profile, output
+
+            windows = candidate("windows-x64", ("release", "debug"), "a")
+            ios = candidate("ios-a64", ("release",), "b")
+            simulator = candidate("ios-simulator-a64", ("release",), "c")
+            self.assertEqual(
+                catalog_references(*windows, registry, push=False),
+                [(repo, "sha256:" + "a" * 64, None, None)],
+            )
+
+            client = MagicMock(prefix="https")
+            client.get_container.return_value.manifest_url.return_value = (
+                "ghcr.io/v2/test/3rdparty/qt/manifests/6.12.1"
+            )
+            client.do_request.side_effect = [
+                Mock(status_code=404),
+                Mock(status_code=201),
+            ]
+            with (
+                patch.dict(os.environ, {"OCI_USERNAME": "", "OCI_PASSWORD": ""}),
+                patch("oras.client.OrasClient", return_value=client),
+                patch(
+                    "publish.push_manifest",
+                    side_effect=lambda client, layout, repo, digest: {
+                        "mediaType": IMAGE_MANIFEST,
+                        "digest": digest,
+                        "size": 123,
+                    },
+                ) as upload,
+            ):
+                publish_catalogs([windows, ios, simulator], registry, push=True)
+                self.assertEqual(upload.call_count, 3)
+                first = json.loads(client.do_request.call_args.kwargs["data"])
+                self.assertEqual(first["mediaType"], IMAGE_INDEX)
+                self.assertEqual(len(first["manifests"]), 4)
+                self.assertEqual(
+                    [
+                        entry["annotations"]["build.type"]
+                        for entry in first["manifests"]
+                    ],
+                    ["Release", "Release", "Release", "Debug"],
+                )
+                client.do_request.side_effect = [
+                    Mock(status_code=200, json=lambda: first),
+                    Mock(status_code=201),
+                ]
+                updated = candidate("ios-a64", ("release",), "d")
+                publish_catalogs([updated], registry, push=True)
+
+            self.assertEqual(client.get_container.call_count, 2)
+            client.get_container.assert_called_with(f"{repo}:6.12.1")
+            updated_index = json.loads(client.do_request.call_args.kwargs["data"])
+            entries = updated_index["manifests"]
+            self.assertEqual(
+                [entry["digest"] for entry in entries],
+                ["sha256:" + digit * 64 for digit in "dcaa"],
+            )
+            self.assertEqual(entries[0]["platform"], entries[1]["platform"])
+            self.assertEqual(entries[1]["annotations"]["platform.os"], "ios-simulator")
+            self.assertEqual(entries[1]["annotations"]["platform.architecture"], "a64")
 
     def test_push_token_has_pull_and_push_scope(self):
         client = Mock(prefix="https")
