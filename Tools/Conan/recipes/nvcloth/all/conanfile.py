@@ -11,7 +11,7 @@ from conan import ConanFile
 from conan.errors import ConanInvalidConfiguration
 from conan.tools.cmake import CMake, CMakeToolchain
 from conan.tools.cmake.utils import is_multi_configuration
-from conan.tools.files import get
+from conan.tools.files import get, load, save
 
 CUDA_TOOLKIT = "cuda-toolkit/13.5.0"
 
@@ -130,6 +130,14 @@ class Recipe(ConanFile):
         CMake(self).install(
             build_type=self._configuration if self._multi_config else None
         )
+        if self.options.get_safe("with_cuda"):
+            # CMake 4.5.0 exported CUDA targets under a namespace reverted in 4.5.1.
+            targets = (
+                Path(self.package_folder) / "lib/cmake/NvCloth/NvClothTargets.cmake"
+            )
+            contents = load(self, targets)
+            if "CUDAToolkit::" in contents:
+                save(self, targets, contents.replace("CUDAToolkit::", "CUDA::"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "NvCloth")
