@@ -1,0 +1,9 @@
+--- a/src/OpenColorIO/CMakeLists.txt
++++ b/src/OpenColorIO/CMakeLists.txt
+@@ -397,5 +397,5 @@
+-if(UNIX AND NOT APPLE)
++if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+     # Also hide all the symbols of dependent libraries to prevent clashes if
+     # an app using this project is linked against other versions of our
+     # dependencies.
+     set(CUSTOM_LINK_FLAGS "${CUSTOM_LINK_FLAGS};-Wl,--exclude-libs,ALL")

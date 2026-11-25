@@ -16,3 +16,6 @@ patches:
       patch_type: portability
     - patch_file: patches/relocatable-install-paths.patch
       patch_description: Resolve pkg-config and Windows setup paths relative to the SDK
+    - patch_file: patches/emscripten-shared-link.patch
+      patch_description: Use the ELF dependency visibility flag only on compatible targets
+      patch_type: portability
