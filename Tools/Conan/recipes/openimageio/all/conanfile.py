@@ -115,6 +115,8 @@ class Recipe(ConanFile):
         tc.variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
         tc.variables["CMAKE_INSTALL_LIBDIR"] = "lib"
         tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = True
+        # OpenImageIO uses headers and the Emscripten scanner needs an initialized sysroot.
+        tc.variables["CMAKE_CXX_SCAN_FOR_MODULES"] = False
         tc.variables["JXL_LIBRARIES"] = "libjxl::libjxl"
         tc.variables["LibRaw_r_LIBRARIES"] = (
             "libraw::libraw_" if self.settings.os == "Windows" else "libraw::libraw_r"
@@ -143,8 +145,6 @@ class Recipe(ConanFile):
                 "@loader_path;@loader_path/..;@loader_path/../lib"
             )
         elif self.settings.os == "Windows":
-            # OpenImageIO has no C++ modules. The scan can exceed cmd.exe's command limit.
-            tc.variables["CMAKE_CXX_SCAN_FOR_MODULES"] = False
             tc.extra_cxxflags.append("/bigobj")
         tc.generate()
         deps = CMakeDeps(self)
