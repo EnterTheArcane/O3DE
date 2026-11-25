@@ -72,7 +72,6 @@ class Recipe(ConanFile):
             tc.variables["FEATURE_framework"] = True
         tc.variables["BUILD_qtactiveqt"] = False
         tc.variables["BUILD_qtdeclarative"] = False
-        tc.variables["BUILD_qtlanguageserver"] = False
         tc.variables["BUILD_qtshadertools"] = False
         tc.variables["CMAKE_CXX_STANDARD"] = 20
         tc.variables["CMAKE_INSTALL_LIBDIR"] = "lib"
@@ -82,7 +81,9 @@ class Recipe(ConanFile):
         tc.variables["QT_SBOM_SKIP_SOURCE_FILES"] = True
         modules = ["qtbase", "qtimageformats", "qtsvg"]
         if desktop:
-            modules.extend(("qttools", "qttranslations"))
+            modules.extend(
+                ("qtlanguageserver", "qttools", "qttranslations", "qtwebsockets")
+            )
         if linux:
             modules.append("qtwayland")
         tc.variables["QT_BUILD_SUBMODULES"] = ";".join(modules)

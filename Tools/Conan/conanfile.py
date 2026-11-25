@@ -35,7 +35,7 @@ class Packages(ConanFile):
         self.requires("openssl/4.1.0")
         self.requires("physx/5.13.0")
         self.requires("python/3.15.2")
-        self.requires("qt/6.12.0")
+        self.requires("qt/6.12.1")
         self.requires("sdformat/16.1.0")
 
         desktop = self.settings.os in ("Linux", "Macos", "Windows")

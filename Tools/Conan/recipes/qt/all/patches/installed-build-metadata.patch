@@ -1,6 +1,6 @@
 --- a/qtbase/cmake/QtPublicSbomHelpers.cmake
 +++ b/qtbase/cmake/QtPublicSbomHelpers.cmake
-@@ -933,7 +933,6 @@
+@@ -1051,7 +1051,6 @@
  
      _qt_internal_sbom_begin_project(
          INSTALL_SBOM_DIR "${INSTALL_SBOMDIR}"

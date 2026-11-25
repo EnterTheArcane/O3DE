@@ -1,6 +1,6 @@
 --- a/qtbase/cmake/QtWasmHelpers.cmake
 +++ b/qtbase/cmake/QtWasmHelpers.cmake
-@@ -126,8 +126,9 @@
+@@ -125,8 +125,9 @@
          # Add Qt libdir to linker library paths
          set(qt_lib_location
              "${QT_BUILD_INTERNALS_RELOCATABLE_INSTALL_PREFIX}/${INSTALL_LIBDIR}")

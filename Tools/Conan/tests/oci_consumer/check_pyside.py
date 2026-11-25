@@ -25,6 +25,6 @@ if sys.platform == "win32":
     debug = hasattr(sys, "gettotalrefcount")
     for module in (QtCore, QtUiTools):
         assert module.__file__.endswith("_d.pyd") == debug, module.__file__
-assert QtCore.qVersion() == "6.12.0"
+assert QtCore.qVersion() == "6.12.1"
 image = QtGui.QImage(1, 1, QtGui.QImage.Format.Format_ARGB32)
 assert image.width() == 1

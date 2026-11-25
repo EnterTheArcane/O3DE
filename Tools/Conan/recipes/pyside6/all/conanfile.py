@@ -56,13 +56,13 @@ class Recipe(ConanFile):
             self.info.settings.rm_safe("compiler.runtime_type")
 
     def requirements(self):
-        self.requires("qt/6.12.0")
+        self.requires("qt/6.12.1")
         self.requires("python/3.15.2")
 
     def build_requirements(self):
         if cross_building(self):
             self.tool_requires(f"{self.name}/{self.version}")
-            self.tool_requires("qt/6.12.0")
+            self.tool_requires("qt/6.12.1")
             self.tool_requires("python/3.15.2")
 
     def generate(self):
