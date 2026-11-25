@@ -52,7 +52,8 @@ class Recipe(ConanFile):
         self.requires("zlib/[>=1.2.13 <2]")
         if self._build_tools:
             self.requires("pybind11/[>=3.0.2 <4]", headers=True, libs=False)
-            self.requires("python/3.15.2")
+            # Only the Python bindings use CPython.
+            self.requires("python/3.15.2", visible=False)
         if self.settings.os == "Macos" and self.settings.arch == "armv8":
             self.requires("sse2neon/1.9.1", headers=True, libs=False)
 
