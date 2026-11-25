@@ -21,7 +21,9 @@ class TestPackage(ConanFile):
         self.requires(self.tested_reference_str)
 
     def layout(self):
-        basic_layout(self)
+        basic_layout(
+            self, build_folder=self.conf.get("tools.cmake.cmake_layout:test_folder")
+        )
 
     def generate(self):
         # The test reads PE headers directly and has no subprocess environment.
