@@ -57,6 +57,8 @@ class Recipe(ConanFile):
         tc.variables["OPENEXR_BUILD_EXAMPLES"] = False
         if self.settings.os in ("Android", "iOS", "Emscripten"):
             tc.variables["OPENEXR_BUILD_TOOLS"] = False
+        if self.settings.os == "Emscripten":
+            tc.variables["OPENEXR_ENABLE_THREADING"] = False
         tc.generate()
         deps = CMakeDeps(self)
         deps.set_property("openjph", "cmake_target_name", "openjph")
