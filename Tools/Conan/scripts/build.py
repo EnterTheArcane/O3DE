@@ -120,6 +120,8 @@ def export_cache(env, archive):
                 "conan",
                 "cache",
                 "save",
+                "-cc",
+                "core:compresslevel=1",
                 "--no-source",
                 "--list",
                 package_list,
