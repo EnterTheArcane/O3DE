@@ -101,7 +101,7 @@ def relocate(conanfile, framework, version, is_macho):
         rename(conanfile, flat, framework)
 
     bindir = framework / "bin"
-    (bindir / f"pip{version}").unlink()
+    (bindir / f"pip{version}").unlink(missing_ok=True)
     dsym = bindir / f"python{version}.dSYM"
     if dsym.is_dir():
         dwarf = dsym / "Contents/Resources/DWARF"
