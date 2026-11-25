@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/IO/CompressionBus.h>
@@ -735,7 +736,7 @@ namespace AZ::IO
         AZ_Assert(request->m_readOffset == 0, "FullFileDecompressor is doing a full decompression on a file request with an offset (%zu).",
             request->m_readOffset);
         AZ_Assert(compressionInfo.m_uncompressedSize == request->m_readSize,
-            "FullFileDecompressor is doing a full decompression, but the target buffer size (%llu) doesn't match the decompressed size (%zu).",
+            "FullFileDecompressor is doing a full decompression, but the target buffer size (%" PRIu64 ") doesn't match the decompressed size (%zu).",
             request->m_readSize, compressionInfo.m_uncompressedSize);
 
         bool success = compressionInfo.m_decompressor(compressionInfo, info.m_compressedData + info.m_alignmentOffset,

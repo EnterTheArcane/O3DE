@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Asset/AssetSerializer.h>
 #include <AzCore/Serialization/ObjectStream.h>
@@ -1403,7 +1404,7 @@ namespace AZ
                             break;
                         }
                         default:
-                            AZ_Assert(false, "Invalid number of bytes for value size field! (%llu)", (u64)valueBytes);
+                            AZ_Assert(false, "Invalid number of bytes for value size field! (%" PRIu64 ")", (u64)valueBytes);
                         }
                     }
 
@@ -1498,7 +1499,7 @@ namespace AZ
                                     break;
                                 }
                                 default:
-                                    AZ_Assert(false, "Invalid number of bytes to skip! (%llu)", (u64)bytesToSkip);
+                                    AZ_Assert(false, "Invalid number of bytes to skip! (%" PRIu64 ")", (u64)bytesToSkip);
                                 }
                             }
                             m_stream->Seek(bytesToSkip, IO::GenericStream::ST_SEEK_CUR);
@@ -1842,7 +1843,7 @@ namespace AZ
                         }
                         else
                         {
-                            AZ_Assert(false, "We don't have enough bits to store a value size of %llu", (u64)element.m_dataSize);
+                            AZ_Assert(false, "We don't have enough bits to store a value size of %" PRIu64, (u64)element.m_dataSize);
                         }
                     }
                 }

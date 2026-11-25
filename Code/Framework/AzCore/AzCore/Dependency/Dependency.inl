@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/StringFunc/StringFunc.h>
 
 namespace AZ
@@ -39,10 +40,10 @@ namespace AZ
             AZ_Assert(m_parseDepth >= 2, "Internal Error: There should be "
                 "or more than 2 parts to a TwiddleWakka dependency.");
 
-            AZStd::string version = AZStd::string::format("~=%llu", m_version.m_parts[0]);
+            AZStd::string version = AZStd::string::format("~=%" PRIu64, m_version.m_parts[0]);
             for (AZ::u8 i = 1; i < m_parseDepth; ++i)
             {
-                version += AZStd::string::format(".%llu", m_version.m_parts[i]);
+                version += AZStd::string::format(".%" PRIu64, m_version.m_parts[i]);
             }
             return version;
         }

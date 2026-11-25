@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <cinttypes>
+
 namespace AZ::SceneAPI::Utilities
 {
     template<typename T>
@@ -15,7 +17,7 @@ namespace AZ::SceneAPI::Utilities
     {
         AZStd::size_t hash = AZStd::hash_range(data.begin(), data.end());
         AZ::u64 dataSize(static_cast<AZ::u64>(data.size()));
-        m_output += AZStd::string::format("\t%s: Count %llu. Hash: %zu\n", name, dataSize, hash);
+        m_output += AZStd::string::format("\t%s: Count %" PRIu64 ". Hash: %zu\n", name, dataSize, hash);
 
         AddToNode(AZStd::string::format("%s - Count", name).c_str(), dataSize);
         AddToNode(AZStd::string::format("%s - Hash", name).c_str(), static_cast<AZ::u64>(hash));
@@ -32,7 +34,7 @@ namespace AZ::SceneAPI::Utilities
             AZStd::hash_combine(hash, AZStd::hash_range(vector.begin(), vector.end()));
         }
 
-        m_output += AZStd::string::format("\t%s: Count %llu. Hash: %zu\n", name, dataSize, hash);
+        m_output += AZStd::string::format("\t%s: Count %" PRIu64 ". Hash: %zu\n", name, dataSize, hash);
 
         AddToNode(AZStd::string::format("%s - Count", name).c_str(), dataSize);
         AddToNode(AZStd::string::format("%s - Hash", name).c_str(), static_cast<AZ::u64>(hash));

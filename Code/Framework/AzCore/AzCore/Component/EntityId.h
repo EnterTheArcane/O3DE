@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <cinttypes>
 #include <AzCore/base.h>
 #include <AzCore/Memory/ChildAllocatorSchema.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -91,7 +92,7 @@ namespace AZ
          */
         AZStd::string ToString() const
         {
-            return AZStd::string::format("[%llu]", m_id);
+            return AZStd::string::format("[%" PRIu64 "]", m_id);
         }
         
         /**

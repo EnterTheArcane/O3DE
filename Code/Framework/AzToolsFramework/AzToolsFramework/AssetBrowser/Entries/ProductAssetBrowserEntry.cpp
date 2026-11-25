@@ -41,11 +41,11 @@ namespace AzToolsFramework
             {
             case Column::ProductID:
             {
-                return QVariant(m_productId);
+                return QVariant(static_cast<qlonglong>(m_productId));
             }
             case Column::JobID:
             {
-                return QVariant(m_jobId);
+                return QVariant(static_cast<qlonglong>(m_jobId));
             }
             case Column::SubID:
             {

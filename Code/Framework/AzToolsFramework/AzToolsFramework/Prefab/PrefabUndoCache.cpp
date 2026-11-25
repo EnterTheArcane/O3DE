@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzToolsFramework/Prefab/PrefabUndoCache.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -98,7 +99,7 @@ namespace AzToolsFramework
             {
                 AZ_Warning(
                     "Undo", false,
-                    "PrefabUndoCache was told to update the cache for entity of id %llu, but that entity is not available in "
+                    "PrefabUndoCache was told to update the cache for entity of id %" PRIu64 ", but that entity is not available in "
                     "FindEntity",
                     static_cast<AZ::u64>(entityId)
                 );
@@ -119,7 +120,7 @@ namespace AzToolsFramework
             // Capture it
             m_parentEntityCache[entityId] = parentId;
 
-            AZLOG("Prefab Undo", "Correctly cached parent id for entity id %llu (%s)", static_cast<AZ::u64>(entityId), entity->GetName().c_str());
+            AZLOG("Prefab Undo", "Correctly cached parent id for entity id %" PRIu64 " (%s)", static_cast<AZ::u64>(entityId), entity->GetName().c_str());
 
             return;
         }

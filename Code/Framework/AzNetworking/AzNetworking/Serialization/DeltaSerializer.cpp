@@ -119,7 +119,7 @@ namespace AzNetworking
         return SerializeHelper(value, 0, false, unused, name);
     }
 
-    bool DeltaSerializerCreate::Serialize(AZ::s64& value, const char* name, [[maybe_unused]] AZ::s64 minValue, [[maybe_unused]] AZ::s64 maxValue)
+    bool DeltaSerializerCreate::Serialize(long long& value, const char* name, [[maybe_unused]] long long minValue, [[maybe_unused]] long long maxValue)
     {
         uint32_t unused = 0;
         return SerializeHelper(value, 0, false, unused, name);
@@ -149,7 +149,7 @@ namespace AzNetworking
         return SerializeHelper(value, 0, false, unused, name);
     }
 
-    bool DeltaSerializerCreate::Serialize(AZ::u64& value, const char* name, [[maybe_unused]] AZ::u64 minValue, [[maybe_unused]] AZ::u64 maxValue)
+    bool DeltaSerializerCreate::Serialize(unsigned long long& value, const char* name, [[maybe_unused]] unsigned long long minValue, [[maybe_unused]] unsigned long long maxValue)
     {
         uint32_t unused = 0;
         return SerializeHelper(value, 0, false, unused, name);
@@ -324,7 +324,7 @@ namespace AzNetworking
         return SerializeHelper(value, 0, false, unused, name);
     }
 
-    bool DeltaSerializerApply::Serialize(AZ::s64& value, const char* name, [[maybe_unused]] AZ::s64 minValue, [[maybe_unused]] AZ::s64 maxValue)
+    bool DeltaSerializerApply::Serialize(long long& value, const char* name, [[maybe_unused]] long long minValue, [[maybe_unused]] long long maxValue)
     {
         uint32_t unused = 0;
         return SerializeHelper(value, 0, false, unused, name);
@@ -354,7 +354,7 @@ namespace AzNetworking
         return SerializeHelper(value, 0, false, unused, name);
     }
 
-    bool DeltaSerializerApply::Serialize(AZ::u64& value, const char* name, [[maybe_unused]] AZ::u64 minValue, [[maybe_unused]] AZ::u64 maxValue)
+    bool DeltaSerializerApply::Serialize(unsigned long long& value, const char* name, [[maybe_unused]] unsigned long long minValue, [[maybe_unused]] unsigned long long maxValue)
     {
         uint32_t unused = 0;
         return SerializeHelper(value, 0, false, unused, name);

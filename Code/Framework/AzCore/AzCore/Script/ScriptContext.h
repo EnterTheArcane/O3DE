@@ -507,11 +507,11 @@ namespace AZ
         static int  StackRead(lua_State* l, int stackIndex);
     };
     template<>
-    struct AZCORE_API ScriptValue<AZ::s64>
+    struct AZCORE_API ScriptValue<long long>
     {
         static const bool isNativeValueType = true;  // We use native type for internal representation
-        static void StackPush(lua_State* l, AZ::s64 value);
-        static AZ::s64 StackRead(lua_State* l, int stackIndex);
+        static void StackPush(lua_State* l, long long value);
+        static long long StackRead(lua_State* l, int stackIndex);
     };
     template<>
     struct AZCORE_API ScriptValue<long>
@@ -542,11 +542,11 @@ namespace AZ
         static unsigned int StackRead(lua_State* l, int stackIndex);
     };
     template<>
-    struct AZCORE_API ScriptValue<AZ::u64>
+    struct AZCORE_API ScriptValue<unsigned long long>
     {
         static const bool isNativeValueType = true;  // We use native type for internal representation
-        static void StackPush(lua_State* l, AZ::u64 value);
-        static AZ::u64 StackRead(lua_State* l, int stackIndex);
+        static void StackPush(lua_State* l, unsigned long long value);
+        static unsigned long long StackRead(lua_State* l, int stackIndex);
     };
     template<>
     struct AZCORE_API ScriptValue<unsigned long>

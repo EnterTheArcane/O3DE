@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include "DebugOutput.h"
 #include <AzCore/std/optional.h>
 
@@ -97,7 +98,7 @@ namespace AZ::SceneAPI::Utilities
     void DebugOutput::Write(const char* name, uint64_t data)
     {
         AZ::u64 multiplatformSafeData(static_cast<AZ::u64>(data));
-        m_output += AZStd::string::format("\t%s: %llu\n", name, multiplatformSafeData);
+        m_output += AZStd::string::format("\t%s: %" PRIu64 "\n", name, multiplatformSafeData);
 
         AddToNode(name, multiplatformSafeData);
     }
@@ -105,7 +106,7 @@ namespace AZ::SceneAPI::Utilities
     void DebugOutput::Write(const char* name, int64_t data)
     {
         AZ::s64 multiplatformSafeData(static_cast<AZ::s64>(data));
-        m_output += AZStd::string::format("\t%s: %lld\n", name, multiplatformSafeData);
+        m_output += AZStd::string::format("\t%s: %" PRId64 "\n", name, multiplatformSafeData);
 
         AddToNode(name, multiplatformSafeData);
     }

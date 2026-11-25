@@ -121,6 +121,19 @@ namespace AZ
                 }
             }
         };
+
+        template <>
+        struct AzDeprecatedTypeNameVisitor<std::int64_t>
+        {
+            AZCORE_API void operator()(const DeprecatedTypeNameCallback& visitCallback) const;
+        };
+
+        template <>
+        struct AzDeprecatedTypeNameVisitor<std::uint64_t>
+        {
+            AZCORE_API void operator()(const DeprecatedTypeNameCallback& visitCallback) const;
+        };
+
         // Specializations to remove reference qualifiers types
         template <class T>
         struct AzDeprecatedTypeNameVisitor<T*>

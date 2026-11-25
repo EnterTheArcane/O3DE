@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/Interface/Interface.h>
 
 #include <AzToolsFramework/Entity/PrefabEditorEntityOwnershipInterface.h>
@@ -34,7 +35,7 @@ namespace AzToolsFramework
 
             if (findResult != m_entityToInstanceMap.end())
             {
-                AZ_Warning("Prefab", false, "Entity with id '%llu' is already registered to an instance whose source path is '%s'.",
+                AZ_Warning("Prefab", false, "Entity with id '%" PRIu64 "' is already registered to an instance whose source path is '%s'.",
                     static_cast<AZ::u64>(entityId), findResult->second->GetTemplateSourcePath().c_str());
                 return false;
             }

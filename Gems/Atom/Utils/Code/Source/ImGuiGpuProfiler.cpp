@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <Atom/Utils/ImGuiGpuProfiler.h>
 
 #include <Atom/RHI/RHISystemInterface.h>
@@ -490,13 +492,13 @@ namespace AZ
                     AZStd::string label;
                     if (rootEntry && m_showAttributeContribution)
                     {
-                        label = AZStd::string::format("%llu (%u%%)",
+                        label = AZStd::string::format("%" PRIu64 " (%u%%)",
                             static_cast<AZ::u64>(passEntry->m_pipelineStatistics[attributeIdx]),
                             static_cast<uint32_t>(normalized * 100.0f));
                     }
                     else
                     {
-                        label = AZStd::string::format("%llu",
+                        label = AZStd::string::format("%" PRIu64,
                             static_cast<AZ::u64>(passEntry->m_pipelineStatistics[attributeIdx]));
                     }
 
@@ -921,7 +923,7 @@ namespace AZ
                                         ImGui::Text("Name: %s", passEntry->m_name.GetCStr());
                                         ImGui::Text("Path: %s", passEntry->m_path.GetCStr());
                                         ImGui::Text(
-                                            "Duration in ticks: %llu",
+                                            "Duration in ticks: %" PRIu64,
                                             static_cast<AZ::u64>(passEntry->m_timestampResult.GetDurationInTicks()));
                                         ImGui::Text(
                                             "Duration in microsecond: %.3f us",
@@ -1257,7 +1259,7 @@ namespace AZ
             }
             else if (m_timestampMetricUnit == TimestampMetricUnit::Nanoseconds)
             {
-                const char* timeFormat = "%llu %s";
+                const char* timeFormat = "%" PRIu64 " %s";
                 const char* timeType = "ns";
                 return AZStd::string::format(timeFormat, timestamp, timeType);
             }

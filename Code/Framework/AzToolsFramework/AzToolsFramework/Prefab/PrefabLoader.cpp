@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <AzToolsFramework/Prefab/PrefabLoader.h>
 
 #include <AzCore/Component/Entity.h>
@@ -856,7 +858,7 @@ namespace AzToolsFramework
             {
                 AZ_Warning(
                     "Prefab", false,
-                    "PrefabLoader::SaveTemplate - Unable to save prefab template with id: '%llu'. "
+                    "PrefabLoader::SaveTemplate - Unable to save prefab template with id: '%" PRIu64 "'. "
                     "Template with that id could not be found",
                     templateId
                 );
@@ -869,7 +871,7 @@ namespace AzToolsFramework
             {
                 AZ_Warning(
                     "Prefab", false,
-                    "PrefabLoader::SaveTemplate - Unable to save Prefab Template with id: %llu. "
+                    "PrefabLoader::SaveTemplate - Unable to save Prefab Template with id: %" PRIu64 ". "
                     "Template with that id is invalid",
                     templateId);
 
@@ -915,7 +917,7 @@ namespace AzToolsFramework
                 {
                     AZ_Error(
                         "Prefab", false,
-                        "Link with id %llu could not be found while attempting to store "
+                        "Link with id %" PRIu64 " could not be found while attempting to store "
                         "Prefab Template with source path %s in Prefab File format. "
                         "Unable to proceed.",
                         linkId, templateRef->get().GetFilePath().c_str());
@@ -927,7 +929,7 @@ namespace AzToolsFramework
                 {
                     AZ_Error(
                         "Prefab", false,
-                        "Link with id %llu and is invalid during attempt to store "
+                        "Link with id %" PRIu64 " and is invalid during attempt to store "
                         "Prefab Template with source path %s in Prefab File format. "
                         "Unable to Proceed.",
                         linkId, templateRef->get().GetFilePath().c_str());
@@ -949,7 +951,7 @@ namespace AzToolsFramework
                 {
                     AZ_Error(
                         "Prefab", false,
-                        "Template::CopyTemplateIntoPrefabFileFormat: Unable to recover nested instance Dom value from link with id %llu "
+                        "Template::CopyTemplateIntoPrefabFileFormat: Unable to recover nested instance Dom value from link with id %" PRIu64 " "
                         "while attempting to store a collapsed version of a Prefab Template with source path %s. Unable to proceed.",
                         linkId, templateRef->get().GetFilePath().c_str());
 

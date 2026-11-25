@@ -69,7 +69,7 @@ namespace AzNetworking
         return true;
     }
 
-    bool HashSerializer::Serialize(AZ::s64& value, [[maybe_unused]] const char* name, [[maybe_unused]] AZ::s64 minValue, [[maybe_unused]] AZ::s64 maxValue)
+    bool HashSerializer::Serialize(long long& value, [[maybe_unused]] const char* name, [[maybe_unused]] long long minValue, [[maybe_unused]] long long maxValue)
     {
         m_hash = AZ::TypeHash64(value, m_hash);
         return true;
@@ -99,7 +99,7 @@ namespace AzNetworking
         return true;
     }
 
-    bool HashSerializer::Serialize(AZ::u64& value, [[maybe_unused]] const char* name, [[maybe_unused]] AZ::u64 minValue, [[maybe_unused]] AZ::u64 maxValue)
+    bool HashSerializer::Serialize(unsigned long long& value, [[maybe_unused]] const char* name, [[maybe_unused]] unsigned long long minValue, [[maybe_unused]] unsigned long long maxValue)
     {
         m_hash = AZ::TypeHash64(value, m_hash);
         return true;

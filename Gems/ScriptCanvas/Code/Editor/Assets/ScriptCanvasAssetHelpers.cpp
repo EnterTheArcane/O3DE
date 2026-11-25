@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <Editor/Assets/ScriptCanvasAssetHelpers.h>
 
 
@@ -94,7 +96,7 @@ namespace ScriptCanvasEditor
                 AZ_TracePrintf("Script Canvas", "AssetId: %s", AssetIdToString(assetId).c_str());
                 AZ_TracePrintf("Script Canvas", AZStd::string::format("AssetType: %s", assetInfo.m_assetType.ToString<AZStd::string>().c_str()).c_str());
                 AZ_TracePrintf("Script Canvas", AZStd::string::format("RelativePath: %s", assetInfo.m_relativePath.c_str()).c_str());
-                AZ_TracePrintf("Script Canvas", AZStd::string::format("Size in Byes: %llu", assetInfo.m_sizeBytes).c_str());
+                AZ_TracePrintf("Script Canvas", AZStd::string::format("Size in Byes: %" PRIu64, assetInfo.m_sizeBytes).c_str());
                 AZ_TracePrintf("Script Canvas", AZStd::string::format("%s\n", extra).c_str());
                 AZ_TracePrintf("Script Canvas", "-------------------------------------\n");
             }

@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzToolsFramework/Prefab/Instance/TemplateInstanceMapper.h>
 
 #include <AzCore/Interface/Interface.h>
@@ -32,7 +33,7 @@ namespace AzToolsFramework
             const bool result = m_templateIdToInstancesMap.emplace(templateId, InstanceSet()).second;
             AZ_Assert(result,
                 "Prefab - PrefabSystemComponent::RegisterTemplate - "
-                "Failed to register Template '%llu' to Template to Instances mapper. "
+                "Failed to register Template '%" PRIu64 "' to Template to Instances mapper. "
                 "Template may never have been registered or was unregistered early.",
                 templateId);
 
@@ -44,7 +45,7 @@ namespace AzToolsFramework
             const bool result = m_templateIdToInstancesMap.erase(templateId) != 0;
             AZ_Assert(result,
                 "Prefab - PrefabSystemComponent::UnregisterTemplate - "
-                "Failed to unregister Template '%llu' from Template to Instances mapper. "
+                "Failed to unregister Template '%" PRIu64 "' from Template to Instances mapper. "
                 "This Template is likely already registered.",
                 templateId);
 

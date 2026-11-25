@@ -1138,12 +1138,12 @@ namespace AZ
         return azlua_checknumber<int>(l, stackIndex);
     }
     //////////////////////////////////////////////////////////////////////////
-    void ScriptValue<AZ::s64>::StackPush(lua_State* l, AZ::s64 value)
+    void ScriptValue<long long>::StackPush(lua_State* l, long long value)
     {
         lua_pushnumber(l, aznumeric_caster(value));
     }
     //////////////////////////////////////////////////////////////////////////
-    AZ::s64 ScriptValue<AZ::s64>::StackRead(lua_State* l, int stackIndex)
+    long long ScriptValue<long long>::StackRead(lua_State* l, int stackIndex)
     {
         return aznumeric_caster(lua_tonumber(l, stackIndex));
     }
@@ -1195,13 +1195,13 @@ namespace AZ
     }
 
     //////////////////////////////////////////////////////////////////////////
-    void ScriptValue<AZ::u64>::StackPush(lua_State* l, AZ::u64 value)
+    void ScriptValue<unsigned long long>::StackPush(lua_State* l, unsigned long long value)
     {
         lua_pushnumber(l, aznumeric_caster(value));
     }
 
     //////////////////////////////////////////////////////////////////////////
-    AZ::u64 ScriptValue<AZ::u64>::StackRead(lua_State* l, int stackIndex)
+    unsigned long long ScriptValue<unsigned long long>::StackRead(lua_State* l, int stackIndex)
     {
         return aznumeric_caster(lua_tonumber(l, stackIndex));
     }
@@ -3306,13 +3306,13 @@ LUA_API const Node* lua_getDummyNode()
             // handle integral types
             if (Internal::LuaScriptNumber<bool>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<short>::FromStack(param, result)) return result;
-            else if (Internal::LuaScriptNumber<AZ::s64>::FromStack(param, result)) return result;
+            else if (Internal::LuaScriptNumber<long long>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<long>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<AZ::s8>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<unsigned char>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<unsigned short>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<unsigned int>::FromStack(param, result)) return result;
-            else if (Internal::LuaScriptNumber<AZ::u64>::FromStack(param, result)) return result;
+            else if (Internal::LuaScriptNumber<unsigned long long>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<unsigned long>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<float>::FromStack(param, result)) return result;
             else if (Internal::LuaScriptNumber<double>::FromStack(param, result)) return result;
@@ -3391,12 +3391,12 @@ LUA_API const Node* lua_getDummyNode()
             if (Internal::LuaScriptNumber<bool>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<short>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<int>::ToStack(param, result, prepareParam)) return result;
-            else if (Internal::LuaScriptNumber<AZ::s64>::ToStack(param, result, prepareParam)) return result;
+            else if (Internal::LuaScriptNumber<long long>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<long>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<unsigned char>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<unsigned short>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<unsigned int>::ToStack(param, result, prepareParam)) return result;
-            else if (Internal::LuaScriptNumber<AZ::u64>::ToStack(param, result, prepareParam)) return result;
+            else if (Internal::LuaScriptNumber<unsigned long long>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<unsigned long>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<float>::ToStack(param, result, prepareParam)) return result;
             else if (Internal::LuaScriptNumber<double>::ToStack(param, result, prepareParam)) return result;

@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <AzCore/DOM/DomValueWriter.h>
 
 namespace AZ::Dom
@@ -131,7 +133,7 @@ namespace AZ::Dom
             return VisitorFailure(
                 VisitorErrorCode::InternalError,
                 AZStd::string::format(
-                    "AZ::Dom::ValueWriter: %s expected %llu attributes but received %zu attributes instead", endMethodName, attributeCount,
+                    "AZ::Dom::ValueWriter: %s expected %" PRIu64 " attributes but received %zu attributes instead", endMethodName, attributeCount,
                     buffer.m_attributes.size()));
         }
 
@@ -140,7 +142,7 @@ namespace AZ::Dom
             return VisitorFailure(
                 VisitorErrorCode::InternalError,
                 AZStd::string::format(
-                    "AZ::Dom::ValueWriter: %s expected %llu elements but received %zu elements instead", endMethodName, elementCount,
+                    "AZ::Dom::ValueWriter: %s expected %" PRIu64 " elements but received %zu elements instead", endMethodName, elementCount,
                     buffer.m_elements.size()));
         }
 

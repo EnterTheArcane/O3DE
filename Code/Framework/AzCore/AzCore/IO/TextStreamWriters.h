@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include <cinttypes>
 #include <AzCore/base.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/std/containers/vector.h>
@@ -68,7 +69,7 @@ namespace AZ::IO
                 IO::SizeType bytes = m_stream->Write(m_cache.size(), m_cache.data());
                 if (bytes != m_cache.size())
                 {
-                    AZ_Error("Serializer", false, "Failed writing %zu byte(s) to stream, wrote only %llu bytes!", m_cache.size(), bytes);
+                    AZ_Error("Serializer", false, "Failed writing %zu byte(s) to stream, wrote only %" PRIu64 " bytes!", m_cache.size(), bytes);
                     ++m_errorCount;
                 }
                 m_cache.clear();

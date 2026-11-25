@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Math/Uuid.h>
@@ -409,7 +411,7 @@ namespace SettingsRegistryTests
             R"({
                 "Test":
                 {
-                    "Object":{ "Type": %llu }
+                    "Object":{ "Type": %)" PRIu64 R"( }
                 }
             })", unsigned64BitValue);
         ASSERT_TRUE(this->m_registry->MergeSettings(json.c_str(), AZ::SettingsRegistryInterface::Format::JsonMergePatch));

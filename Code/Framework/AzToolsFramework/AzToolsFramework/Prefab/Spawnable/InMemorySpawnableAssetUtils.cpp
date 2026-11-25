@@ -7,6 +7,8 @@
  */
 
 
+#include <cinttypes>
+
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Asset/AssetSerializer.h>
@@ -71,7 +73,7 @@ namespace AzToolsFramework::Prefab::PrefabConversionUtils
         TemplateReference templateReference = m_prefabSystemComponentInterface->FindTemplate(templateId);
         if (!templateReference.has_value())
         {
-            return AZ::Failure(AZStd::string::format("Could not get Template DOM for given Template's id %llu .", templateId));
+            return AZ::Failure(AZStd::string::format("Could not get Template DOM for given Template's id %" PRIu64 " .", templateId));
         }
 
         // Use a random uuid as this is only a temporary source.

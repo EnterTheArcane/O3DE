@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include "ArchiveWriter.h"
 
 #include <AzCore/IO/ByteContainerStream.h>
@@ -62,7 +64,7 @@ namespace Archive
         if (bytesRead != sizeof(archiveHeader))
         {
             m_settings.m_errorCallback({ ArchiveWriterErrorCode::ErrorReadingHeader, ArchiveWriterErrorString::format(
-                "Archive header should have size %zu, but only %llu bytes were read from the beginning of the archive",
+                "Archive header should have size %zu, but only %" PRIu64 " bytes were read from the beginning of the archive",
                 sizeof(archiveHeader), bytesRead) });
         }
         else if (auto archiveValidationResult = ValidateHeader(archiveHeader);
@@ -94,7 +96,7 @@ namespace Archive
             // The TOC offset is invalid since it is after the end of the stream
             m_settings.m_errorCallback({ ArchiveWriterErrorCode::ErrorReadingTableOfContents,
                     ArchiveWriterErrorString::format("TOC offset is invalid. It is pass the end of the stream."
-                        " Offset value %llu, archive stream size %llu",
+                        " Offset value %" PRIu64 ", archive stream size %" PRIu64,
                         static_cast<AZ::u64>(archiveHeader.m_tocOffset), archiveStream.GetLength()) });
             return false;
         }
@@ -115,7 +117,7 @@ namespace Archive
             {
                 m_settings.m_errorCallback({ ArchiveWriterErrorCode::ErrorReadingTableOfContents,
                     ArchiveWriterErrorString::format("Unable to read all TOC bytes from the archive."
-                        " The TOC size is %zu, but only %llu bytes were read",
+                        " The TOC size is %zu, but only %" PRIu64 " bytes were read",
                         tocBuffer.size(), bytesRead)});
                 return false;
             }
@@ -166,7 +168,7 @@ namespace Archive
                     // The size of uncompressed size of the data does not match the total uncompressed
                     // TOC size read from the ArchiveHeader::GetUncompressedTocSize() function
                     m_settings.m_errorCallback({ ArchiveWriterErrorCode::ErrorReadingTableOfContents,
-                    ArchiveWriterErrorString::format("The uncompressed TOC size %llu does not match the total uncompressed size %zu"
+                    ArchiveWriterErrorString::format("The uncompressed TOC size %" PRIu64 " does not match the total uncompressed size %zu"
                         " read from the archive header",
                         decompressionResultData.GetUncompressedByteCount(), tocBuffer.size()) });
                     return false;
@@ -808,7 +810,7 @@ namespace Archive
             errorResult.m_compressionAlgorithm = fileSettings.m_compressionAlgorithm;
             errorResult.m_resultOutcome = AZStd::unexpected(
                 ResultString::format(R"(Unable to successfully read all bytes(%zu) from input stream.)"
-                    " %llu bytes were read.",
+                    " %" PRIu64 " bytes were read.",
                     fileData.size(), bytesRead));
             return errorResult;
         }
@@ -1531,11 +1533,11 @@ namespace Archive
                     auto fileMetadataString = MetadataString::format(R"(File %zu: path="%s")", activeFileOffset, contentFilePath.c_str());
                     if (metadataSettings.m_writeFileOffsets)
                     {
-                        fileMetadataString += MetadataString::format(R"(, offset=%llu)", contentFileMetadata.m_offset);
+                        fileMetadataString += MetadataString::format(", offset=%" PRIu64, contentFileMetadata.m_offset);
                     }
                     if (metadataSettings.m_writeFileSizesAndCompression)
                     {
-                        fileMetadataString += MetadataString::format(R"(, uncompressed_size=%llu)", contentFileMetadata.m_uncompressedSize);
+                        fileMetadataString += MetadataString::format(", uncompressed_size=%" PRIu64, contentFileMetadata.m_uncompressedSize);
                         // Only output compressed size if an compression that compresses data is being used
                         if (contentFileMetadata.m_compressionAlgoIndex < UncompressedAlgorithmIndex)
                         {
@@ -1543,7 +1545,7 @@ namespace Archive
                                 rawFileSizeResult)
                             {
                                 AZ::u64 compressedSize = rawFileSizeResult.value();
-                                fileMetadataString += MetadataString::format(R"(, compressed_size=%llu)",
+                                fileMetadataString += MetadataString::format(", compressed_size=%" PRIu64,
                                     compressedSize);
                             }
                             fileMetadataString += MetadataString::format(R"(, compression_algorithm_id=%u)",

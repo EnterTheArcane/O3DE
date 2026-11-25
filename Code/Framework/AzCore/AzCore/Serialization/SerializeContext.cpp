@@ -224,15 +224,15 @@ namespace AZ
 
     // long long
     class LongLongSerializer
-        : public BinaryValueSerializer<AZ::s64>
+        : public BinaryValueSerializer<long long>
     {
         /// Convert binary data to text
         size_t DataToText(IO::GenericStream& in, IO::GenericStream& out, bool isDataBigEndian /*= false*/) override
         {
-            AZ_Assert(in.GetLength() == sizeof(AZ::s64), "Invalid data size");
+            AZ_Assert(in.GetLength() == sizeof(long long), "Invalid data size");
 
-            AZ::s64 value;
-            in.Read(sizeof(AZ::s64), reinterpret_cast<void*>(&value));
+            long long value;
+            in.Read(sizeof(long long), reinterpret_cast<void*>(&value));
             AZ_SERIALIZE_SWAP_ENDIAN(value, isDataBigEndian);
             AZStd::string outText = AZStd::string::format("%lld", value);
 
@@ -244,28 +244,28 @@ namespace AZ
         {
             AZ_Assert(textVersion == 0, "Unknown unsigned char, short, int version!");
             (void)textVersion;
-            AZ::s64 value = strtoll(text, nullptr, 10);
+            long long value = strtoll(text, nullptr, 10);
             AZ_SERIALIZE_SWAP_ENDIAN(value, isDataBigEndian);
-            return static_cast<size_t>(stream.Write(sizeof(AZ::s64), reinterpret_cast<void*>(&value)));
+            return static_cast<size_t>(stream.Write(sizeof(long long), reinterpret_cast<void*>(&value)));
         }
 
         bool    CompareValueData(const void* lhs, const void* rhs) override
         {
-            return SerializeContext::EqualityCompareHelper<AZ::s64>::CompareValues(lhs, rhs);
+            return SerializeContext::EqualityCompareHelper<long long>::CompareValues(lhs, rhs);
         }
     };
 
     // unsigned long long
     class ULongLongSerializer
-        : public BinaryValueSerializer<AZ::u64>
+        : public BinaryValueSerializer<unsigned long long>
     {
         /// Convert binary data to text
         size_t DataToText(IO::GenericStream& in, IO::GenericStream& out, bool isDataBigEndian /*= false*/) override
         {
-            AZ_Assert(in.GetLength() == sizeof(AZ::u64), "Invalid data size");
+            AZ_Assert(in.GetLength() == sizeof(unsigned long long), "Invalid data size");
 
-            AZ::u64 value;
-            in.Read(sizeof(AZ::u64), reinterpret_cast<void*>(&value));
+            unsigned long long value;
+            in.Read(sizeof(unsigned long long), reinterpret_cast<void*>(&value));
             AZ_SERIALIZE_SWAP_ENDIAN(value, isDataBigEndian);
             AZStd::string outText = AZStd::string::format("%llu", value);
 
@@ -279,12 +279,12 @@ namespace AZ
             (void)textVersion;
             unsigned long long value = strtoull(text, nullptr, 10);
             AZ_SERIALIZE_SWAP_ENDIAN(value, isDataBigEndian);
-            return static_cast<size_t>(stream.Write(sizeof(AZ::u64), reinterpret_cast<void*>(&value)));
+            return static_cast<size_t>(stream.Write(sizeof(unsigned long long), reinterpret_cast<void*>(&value)));
         }
 
         bool    CompareValueData(const void* lhs, const void* rhs) override
         {
-            return SerializeContext::EqualityCompareHelper<AZ::u64>::CompareValues(lhs, rhs);
+            return SerializeContext::EqualityCompareHelper<unsigned long long>::CompareValues(lhs, rhs);
         }
     };
 
@@ -441,7 +441,7 @@ namespace AZ
                 Serializer<IntSerializer<int> >();
             Class<long>()->
                 Serializer<LongSerializer<long> >();
-            Class<AZ::s64>()->
+            Class<long long>()->
                 Serializer<LongLongSerializer>();
 
             Class<unsigned char>()->
@@ -452,7 +452,7 @@ namespace AZ
                 Serializer<UIntSerializer<unsigned int> >();
             Class<unsigned long>()->
                 Serializer<ULongSerializer<unsigned long> >();
-            Class<AZ::u64>()->
+            Class<unsigned long long>()->
                 Serializer<ULongLongSerializer>();
 
             Class<float>()->

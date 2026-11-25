@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include "RCBuilder.h"
 
 #include <QElapsedTimer>
@@ -608,7 +610,7 @@ namespace AssetProcessor
             else if (internalJobType == AssetInternalSpec::Skip)
             {
                 // This should not occur because 'skipped' jobs should not be processed
-                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job ID %lld Failed, encountered an invalid 'skip' parameter during job processing\n", AssetProcessor::GetThreadLocalJobId());
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job ID %" PRId64 " Failed, encountered an invalid 'skip' parameter during job processing\n", AssetProcessor::GetThreadLocalJobId());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             }
 

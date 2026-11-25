@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <AzToolsFramework/Prefab/PrefabPublicHandler.h>
 
 #include <AzCore/Component/TransformBus.h>
@@ -218,7 +220,7 @@ namespace AzToolsFramework
 
                     LinkId detachingInstanceLinkId = detachedInstance->GetLinkId();
                     auto linkRef = m_prefabSystemComponentInterface->FindLink(detachingInstanceLinkId);
-                    AZ_Assert(linkRef.has_value(), "Unable to find link with id '%llu' during prefab creation.", detachingInstanceLinkId);
+                    AZ_Assert(linkRef.has_value(), "Unable to find link with id '%" PRIu64 "' during prefab creation.", detachingInstanceLinkId);
 
                     PrefabDom linkPatches;
                     linkRef->get().GetLinkPatches(linkPatches, linkPatches.GetAllocator());
@@ -781,7 +783,7 @@ namespace AzToolsFramework
             if (!owningInstanceOfParentEntity)
             {
                 return AZ::Failure(AZStd::string::format(
-                    "Cannot add entity because the owning instance of parent entity with id '%llu' could not be found.",
+                    "Cannot add entity because the owning instance of parent entity with id '%" PRIu64 "' could not be found.",
                     static_cast<AZ::u64>(parentId)));
             }
 
@@ -789,7 +791,7 @@ namespace AzToolsFramework
             if (auto containerEntityInterface = AZ::Interface<ContainerEntityInterface>::Get(); !containerEntityInterface->IsContainerOpen(parentId))
             {
                 return AZ::Failure(AZStd::string::format(
-                    "Cannot add entity because the parent entity (id '%llu') is a closed container entity.",
+                    "Cannot add entity because the parent entity (id '%" PRIu64 "') is a closed container entity.",
                     static_cast<AZ::u64>(parentId)));
             }
 
@@ -797,7 +799,7 @@ namespace AzToolsFramework
             if (auto readOnlyEntityPublicInterface = AZ::Interface<ReadOnlyEntityPublicInterface>::Get(); readOnlyEntityPublicInterface->IsReadOnly(parentId))
             {
                 return AZ::Failure(AZStd::string::format(
-                    "Cannot add entity because the parent entity (id '%llu') is marked as read only.",
+                    "Cannot add entity because the parent entity (id '%" PRIu64 "') is marked as read only.",
                     static_cast<AZ::u64>(parentId)));
             }
 
@@ -807,7 +809,7 @@ namespace AzToolsFramework
             absoluteEntityPath.Append(entityAlias);
 
             AZ::EntityId entityId = InstanceEntityIdMapper::GenerateEntityIdForAliasPath(absoluteEntityPath);
-            AZStd::string entityName = AZStd::string::format("Entity%llu", static_cast<AZ::u64>(m_newEntityCounter++));
+            AZStd::string entityName = AZStd::string::format("Entity%" PRIu64 "", static_cast<AZ::u64>(m_newEntityCounter++));
 
             AZ::Entity* entity = aznew AZ::Entity(entityId, entityName.c_str());
 
@@ -1352,7 +1354,7 @@ namespace AzToolsFramework
                     LinkId oldLinkId = oldInstance->GetLinkId();
                     auto linkRef = m_prefabSystemComponentInterface->FindLink(oldLinkId);
                     AZ_Assert(
-                        linkRef.has_value(), "Unable to find link with id '%llu' during instance duplication.",
+                        linkRef.has_value(), "Unable to find link with id '%" PRIu64 "' during instance duplication.",
                         oldLinkId);
 
                     PrefabDom linkPatches;
@@ -2063,7 +2065,7 @@ namespace AzToolsFramework
                 AZ_Assert(
                     owningInstance.has_value(),
                     "An error occurred while retrieving entities and prefab instances : "
-                    "Owning instance of entity with name '%s' and id '%llu' couldn't be found",
+                    "Owning instance of entity with name '%s' and id '%" PRIu64 "' couldn't be found",
                     entity->GetName().c_str(), static_cast<AZ::u64>(entity->GetId()));
 
                 // Check if this entity is owned by the same instance owning the root.
@@ -2106,7 +2108,7 @@ namespace AzToolsFramework
                     {
                         // This can only happen if one entity does not share the common root!
                         return AZ::Failure(AZStd::string::format(
-                            "Entity with name '%s' and id '%llu' has an owning instance that doesn't belong to the instance "
+                            "Entity with name '%s' and id '%" PRIu64 "' has an owning instance that doesn't belong to the instance "
                             "hierarchy of the selected entities.",
                             entity->GetName().c_str(), static_cast<AZ::u64>(entity->GetId())));
                     }
@@ -2592,7 +2594,7 @@ namespace AzToolsFramework
                 EntityAliasOptionalReference newEntityAlias = newParent.GetEntityAlias(entityId);
                 AZ_Assert(
                     newEntityAlias.has_value(),
-                    "Could not fetch entity alias for entity with id '%llu' during prefab creation.",
+                    "Could not fetch entity alias for entity with id '%" PRIu64 "' during prefab creation.",
                     static_cast<AZ::u64>(entityId));
 
                 ReplaceOldAliases(previousPatchString, oldEntityAlias, newEntityAlias->get());

@@ -119,11 +119,11 @@ namespace AZ
                     {
                         return true;
                     }
-                    if (AttributeRead<AZ::s64, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<long long, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
                     {
                         return true;
                     }
-                    if (AttributeRead<AZ::u64, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<unsigned long long, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
                     {
                         return true;
                     }

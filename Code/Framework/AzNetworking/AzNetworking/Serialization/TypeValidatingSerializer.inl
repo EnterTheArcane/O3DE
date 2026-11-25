@@ -106,7 +106,7 @@ namespace AzNetworking
     }
 
     template <typename BASE_TYPE>
-    bool TypeValidatingSerializer<BASE_TYPE>::Serialize(AZ::s64& value, const char* name, AZ::s64 minValue, AZ::s64 maxValue)
+    bool TypeValidatingSerializer<BASE_TYPE>::Serialize(long long& value, const char* name, long long minValue, long long maxValue)
     {
         bool result = Validate(name, ValidateSerializeType::Int64);
         return BASE_TYPE::Serialize(value, name, minValue, maxValue) && result;
@@ -141,7 +141,7 @@ namespace AzNetworking
     }
 
     template <typename BASE_TYPE>
-    bool TypeValidatingSerializer<BASE_TYPE>::Serialize(AZ::u64& value, const char* name, AZ::u64 minValue, AZ::u64 maxValue)
+    bool TypeValidatingSerializer<BASE_TYPE>::Serialize(unsigned long long& value, const char* name, unsigned long long minValue, unsigned long long maxValue)
     {
         bool result = Validate(name, ValidateSerializeType::Uint64);
         return BASE_TYPE::Serialize(value, name, minValue, maxValue) && result;

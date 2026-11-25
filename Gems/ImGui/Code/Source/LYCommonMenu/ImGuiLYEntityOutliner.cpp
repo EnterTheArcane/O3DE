@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include "ImGuiLYEntityOutliner.h"
 
 #ifdef IMGUI_ENABLED
@@ -860,12 +862,18 @@ namespace ImGui
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<short         >::GetClassTypeId()) { value = AZStd::string::format("%d", *reinterpret_cast<const short *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<int           >::GetClassTypeId()) { value = AZStd::string::format("%d", *reinterpret_cast<const int *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<long          >::GetClassTypeId()) { value = AZStd::string::format("%ld", *reinterpret_cast<const long *>(instance)); }
-        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<AZ::s64       >::GetClassTypeId()) { value = AZStd::string::format("%lld", *reinterpret_cast<const AZ::s64 *>(instance)); }
+        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<long long>::GetClassTypeId())
+        {
+            value = AZStd::string::format("%lld", *reinterpret_cast<const long long*>(instance));
+        }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned char >::GetClassTypeId()) { value = AZStd::string::format("%u", *reinterpret_cast<const unsigned char *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned short>::GetClassTypeId()) { value = AZStd::string::format("%u", *reinterpret_cast<const unsigned short *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned int  >::GetClassTypeId()) { value = AZStd::string::format("%u", *reinterpret_cast<const unsigned int *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned long >::GetClassTypeId()) { value = AZStd::string::format("%lu", *reinterpret_cast<const unsigned long *>(instance)); }
-        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<AZ::u64       >::GetClassTypeId()) { value = AZStd::string::format("%llu", *reinterpret_cast<const AZ::u64 *>(instance)); }
+        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned long long>::GetClassTypeId())
+        {
+            value = AZStd::string::format("%llu", *reinterpret_cast<const unsigned long long*>(instance));
+        }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<float         >::GetClassTypeId()) { value = AZStd::string::format("%.*g", FLT_DIG, *reinterpret_cast<const float *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<double        >::GetClassTypeId()) { value = AZStd::string::format("%.*g", DBL_DIG, *reinterpret_cast<const double *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<bool          >::GetClassTypeId()) { value = AZStd::string::format(*reinterpret_cast<const bool *>(instance) ? "true" : "false"); }
@@ -915,7 +923,7 @@ namespace ImGui
         ImGui::SameLine();
         ImGui::TextColored(s_ComponentParamColor_Name, "\"%s\"", classElement->m_name);
         ImGui::SameLine();
-        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "(0x%llX)", reinterpret_cast<AZ::u64>(instance));
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "(0x%" PRIX64 ")", reinterpret_cast<AZ::u64>(instance));
         if (!value.empty())
         {
             ImGui::SameLine();

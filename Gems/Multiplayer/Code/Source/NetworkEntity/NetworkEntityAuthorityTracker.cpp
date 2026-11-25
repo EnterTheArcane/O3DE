@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <Source/NetworkEntity/NetworkEntityAuthorityTracker.h>
 #include <Multiplayer/Components/NetBindComponent.h>
 #include <Multiplayer/NetworkEntity/INetworkEntityManager.h>
@@ -40,7 +42,7 @@ namespace Multiplayer
             AZLOG
             (
                 NET_AuthTracker,
-                "AuthTracker: Removing timeout for networkEntityId %llu, new owner is %s",
+                "AuthTracker: Removing timeout for networkEntityId %" PRIu64 ", new owner is %s",
                 aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()),
                 newOwner.GetString().c_str()
             );
@@ -51,7 +53,7 @@ namespace Multiplayer
         AZLOG
         (
             NET_AuthTracker,
-            "AuthTracker: Assigning networkEntityId %llu to %s",
+            "AuthTracker: Assigning networkEntityId %" PRIu64 " to %s",
             aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()),
             newOwner.GetString().c_str()
         );
@@ -78,7 +80,7 @@ namespace Multiplayer
                 }
             }
 
-            AZLOG(NET_AuthTracker, "AuthTracker: Removing networkEntityId %llu from %s", aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()), previousOwner.GetString().c_str());
+            AZLOG(NET_AuthTracker, "AuthTracker: Removing networkEntityId %" PRIu64 " from %s", aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()), previousOwner.GetString().c_str());
             if (entityHandle.GetEntity())
             {
                 if (authorityStack.empty())
@@ -126,14 +128,14 @@ namespace Multiplayer
                     }
                     else
                     {
-                        AZLOG(NET_AuthTracker, "AuthTracker: Skipping timeout for Autonomous networkEntityId %llu", aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()));
+                        AZLOG(NET_AuthTracker, "AuthTracker: Skipping timeout for Autonomous networkEntityId %" PRIu64, aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()));
                     }
                 }
             }
         }
         else
         {
-            AZLOG(NET_AuthTracker, "AuthTracker: Remove authority called on networkEntityId that was never added %llu", aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()));
+            AZLOG(NET_AuthTracker, "AuthTracker: Remove authority called on networkEntityId that was never added %" PRIu64, aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()));
             AZ_Assert(false, "AuthTracker: Remove authority called on entity that was never added");
         }
     }

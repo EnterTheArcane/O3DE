@@ -54,9 +54,9 @@ namespace AzNetworking
         return SerializeBoundedValue<long>(minValue, maxValue, value);
     }
 
-    bool NetworkInputSerializer::Serialize(AZ::s64& value, [[maybe_unused]] const char* name, AZ::s64 minValue, AZ::s64 maxValue)
+    bool NetworkInputSerializer::Serialize(long long& value, [[maybe_unused]] const char* name, long long minValue, long long maxValue)
     {
-        return SerializeBoundedValue<AZ::s64>(minValue, maxValue, value);
+        return SerializeBoundedValue<long long>(minValue, maxValue, value);
     }
 
     bool NetworkInputSerializer::Serialize(uint8_t& value, [[maybe_unused]] const char* name, uint8_t minValue, uint8_t maxValue)
@@ -79,9 +79,9 @@ namespace AzNetworking
         return SerializeBoundedValue<unsigned long>(minValue, maxValue, value);
     }
 
-    bool NetworkInputSerializer::Serialize(AZ::u64& value, [[maybe_unused]] const char* name, AZ::u64 minValue, AZ::u64 maxValue)
+    bool NetworkInputSerializer::Serialize(unsigned long long& value, [[maybe_unused]] const char* name, unsigned long long minValue, unsigned long long maxValue)
     {
-        return SerializeBoundedValue<AZ::u64>(minValue, maxValue, value);
+        return SerializeBoundedValue<unsigned long long>(minValue, maxValue, value);
     }
 
     bool NetworkInputSerializer::Serialize(float& value, [[maybe_unused]] const char* name, [[maybe_unused]] float minValue, [[maybe_unused]] float maxValue)
@@ -134,7 +134,7 @@ namespace AzNetworking
         m_serializerValid &= (inputValue >= minValue);
         m_serializerValid &= (inputValue <= maxValue);
         const uint64_t valueRange = static_cast<uint64_t>(maxValue) - static_cast<uint64_t>(minValue);
-        const ORIGINAL_TYPE adjustedValue = inputValue - minValue;
+        const uint64_t adjustedValue = static_cast<uint64_t>(inputValue) - static_cast<uint64_t>(minValue);
         if (valueRange <= AZStd::numeric_limits<uint8_t>::max())
         {
             return SerializeBoundedValueHelper<uint8_t>(static_cast<uint8_t>(adjustedValue));

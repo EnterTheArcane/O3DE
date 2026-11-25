@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+#include <cinttypes>
+
 #include <AzCore/Component/NamedEntityId.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -50,7 +52,7 @@ namespace AZ
     
     AZStd::string NamedEntityId::ToString() const
     {
-        return AZStd::string::format("%s [%llu]", m_entityName.c_str(), static_cast<AZ::u64>(static_cast<AZ::EntityId>(*this)));
+        return AZStd::string::format("%s [%" PRIu64 "]", m_entityName.c_str(), static_cast<AZ::u64>(static_cast<AZ::EntityId>(*this)));
     }
 
     AZStd::string_view NamedEntityId::GetName() const

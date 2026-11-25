@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <SaveDataSystemComponent.h>
 #include <SaveData/SaveDataNotificationBus.h>
 
@@ -331,7 +333,7 @@ namespace SaveData
                                                                [](void* p) { azfree(p); });
                 if (!dataBuffer)
                 {
-                    AZ_Error("LoadDataBufferFromFileSystem", false, "Failed to allocate %llu bytes", fileLength);
+                    AZ_Error("LoadDataBufferFromFileSystem", false, "Failed to allocate %" PRIu64 " bytes", fileLength);
                     result = SaveDataNotifications::Result::ErrorOutOfMemory;
                 }
                 else

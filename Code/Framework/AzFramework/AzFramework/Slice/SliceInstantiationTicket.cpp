@@ -33,7 +33,7 @@ namespace AzFramework
 
     AZStd::string SliceInstantiationTicket::ToString() const
     {
-        return AZStd::string::format("{%s::%llu}", m_contextId.ToString<AZStd::string>().c_str(), m_requestId);
+        return AZStd::string::format("{%s::%" PRIu64 "}", m_contextId.ToString<AZStd::string>().c_str(), m_requestId);
     }
 
     const EntityContextId& SliceInstantiationTicket::GetContextId() const

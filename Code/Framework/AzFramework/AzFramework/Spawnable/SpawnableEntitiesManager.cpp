@@ -43,7 +43,7 @@ namespace AzFramework
         {
             AZ::u64 value = aznumeric_caster(m_highPriorityThreshold);
             settingsRegistry->Get(value, "/O3DE/AzFramework/Spawnables/HighPriorityThreshold");
-            m_highPriorityThreshold = aznumeric_cast<SpawnablePriority>(AZStd::clamp(value, 0llu, 255llu));
+            m_highPriorityThreshold = aznumeric_cast<SpawnablePriority>(AZStd::clamp<AZ::u64>(value, 0, 255));
         }
     }
 

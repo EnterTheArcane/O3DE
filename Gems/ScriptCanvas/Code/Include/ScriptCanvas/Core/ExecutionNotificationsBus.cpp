@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include "Core.h"
 #include "ExecutionNotificationsBus.h"
 
@@ -180,7 +182,7 @@ namespace ScriptCanvas
 
     AZStd::string GraphIdentifier::ToString() const
     {
-        return AZStd::string::format("Asset: %s, ComponentId: %llu", m_assetId.ToString<AZStd::string>().data(), m_componentId);
+        return AZStd::string::format("Asset: %s, ComponentId: %" PRIu64, m_assetId.ToString<AZStd::string>().data(), m_componentId);
     }
 
     GraphInfo::GraphInfo(ExecutionStateWeakConstPtr executionState)

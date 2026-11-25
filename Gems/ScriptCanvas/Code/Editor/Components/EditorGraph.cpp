@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <AzCore/PlatformDef.h>
 
 AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
@@ -3908,7 +3910,7 @@ namespace ScriptCanvasEditor
                 }
                 else
                 {
-                    AZ_Warning("ScriptCanvas", false, "Could not find ScriptCanvas Node with id %llu", static_cast<AZ::u64>(scriptCanvasSourceEndpoint.GetNodeId()));
+                    AZ_Warning("ScriptCanvas", false, "Could not find ScriptCanvas Node with id %" PRIu64, static_cast<AZ::u64>(scriptCanvasSourceEndpoint.GetNodeId()));
                 }
 
                 AZ::EntityId graphCanvasSourceSlotId;
@@ -3944,7 +3946,7 @@ namespace ScriptCanvasEditor
                 }
                 else
                 {
-                    AZ_Warning("ScriptCanvas", false, "Could not find ScriptCanvas Node with id %llu", static_cast<AZ::u64>(scriptCanvasSourceEndpoint.GetNodeId()));
+                    AZ_Warning("ScriptCanvas", false, "Could not find ScriptCanvas Node with id %" PRIu64, static_cast<AZ::u64>(scriptCanvasSourceEndpoint.GetNodeId()));
                 }
 
                 SlotMappingRequestBus::EventResult(graphCanvasTargetEndpoint.m_slotId, graphCanvasTargetEndpoint.GetNodeId(), &SlotMappingRequests::MapToGraphCanvasId, scriptCanvasTargetEndpoint.GetSlotId());

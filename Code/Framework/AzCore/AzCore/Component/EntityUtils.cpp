@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/std/containers/fixed_vector.h>
@@ -307,7 +309,7 @@ namespace AZ::EntityUtils
                 if (componentAlias.empty())
                 {
                     // Component alias can be empty for non-editor components. Fallback to use the id as the component alias.
-                    componentAlias = AZStd::string::format("Component_[%llu]", component->GetId());
+                    componentAlias = AZStd::string::format("Component_[%" PRIu64 "]", component->GetId());
                 }
                 componentMapOut.emplace(AZStd::move(componentAlias), component);
             }

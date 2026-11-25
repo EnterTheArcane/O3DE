@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+#include <cinttypes>
+
 #include "EditorComponentBase.h"
 #include "TransformComponent.h"
 #include <AzCore/Math/Vector2.h>
@@ -122,7 +124,7 @@ namespace AzToolsFramework
 
             while (existingSerializedIdentifiers.find(serializedIdentifier) != existingSerializedIdentifiers.end())
             {
-                serializedIdentifier = AZStd::string::format("%s_%llu", componentTypeName.c_str(), ++suffixOfNewComponent);
+                serializedIdentifier = AZStd::string::format("%s_%" PRIu64 "", componentTypeName.c_str(), ++suffixOfNewComponent);
             }
 
             return serializedIdentifier;

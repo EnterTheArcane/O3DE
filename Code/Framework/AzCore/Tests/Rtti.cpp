@@ -47,6 +47,29 @@ static_assert(AZStd::is_same_v<decltype(GetO3deTemplateId(AZ::Adl{},
     AZ::AzGenericTypeInfo::Internal::TemplateIdentityTypes<std::unique_ptr>{})), AZ::TemplateId>,
     "unique_ptr is missing GetO3deTemplateId overload");
 
+namespace
+{
+    using namespace AZ;
+
+    static_assert(std::is_same_v<i8, std::int8_t>);
+    static_assert(std::is_same_v<i16, std::int16_t>);
+    static_assert(std::is_same_v<i32, std::int32_t>);
+    static_assert(std::is_same_v<i64, std::int64_t>);
+    static_assert(std::is_same_v<iptr, std::intptr_t>);
+    static_assert(std::is_same_v<isize, std::ptrdiff_t>);
+    static_assert(std::is_same_v<u8, std::uint8_t>);
+    static_assert(std::is_same_v<u16, std::uint16_t>);
+    static_assert(std::is_same_v<u32, std::uint32_t>);
+    static_assert(std::is_same_v<u64, std::uint64_t>);
+    static_assert(std::is_same_v<uptr, std::uintptr_t>);
+    static_assert(std::is_same_v<usize, std::size_t>);
+    static_assert(std::is_same_v<f32, float>);
+    static_assert(std::is_same_v<f64, double>);
+    static_assert(std::is_same_v<char8, char8_t>);
+    static_assert(std::is_same_v<char16, char16_t>);
+    static_assert(std::is_same_v<char32, char32_t>);
+}
+
 namespace UnitTest
 {
     template<class T>
@@ -145,12 +168,20 @@ namespace UnitTest
         EXPECT_EQ(AZ::Uuid("{58422C0E-1E47-4854-98E6-34098F6FE12D}"), azrtti_typeid<AZ::s8>());
         EXPECT_EQ(AZ::Uuid("{B8A56D56-A10D-4dce-9F63-405EE243DD3C}"), azrtti_typeid<short>());
         EXPECT_EQ(AZ::Uuid("{72039442-EB38-4d42-A1AD-CB68F7E0EEF6}"), azrtti_typeid<int>());
-        EXPECT_EQ(AZ::Uuid("{8F24B9AD-7C51-46cf-B2F8-277356957325}"), azrtti_typeid<long>());
+        if constexpr (!std::is_same_v<long, std::int64_t>)
+        {
+            EXPECT_EQ(AZ::Uuid("{8F24B9AD-7C51-46CF-B2F8-277356957325}"), azrtti_typeid<long>());
+        }
+        EXPECT_NE(azrtti_typeid<long>(), azrtti_typeid<long long>());
         EXPECT_EQ(AZ::Uuid("{70D8A282-A1EA-462d-9D04-51EDE81FAC2F}"), azrtti_typeid<AZ::s64>());
         EXPECT_EQ(AZ::Uuid("{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"), azrtti_typeid<unsigned char>());
         EXPECT_EQ(AZ::Uuid("{ECA0B403-C4F8-4b86-95FC-81688D046E40}"), azrtti_typeid<unsigned short>());
         EXPECT_EQ(AZ::Uuid("{43DA906B-7DEF-4ca8-9790-854106D3F983}"), azrtti_typeid<unsigned int>());
-        EXPECT_EQ(AZ::Uuid("{5EC2D6F7-6859-400f-9215-C106F5B10E53}"), azrtti_typeid<unsigned long>());
+        if constexpr (!std::is_same_v<unsigned long, std::uint64_t>)
+        {
+            EXPECT_EQ(AZ::Uuid("{5EC2D6F7-6859-400F-9215-C106F5B10E53}"), azrtti_typeid<unsigned long>());
+        }
+        EXPECT_NE(azrtti_typeid<unsigned long>(), azrtti_typeid<unsigned long long>());
         EXPECT_EQ(AZ::Uuid("{D6597933-47CD-4fc8-B911-63F3E2B0993A}"), azrtti_typeid<AZ::u64>());
         EXPECT_EQ(AZ::Uuid("{EA2C3E90-AFBE-44d4-A90D-FAAF79BAF93D}"), azrtti_typeid<float>());
         EXPECT_EQ(AZ::Uuid("{110C4B14-11A8-4e9d-8638-5051013A56AC}"), azrtti_typeid<double>());

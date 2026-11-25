@@ -7,6 +7,8 @@
  */
 
 
+#include <cinttypes>
+
 #include <ATL.h>
 
 #include <AzCore/Console/ILogger.h>
@@ -540,7 +542,7 @@ namespace Audio
                     }
                     else
                     {
-                        AZLOG_DEBUG("ATL could not find listener with ID %llu", listenerId);
+                        AZLOG_DEBUG("ATL could not find listener with ID %" PRIu64, listenerId);
                         result = EAudioRequestStatus::FailureInvalidObjectId;
                     }
                 }
@@ -920,7 +922,7 @@ namespace Audio
         {
             // No TriggerImpl produced an active event.
             AZLOG_DEBUG(
-                "PrepUnprepTriggerAsync failed on AudioObject '%s' (ID: %llu)", m_oDebugNameStore.LookupAudioObjectName(nATLObjectID),
+                "PrepUnprepTriggerAsync failed on AudioObject '%s' (ID: %" PRIu64 ")", m_oDebugNameStore.LookupAudioObjectName(nATLObjectID),
                 nATLObjectID);
         }
 #endif // !AUDIO_RELEASE
@@ -1017,7 +1019,7 @@ namespace Audio
         {
             // No TriggerImpl generated an active event.
             AZLOG_DEBUG(
-                "ATL Trigger '%s' failed to execute on AudioObject '%s' (ID: %llu)",
+                "ATL Trigger '%s' failed to execute on AudioObject '%s' (ID: %" PRIu64 ")",
                 m_oDebugNameStore.LookupAudioTriggerName(nATLTriggerID), m_oDebugNameStore.LookupAudioObjectName(pAudioObject->GetID()),
                 pAudioObject->GetID());
         }
@@ -1175,7 +1177,7 @@ namespace Audio
             const char* const sSwitchStateName = m_oDebugNameStore.LookupAudioSwitchStateName(pState->GetParentID(), pState->GetID());
             const char* const sAudioObjectName = m_oDebugNameStore.LookupAudioObjectName(pAudioObject->GetID());
             AZLOG_DEBUG(
-                "ATL failed to set Switch '%s' to State '%s' on AudioObject '%s' (ID: %llu)", sSwitchName, sSwitchStateName,
+                "ATL failed to set Switch '%s' to State '%s' on AudioObject '%s' (ID: %" PRIu64 ")", sSwitchName, sSwitchStateName,
                 sAudioObjectName, pAudioObject->GetID());
         }
 #endif // !AUDIO_RELEASE
@@ -1233,7 +1235,7 @@ namespace Audio
             const char* const sRtpcName = m_oDebugNameStore.LookupAudioRtpcName(pRtpc->GetID());
             const char* const sAudioObjectName = m_oDebugNameStore.LookupAudioObjectName(pAudioObject->GetID());
             AZLOG_DEBUG(
-                "ATL failed to set Parameter '%s' to %f on AudioObject '%s' (ID: %llu)", sRtpcName, fValue, sAudioObjectName,
+                "ATL failed to set Parameter '%s' to %f on AudioObject '%s' (ID: %" PRIu64 ")", sRtpcName, fValue, sAudioObjectName,
                 pAudioObject->GetID());
         }
 #endif // !AUDIO_RELEASE
@@ -1297,7 +1299,7 @@ namespace Audio
             const TAudioObjectID objectId = pAudioObject->GetID();
 
             AZLOG_DEBUG(
-                "ATL failed to reset parameters on AudioObject '%s' (ID: %llu)", m_oDebugNameStore.LookupAudioObjectName(objectId),
+                "ATL failed to reset parameters on AudioObject '%s' (ID: %" PRIu64 ")", m_oDebugNameStore.LookupAudioObjectName(objectId),
                 objectId);
         }
 #endif // !AUDIO_RELEASE
@@ -1355,7 +1357,7 @@ namespace Audio
             const char* const sEnvironmentName = m_oDebugNameStore.LookupAudioEnvironmentName(pEnvironment->GetID());
             const char* const sAudioObjectName = m_oDebugNameStore.LookupAudioObjectName(pAudioObject->GetID());
             AZLOG_DEBUG(
-                "ATL failed to set environment '%s' to %f on AudioObject '%s' (ID: %llu)", sEnvironmentName, fAmount, sAudioObjectName,
+                "ATL failed to set environment '%s' to %f on AudioObject '%s' (ID: %" PRIu64 ")", sEnvironmentName, fAmount, sAudioObjectName,
                 pAudioObject->GetID());
         }
 #endif // !AUDIO_RELEASE
@@ -1395,7 +1397,7 @@ namespace Audio
             const TAudioObjectID nObjectID = pAudioObject->GetID();
 
             AZLOG_DEBUG(
-                "ATL failed to reset environments on AudioObject '%s' (ID: %llu)", m_oDebugNameStore.LookupAudioObjectName(nObjectID),
+                "ATL failed to reset environments on AudioObject '%s' (ID: %" PRIu64 ")", m_oDebugNameStore.LookupAudioObjectName(nObjectID),
                 nObjectID);
         }
 #endif // !AUDIO_RELEASE
@@ -1817,7 +1819,7 @@ namespace Audio
             fPosY += fLineHeight;
 
             str = AZStd::string::format(
-                "Active Listener (ID: %llu) -> Position: ( %.2f,  %.2f,  %.2f )   Forward: ( %.2f,  %.2f,  %.2f )", activeListenerID,
+                "Active Listener (ID: %" PRIu64 ") -> Position: ( %.2f,  %.2f,  %.2f )   Forward: ( %.2f,  %.2f,  %.2f )", activeListenerID,
                 vPos.GetX(), vPos.GetY(), vPos.GetZ(), vFwd.GetX(), vFwd.GetY(), vFwd.GetZ());
             debugDisplay->SetColor(colorGreen);
             debugDisplay->Draw2dTextLabel(fPosX, fPosY, textSize, str.c_str());
@@ -1870,7 +1872,7 @@ namespace Audio
     {
         if (bytes < (1 << 10))
         {
-            azsnprintf(buffer, bufLength, "  B: %llu", bytes);
+            azsnprintf(buffer, bufLength, "  B: %" PRIu64, bytes);
         }
         else if (bytes < (1 << 20))
         {
@@ -2028,10 +2030,10 @@ namespace Audio
 
             debugDisplay.SetColor(whiteColor);
 
-            str = AZStd::string::format("%llu", totalAllocs);
+            str = AZStd::string::format("%" PRIu64, totalAllocs);
             debugDisplay.Draw2dTextLabel(fPosX + xTablePositions[6], posY, textSize, str.c_str());
 
-            str = AZStd::string::format("%llu", totalFrees);
+            str = AZStd::string::format("%" PRIu64, totalFrees);
             debugDisplay.Draw2dTextLabel(fPosX + xTablePositions[7], posY, textSize, str.c_str());
         }
         else

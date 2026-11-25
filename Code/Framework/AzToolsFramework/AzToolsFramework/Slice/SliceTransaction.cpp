@@ -7,6 +7,8 @@
  */
 
 
+#include <cinttypes>
+
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -262,7 +264,7 @@ namespace AzToolsFramework
             }
             else
             {
-                return AZ::Failure(AZStd::string::format("Unable to locate entity %s [%llu] in target slice.",
+                return AZ::Failure(AZStd::string::format("Unable to locate entity %s [%" PRIu64 "] in target slice.",
                     entity->GetName().c_str(), static_cast<AZ::u64>(entity->GetId())));
             }
 
@@ -299,7 +301,7 @@ namespace AzToolsFramework
             }
             else
             {
-                return AZ::Failure(AZStd::string::format("Unable to locate entity %s [%llu] in target slice.",
+                return AZ::Failure(AZStd::string::format("Unable to locate entity %s [%" PRIu64 "] in target slice.",
                     entity->GetName().c_str(), static_cast<AZ::u64>(entity->GetId())));
             }
 
@@ -555,7 +557,7 @@ namespace AzToolsFramework
                     // Find the entity's ancestor in the target asset.
                     if (!sliceAsset->RemoveEntity(removeId))
                     {
-                        return AZ::Failure(AZStd::string::format("Unable to remove entity [%llu] from target slice.", static_cast<AZ::u64>(removeId)));
+                        return AZ::Failure(AZStd::string::format("Unable to remove entity [%" PRIu64 "] from target slice.", static_cast<AZ::u64>(removeId)));
                     }
                 }
 
@@ -582,7 +584,7 @@ namespace AzToolsFramework
                     AZ::Entity* targetEntity = sliceAsset->FindEntity(entityToPush.m_targetEntityId);
                     if (!targetEntity)
                     {
-                        return AZ::Failure(AZStd::string::format("Unable to locate entity with Id %llu in the target slice.",
+                        return AZ::Failure(AZStd::string::format("Unable to locate entity with Id %" PRIu64 " in the target slice.",
                             static_cast<AZ::u64>(entityToPush.m_targetEntityId)));
                     }
 

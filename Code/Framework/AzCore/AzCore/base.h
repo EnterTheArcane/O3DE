@@ -13,6 +13,8 @@
 
 #include <AzCore/AzCore_Traits_Platform.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 
 /// Return an array size for static arrays.
@@ -170,33 +172,43 @@ namespace AZ::Internal
 
 //////////////////////////////////////////////////////////////////////////
 
-#include <cstddef> // the macros NULL and offsetof as well as the types ptrdiff_t, wchar_t, and size_t.
-
 // bring to global namespace, this is what string.h does anyway
 using std::size_t;
 using std::ptrdiff_t;
 
-/**
- * Data types with specific length. They should be used ONLY when we serialize data if
- * they have native type equivalent, which should take precedence.
- */
+using i8 = std::int8_t;
+using i16 = std::int16_t;
+using i32 = std::int32_t;
+using i64 = std::int64_t;
+using iptr = std::intptr_t;
+using isize = std::ptrdiff_t;
 
-#include <cstdint>
+using u8 = std::uint8_t;
+using u16 = std::uint16_t;
+using u32 = std::uint32_t;
+using u64 = std::uint64_t;
+using uptr = std::uintptr_t;
+using usize = std::size_t;
+
+using f32 = float;
+using f64 = double;
+
+using char8 = char8_t;
+using char16 = char16_t;
+using char32 = char32_t;
 
 namespace AZ
 {
-    using s8 = int8_t;
-    using u8 = uint8_t;
-    using s16 = int16_t;
-    using u16 = uint16_t;
-    using s32 = int32_t;
-    using u32 = uint32_t;
-    // s64 and u64 are always long long and unsigned long long on all platforms
-    // where it is 64-bits
-    // The previous behavior with checking the AZ_TRAIT_COMPILER_INT64_T_IS_LONG define
-    // was exactly the same as it is now.
-    using s64 = signed long long;
-    using u64 = unsigned long long;
+    // Deprecated spellings. Use i8, i16, i32, and i64 instead.
+    using s8 = ::i8;
+    using s16 = ::i16;
+    using s32 = ::i32;
+    using s64 = ::i64;
+
+    using ::u8;
+    using ::u16;
+    using ::u32;
+    using ::u64;
 
     struct s128
     {

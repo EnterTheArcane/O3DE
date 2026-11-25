@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <AzCore/base.h>
+
 static_assert(sizeof(char) == 1);
 static_assert(sizeof(float) == 4);
 static_assert(sizeof(int) >= 4);
@@ -69,9 +71,3 @@ typedef ulonglong uint64;
 static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(sint64) == 8);
 #endif
-
-
-typedef float  f32;
-typedef double f64;
-static_assert(sizeof(f32) == 4);
-static_assert(sizeof(f64) == 8);

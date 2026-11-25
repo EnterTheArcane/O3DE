@@ -8,6 +8,7 @@
 
 #include <AzCore/DOM/DomUtils.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/UnitTest/MockComponentApplication.h>
@@ -111,6 +112,26 @@ namespace AZ::AttributeDomInteropTests
         AZStd::unique_ptr<AZ::JsonRegistrationContext> m_jsonRegistrationContext;
         AZStd::unique_ptr<::testing::NiceMock<UnitTest::MockComponentApplication>> m_componentApplicationMock;
     };
+
+    TEST_F(AttributeDomInteropTests, ReadsNativeIntegersAsExactWidthValues)
+    {
+        AZ::AttributeData<long> nativeLong(-42L);
+        AZ::AttributeData<long long> nativeLongLong(AZStd::numeric_limits<long long>::min());
+        AZ::AttributeData<unsigned long> nativeUnsignedLong(42UL);
+        AZ::AttributeData<unsigned long long> nativeUnsignedLongLong(AZStd::numeric_limits<unsigned long long>::max());
+
+        AZ::s64 signedValue{};
+        EXPECT_TRUE(AZ::AttributeReader(nullptr, &nativeLong).Read<AZ::s64>(signedValue));
+        EXPECT_EQ(AZ::Dom::Value(signedValue).GetInt64(), -42);
+        EXPECT_TRUE(AZ::AttributeReader(nullptr, &nativeLongLong).Read<AZ::s64>(signedValue));
+        EXPECT_EQ(AZ::Dom::Value(signedValue).GetInt64(), AZStd::numeric_limits<AZ::s64>::min());
+
+        AZ::u64 unsignedValue{};
+        EXPECT_TRUE(AZ::AttributeReader(nullptr, &nativeUnsignedLong).Read<AZ::u64>(unsignedValue));
+        EXPECT_EQ(AZ::Dom::Value(unsignedValue).GetUint64(), 42);
+        EXPECT_TRUE(AZ::AttributeReader(nullptr, &nativeUnsignedLongLong).Read<AZ::u64>(unsignedValue));
+        EXPECT_EQ(AZ::Dom::Value(unsignedValue).GetUint64(), AZStd::numeric_limits<AZ::u64>::max());
+    }
 
     TEST_F(AttributeDomInteropTests, ArgumentHandling)
     {

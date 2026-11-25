@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Slice/SliceComponent.h>
@@ -346,7 +348,7 @@ namespace AzToolsFramework
                         componentName = wrapper->GetTemplate()->RTTI_GetTypeName();
                     }
 
-                    return AZ::Failure(AZStd::string::format("[Entity] \"%s\" [Entity Id] 0x%llu, [Editor Component] \"%s\" could not pass validation for [Slice] \"%s\" [Error] %s",
+                    return AZ::Failure(AZStd::string::format("[Entity] \"%s\" [Entity Id] 0x%" PRIu64 ", [Editor Component] \"%s\" could not pass validation for [Slice] \"%s\" [Error] %s",
                         sourceEntity->GetName().c_str(),
                         static_cast<AZ::u64>(sourceEntity->GetId()),
                         componentName,
@@ -363,7 +365,7 @@ namespace AzToolsFramework
 
                 if (!exportResult)
                 {
-                    return AZ::Failure(AZStd::string::format("Source component \"%s\" could not be exported for Entity \"%s\" [0x%llu] due to export attributes: %s.",
+                    return AZ::Failure(AZStd::string::format("Source component \"%s\" could not be exported for Entity \"%s\" [0x%" PRIu64 "] due to export attributes: %s.",
                         component->RTTI_GetTypeName(),
                         exportEntity->GetName().c_str(),
                         static_cast<AZ::u64>(exportEntity->GetId()),
@@ -391,7 +393,7 @@ namespace AzToolsFramework
                             auto* exportAsEditorComponent = azrtti_cast<Components::EditorComponentBase*>(exportComponent);
                             if (exportAsEditorComponent)
                             {
-                                return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%llu], component \"%s\" exported an editor component from BuildGameEntity() for runtime use.",
+                                return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%" PRIu64 "], component \"%s\" exported an editor component from BuildGameEntity() for runtime use.",
                                     sourceEntity->GetName().c_str(),
                                     static_cast<AZ::u64>(sourceEntity->GetId()),
                                     asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str()));
@@ -399,7 +401,7 @@ namespace AzToolsFramework
 
                             if (asEditorComponent->GetId() == AZ::InvalidComponentId)
                             {
-                                return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%llu], component \"%s\" doesn't have a valid component Id.",
+                                return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%" PRIu64 "], component \"%s\" doesn't have a valid component Id.",
                                     sourceEntity->GetName().c_str(),
                                     static_cast<AZ::u64>(sourceEntity->GetId()),
                                     asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str()));
@@ -431,7 +433,7 @@ namespace AzToolsFramework
 
                 // At this point, either ResolveExportedComponent or the default logic above should have set the component export 
                 // as being handled.  If not, there is likely a new code path that requires a default export behavior.
-                AZ_Assert(exportedComponent.m_componentExportHandled, "Component \"%s\" had no export handlers and could not be added to Entity \"%s\" [0x%llu].",
+                AZ_Assert(exportedComponent.m_componentExportHandled, "Component \"%s\" had no export handlers and could not be added to Entity \"%s\" [0x%" PRIu64 "].",
                     component->RTTI_GetTypeName(),
                     exportEntity->GetName().c_str(),
                     static_cast<AZ::u64>(exportEntity->GetId()));
@@ -446,7 +448,7 @@ namespace AzToolsFramework
                     auto* exportAsEditorComponent = azrtti_cast<Components::EditorComponentBase*>(runtimeComponent);
                     if (exportAsEditorComponent)
                     {
-                        return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%llu], component \"%s\" is trying to export an Editor component for runtime use.",
+                        return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%" PRIu64 "], component \"%s\" is trying to export an Editor component for runtime use.",
                             sourceEntity->GetName().c_str(),
                             static_cast<AZ::u64>(sourceEntity->GetId()),
                             asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str()));
@@ -463,7 +465,7 @@ namespace AzToolsFramework
 
                     if (!exportEntity->AddComponent(runtimeComponent))
                     {
-                        return AZ::Failure(AZStd::string::format("Component \"%s\" could not be added to Entity \"%s\" [0x%llu].",
+                        return AZ::Failure(AZStd::string::format("Component \"%s\" could not be added to Entity \"%s\" [0x%" PRIu64 "].",
                             runtimeComponent->RTTI_GetTypeName(),
                             exportEntity->GetName().c_str(),
                             static_cast<AZ::u64>(exportEntity->GetId())));
@@ -541,7 +543,7 @@ namespace AzToolsFramework
                 {
                     // Try to cast to GenericComponentWrapper, and if we can, get the internal template.
                     const char* componentName = component->RTTI_GetTypeName();
-                    return AZ::Failure(AZStd::string::format("[Entity] \"%s\" [Entity Id] 0x%llu, [Exported Component] \"%s\" could not pass validation for [Slice] \"%s\" [Error] %s",
+                    return AZ::Failure(AZStd::string::format("[Entity] \"%s\" [Entity Id] 0x%" PRIu64 ", [Exported Component] \"%s\" could not pass validation for [Slice] \"%s\" [Error] %s",
                         exportEntity->GetName().c_str(), 
                         static_cast<AZ::u64>(exportEntity->GetId()),
                         componentName,

@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include "ArchiveReader.h"
 
 #include <AzCore/IO/ByteContainerStream.h>
@@ -58,7 +60,7 @@ namespace Archive
         if (bytesRead != sizeof(archiveHeader))
         {
             m_settings.m_errorCallback({ ArchiveReaderErrorCode::ErrorReadingHeader, ArchiveReaderErrorString::format(
-                "Archive header should have size %zu, but only %llu bytes were read from the beginning of the archive",
+                "Archive header should have size %zu, but only %" PRIu64 " bytes were read from the beginning of the archive",
                 sizeof(archiveHeader), bytesRead) });
         }
 
@@ -95,7 +97,7 @@ namespace Archive
             // The TOC offset is invalid since it is after the end of the stream
             m_settings.m_errorCallback({ ArchiveReaderErrorCode::ErrorReadingTableOfContents,
                     ArchiveReaderErrorString::format("TOC offset is invalid. It is pass the end of the stream."
-                        " Offset value %llu, archive stream size %llu",
+                        " Offset value %" PRIu64 ", archive stream size %" PRIu64,
                         static_cast<AZ::u64>(archiveHeader.m_tocOffset), archiveStream.GetLength()) });
             return false;
         }
@@ -116,7 +118,7 @@ namespace Archive
             {
                 m_settings.m_errorCallback({ ArchiveReaderErrorCode::ErrorReadingTableOfContents,
                     ArchiveReaderErrorString::format("Unable to read all TOC bytes from the archive."
-                        " The TOC size is %zu, but only %llu bytes were read",
+                        " The TOC size is %zu, but only %" PRIu64 " bytes were read",
                         tocBuffer.size(), bytesRead) });
                 return false;
             }
@@ -167,7 +169,7 @@ namespace Archive
                     // The size of uncompressed size of the data does not match the total uncompressed
                     // TOC size read from the ArchiveHeader::GetUncompressedTocSize() function
                     m_settings.m_errorCallback({ ArchiveReaderErrorCode::ErrorReadingTableOfContents,
-                    ArchiveReaderErrorString::format("The uncompressed TOC size %llu does not match the total uncompressed size %zu"
+                    ArchiveReaderErrorString::format("The uncompressed TOC size %" PRIu64 " does not match the total uncompressed size %zu"
                         " read from the archive header",
                         decompressionResultData.GetUncompressedByteCount(), tocBuffer.size()) });
                     return false;
@@ -402,16 +404,16 @@ namespace Archive
         if (fileBuffer.size() < bytesToRead)
         {
             return AZStd::unexpected(ResultString::format("Buffer size is not large enough to read the raw file data at"
-                " archive file offset %lld."
-                " Buffer size is %zu, while %llu is required.", readOffset, fileBuffer.size(), bytesToRead));
+                " archive file offset %" PRId64 "."
+                " Buffer size is %zu, while %" PRIu64 " is required.", readOffset, fileBuffer.size(), bytesToRead));
         }
 
         AZStd::scoped_lock archiveReadLock(m_archiveStreamMutex);
         if (AZ::IO::SizeType bytesRead = m_archiveStream->ReadAtOffset(bytesToRead, fileBuffer.data(), readOffset);
             bytesRead < bytesToRead)
         {
-            return AZStd::unexpected(ResultString::format("Attempted to read %llu bytes from the archive at offset %lld."
-                " But only %llu bytes were able to be read.", bytesToRead, readOffset, bytesRead));
+            return AZStd::unexpected(ResultString::format("Attempted to read %" PRIu64 " bytes from the archive at offset %" PRId64 "."
+                " But only %" PRIu64 " bytes were able to be read.", bytesToRead, readOffset, bytesRead));
         }
 
         // Make a span with the exact amount of data read
@@ -460,8 +462,8 @@ namespace Archive
         // The cap is uncompressed size of the file
         if (fileSettings.m_startOffset > extractFileResult.m_uncompressedSize)
         {
-            return AZStd::unexpected(ResultString::format("Start offset %llu to read file data from is larger."
-                " than the size of the file %llu for file %s", fileSettings.m_startOffset,
+            return AZStd::unexpected(ResultString::format("Start offset %" PRIu64 " to read file data from is larger."
+                " than the size of the file %" PRIu64 " for file %s", fileSettings.m_startOffset,
                 extractFileResult.m_compressedSize,
                 extractFileResult.m_relativeFilePath.c_str()));
         }
@@ -575,7 +577,7 @@ namespace Archive
                 bytesRead != blockCompressedSize)
             {
                 return AZStd::unexpected(ResultString::format("Cannot read all of compressed block for"
-                    " block %llu. The compressed block size is %llu, but only %llu was able to be read",
+                    " block %" PRIu64 ". The compressed block size is %" PRIu64 ", but only %" PRIu64 " was able to be read",
                     blockIndex, blockCompressedSize, bytesRead));
             }
 
@@ -683,7 +685,7 @@ namespace Archive
             ArchiveListFileResult errorResult;
             errorResult.m_filePathToken = archiveFileToken;
             errorResult.m_resultOutcome = AZStd::unexpected(
-                ResultString::format(R"(A file token "%llu" is being used to extract the file and that token does not point)"
+                ResultString::format("A file token \"%" PRIu64 "\" is being used to extract the file and that token does not point"
                     " to a file within the archive TOC.", static_cast<AZ::u64>(archiveFileToken)));
             return errorResult;
         }
@@ -697,7 +699,7 @@ namespace Archive
             ArchiveListFileResult errorResult;
             errorResult.m_filePathToken = archiveFileToken;
             errorResult.m_resultOutcome = AZStd::unexpected(
-                ResultString::format(R"(A file token "%llu" is being used to extract the file,)"
+                ResultString::format("A file token \"%" PRIu64 "\" is being used to extract the file,"
                     " but the file path stored in the TOC is empty."
                     "This indicates that the token is referring to a deleted file.",
                     static_cast<AZ::u64>(archiveFileToken)));
@@ -865,11 +867,11 @@ namespace Archive
                     auto fileMetadataString = MetadataString::format(R"(File %zu: path="%.*s")", activeFileOffset, AZ_PATH_ARG(contentFilePath));
                     if (metadataSettings.m_writeFileOffsets)
                     {
-                        fileMetadataString += MetadataString::format(R"(, offset=%llu)", contentFileMetadata.m_offset);
+                        fileMetadataString += MetadataString::format(", offset=%" PRIu64, contentFileMetadata.m_offset);
                     }
                     if (metadataSettings.m_writeFileSizesAndCompression)
                     {
-                        fileMetadataString += MetadataString::format(R"(, uncompressed_size=%llu)", contentFileMetadata.m_uncompressedSize);
+                        fileMetadataString += MetadataString::format(", uncompressed_size=%" PRIu64, contentFileMetadata.m_uncompressedSize);
                         // Only output compressed size if an compression that compresses data is being used
                         if (contentFileMetadata.m_compressionAlgoIndex < UncompressedAlgorithmIndex)
                         {
@@ -877,7 +879,7 @@ namespace Archive
                                 rawFileSizeResult)
                             {
                                 AZ::u64 compressedSize = rawFileSizeResult.value();
-                                fileMetadataString += MetadataString::format(R"(, compressed_size=%llu)",
+                                fileMetadataString += MetadataString::format(", compressed_size=%" PRIu64,
                                     compressedSize);
                             }
                             fileMetadataString += MetadataString::format(R"(, compression_algorithm_id=%u)",

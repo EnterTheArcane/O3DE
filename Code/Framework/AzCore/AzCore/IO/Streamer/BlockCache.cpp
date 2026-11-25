@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/IO/Streamer/BlockCache.h>
@@ -615,7 +616,7 @@ namespace AZ::IO
             {
                 // The read size is already clamped to the file size above when blockReadSizeStart is set.
                 AZ_Assert(roundedOffsetStart + blockReadSizeStart <= fileLength,
-                    "Read size in block cache was set to %llu but this is beyond the file length of %llu.",
+                    "Read size in block cache was set to %" PRIu64 " but this is beyond the file length of %" PRIu64 ".",
                     roundedOffsetStart + blockReadSizeStart, fileLength);
                 prolog.m_readSize = blockReadSizeStart;
                 prolog.m_copySize = size;

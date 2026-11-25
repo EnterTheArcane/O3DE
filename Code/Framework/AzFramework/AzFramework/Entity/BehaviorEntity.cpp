@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+#include <cinttypes>
+
 #include "BehaviorEntity.h"
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -62,7 +64,7 @@ namespace AzFramework
 
     AZStd::string BehaviorComponentId::ToString() const
     {
-        return AZStd::string::format("[%llu]", m_id);
+        return AZStd::string::format("[%" PRIu64 "]", m_id);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -335,7 +337,7 @@ namespace AzFramework
 
         if (!component->GetEntity()->RemoveComponent(component))
         {
-            AZ_Warning("Entity", false, "Cannot destroy component. Failed to remove component (id=%llu) from entity (id=%s name='%s').", componentId, m_entityId.ToString().c_str(), component->GetEntity()->GetName().c_str());
+            AZ_Warning("Entity", false, "Cannot destroy component. Failed to remove component (id=%" PRIu64 ") from entity (id=%s name='%s').", componentId, m_entityId.ToString().c_str(), component->GetEntity()->GetName().c_str());
             return false;
         }
 
@@ -537,7 +539,7 @@ namespace AzFramework
             }
             else
             {
-                errorMessage = AZStd::string::format("Component (id=%llu) not found on entity(id=%s name='%s').", static_cast<AZ::u64>(componentId), m_entityId.ToString().c_str(), entity->GetName().c_str());
+                errorMessage = AZStd::string::format("Component (id=%" PRIu64 ") not found on entity(id=%s name='%s').", static_cast<AZ::u64>(componentId), m_entityId.ToString().c_str(), entity->GetName().c_str());
             }
         }
 

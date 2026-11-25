@@ -203,7 +203,7 @@ namespace AzToolsFramework
         switch (role)
         {
         case EntityIdRole:
-            return static_cast<AZ::u64>(id);
+            return static_cast<qulonglong>(static_cast<AZ::u64>(id));
 
         case SelectedRole:
             {
@@ -431,7 +431,7 @@ namespace AzToolsFramework
         case Qt::DisplayRole:
             AZ::u64 sortIndex = 0;
             EditorEntityInfoRequestBus::EventResult(sortIndex, id, &EditorEntityInfoRequestBus::Events::GetIndexForSorting);
-            return sortIndex;
+            return static_cast<qulonglong>(sortIndex);
         }
 
         return dataForAll(index, role);

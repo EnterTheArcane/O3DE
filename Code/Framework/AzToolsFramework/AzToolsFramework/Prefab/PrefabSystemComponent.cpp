@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzToolsFramework/Prefab/PrefabSystemComponent.h>
 
 #include <AzCore/Component/Entity.h>
@@ -174,7 +175,7 @@ namespace AzToolsFramework
                 TemplateReference loadedTemplate = FindTemplate(templateId);
                 if (!loadedTemplate.has_value())
                 {
-                    AZ_Assert(false, "Template with id %llu is not found", templateId);
+                    AZ_Assert(false, "Template with id %" PRIu64 " is not found", templateId);
                     continue;
                 }
 
@@ -441,7 +442,7 @@ namespace AzToolsFramework
             if (!instantiatingTemplate.has_value())
             {
                 AZ_Error("Prefab", false,
-                    "Could not find template using Id %llu during InstantiatePrefab. Unable to proceed",
+                    "Could not find template using Id %" PRIu64 " during InstantiatePrefab. Unable to proceed",
                     templateId);
 
                 return nullptr;
@@ -531,12 +532,12 @@ namespace AzToolsFramework
             TemplateReference findTemplateResult = FindTemplate(templateId);
             AZ_Assert(
                 findTemplateResult.has_value(),
-                "PrefabSystemComponent::FindTemplateDom - Unable to retrieve Prefab template with id: '%llu'. "
+                "PrefabSystemComponent::FindTemplateDom - Unable to retrieve Prefab template with id: '%" PRIu64 "'. "
                 "Template could not be found",
                 templateId);
 
             AZ_Assert(findTemplateResult->get().IsValid(),
-                "PrefabSystemComponent::FindTemplateDom - Unable to retrieve Prefab template with id: '%llu'. "
+                "PrefabSystemComponent::FindTemplateDom - Unable to retrieve Prefab template with id: '%" PRIu64 "'. "
                 "Template is invalid", templateId);
 
             return findTemplateResult->get().GetPrefabDom();
@@ -590,7 +591,7 @@ namespace AzToolsFramework
             {
                 AZ_Error(
                     "Prefab", false,
-                    "Template associated by given Id '%llu' doesn't exist in PrefabSystemComponent.",
+                    "Template associated by given Id '%" PRIu64 "' doesn't exist in PrefabSystemComponent.",
                     templateId);
                 return;
             }
@@ -632,7 +633,7 @@ namespace AzToolsFramework
             {
                 AZ_Warning("Prefab", false,
                     "PrefabSystemComponent::RemoveTemplate - "
-                    "Template associated by given Id '%llu' doesn't exist in PrefabSystemComponent.",
+                    "Template associated by given Id '%" PRIu64 "' doesn't exist in PrefabSystemComponent.",
                     templateId);
 
                 return;
@@ -647,7 +648,7 @@ namespace AzToolsFramework
                 result = RemoveLinkIdFromTemplateToLinkIdsMap(linkId);
                 AZ_Assert(result,
                     "Prefab - PrefabSystemComponent::RemoveTemplate - "
-                    "Failed to remove Link with Id '%llu' owned by the Template with Id '%llu' on file path '%s' "
+                    "Failed to remove Link with Id '%" PRIu64 "' owned by the Template with Id '%" PRIu64 "' on file path '%s' "
                     "from TemplateToLinkIdsMap.",
                     linkId, templateId, templateToDelete.GetFilePath().c_str());
             }
@@ -662,7 +663,7 @@ namespace AzToolsFramework
                     result = RemoveLinkFromTargetTemplate(linkId);
                     AZ_Assert(result,
                         "Prefab - PrefabSystemComponent::RemoveTemplate - "
-                        "Failed to remove Link with Id '%llu' that depend on the source Template with Id '%llu' on file path '%s'.",
+                        "Failed to remove Link with Id '%" PRIu64 "' that depend on the source Template with Id '%" PRIu64 "' on file path '%s'.",
                         linkId, templateId, templateToDelete.GetFilePath().c_str());
                 }
 
@@ -674,7 +675,7 @@ namespace AzToolsFramework
             result = m_templateFilePathToIdMap.erase(templateToDelete.GetFilePath()) != 0;
             AZ_Assert(result,
                 "Prefab - PrefabSystemComponent::RemoveTemplate - "
-                "Failed to remove Template with Id '%llu' on file path '%s' "
+                "Failed to remove Template with Id '%" PRIu64 "' on file path '%s' "
                 "from Template File Path To Id Map.",
                 templateId, templateToDelete.GetFilePath().c_str());
 
@@ -683,7 +684,7 @@ namespace AzToolsFramework
             result = m_templateIdMap.erase(templateId) != 0;
             AZ_Assert(result,
                 "Prefab - PrefabSystemComponent::RemoveTemplate - "
-                "Failed to remove Template with Id '%llu' on file path '%s' "
+                "Failed to remove Template with Id '%" PRIu64 "' on file path '%s' "
                 "from Template Id Map.",
                 templateId, templateToDelete.GetFilePath().c_str());
 
@@ -824,7 +825,7 @@ namespace AzToolsFramework
 
             if (!targetTemplate.AddLink(newLinkId))
             {
-                AZ_Error("Prefab", false, "Failed to add link id '%llu' to '%s'", newLinkId, targetTemplate.GetFilePath().c_str());
+                AZ_Error("Prefab", false, "Failed to add link id '%" PRIu64 "' to '%s'", newLinkId, targetTemplate.GetFilePath().c_str());
             }
 
             //insert nested instance alias into the template owner dom
@@ -901,7 +902,7 @@ namespace AzToolsFramework
             {
                 AZ_Warning("Prefab", false,
                     "PrefabSystemComponent::RemoveLink - "
-                    "Link associated by given Id '%llu' doesn't exist in PrefabSystemComponent.",
+                    "Link associated by given Id '%" PRIu64 "' doesn't exist in PrefabSystemComponent.",
                     linkId);
 
                 return false;
@@ -976,7 +977,7 @@ namespace AzToolsFramework
 
             if (!prefabTemplate.has_value())
             {
-                AZ_Assert(false, "Template with id %llu is not found", rootTemplateId);
+                AZ_Assert(false, "Template with id %" PRIu64 " is not found", rootTemplateId);
                 return false;
             }
 
@@ -1039,7 +1040,7 @@ namespace AzToolsFramework
 
             if (!prefabTemplate.has_value())
             {
-                AZ_Assert(false, "Template with id %llu is not found", rootTemplateId);
+                AZ_Assert(false, "Template with id %" PRIu64 " is not found", rootTemplateId);
                 return;
             }
 

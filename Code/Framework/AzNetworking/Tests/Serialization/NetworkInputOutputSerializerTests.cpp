@@ -109,8 +109,8 @@ namespace UnitTest
     * \param[in] expectedData  The expected buffer to compare the results to
     * \param[in] expectedSize  The expected buffer size to compare the results to
     */
-    template<typename T>
-    void InternalTestSerializeType(T value, const char* label, AZStd::span<uint8_t> expectedData)
+    template<typename T, typename... Bounds>
+    void InternalTestSerializeType(T value, const char* label, AZStd::span<uint8_t> expectedData, Bounds... bounds)
     {
         constexpr size_t Capacity = 32;
         AZStd::array<uint8_t, Capacity> buffer;
@@ -120,9 +120,9 @@ namespace UnitTest
 
         AzNetworking::ISerializer& serializer = inSerializer;
 
-        EXPECT_TRUE(serializer.Serialize(value, label)) << "Serialize failed for " << label;
+        ASSERT_TRUE(serializer.Serialize(value, label, bounds...)) << "Serialize failed for " << label;
 
-        EXPECT_EQ(serializer.GetSize(), expectedData.size()) << "Resulting buffer size for " << label << "does not match expected (" << serializer.GetSize() << " != " << expectedData.size() << ")";
+        ASSERT_EQ(serializer.GetSize(), expectedData.size()) << "Resulting buffer size for " << label << "does not match expected (" << serializer.GetSize() << " != " << expectedData.size() << ")";
 
         auto resultHexStr = AZStd::MemoryToASCII::ToString(serializer.GetBuffer(), serializer.GetSize(), serializer.GetSize(), 512, AZStd::MemoryToASCII::Options::Binary);
         AZ::StringFunc::TrimWhiteSpace(resultHexStr, true, true);
@@ -130,6 +130,24 @@ namespace UnitTest
         AZ::StringFunc::TrimWhiteSpace(expectedHexStr, true, true);
 
         EXPECT_TRUE(memcmp(serializer.GetBuffer(), expectedData.data(), serializer.GetSize())==0) << "Resulting bytes for " << label << " do not match expected (" << resultHexStr.c_str() << " != " << expectedHexStr.c_str() << ")";
+
+        AzNetworking::NetworkOutputSerializer outSerializer(buffer.data(), serializer.GetSize());
+        AzNetworking::ISerializer& reader = outSerializer;
+        T loaded{};
+        ASSERT_TRUE(reader.Serialize(loaded, label, bounds...));
+        EXPECT_EQ(loaded, value);
+    }
+
+    TEST_F(InputOutputSerializerTests, ExactWidth64BitWireFormat)
+    {
+        auto minBytes = AZStd::to_array<uint8_t>({ 0, 0, 0, 0, 0, 0, 0, 0 });
+        auto maxBytes = AZStd::to_array<uint8_t>({ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
+        auto boundedBytes = AZStd::to_array<uint8_t>({ 0x0f });
+        InternalTestSerializeType(AZStd::numeric_limits<AZ::s64>::min(), "signed minimum", minBytes);
+        InternalTestSerializeType(AZStd::numeric_limits<AZ::s64>::max(), "signed maximum", maxBytes);
+        InternalTestSerializeType(AZStd::numeric_limits<AZ::u64>::max(), "unsigned maximum", maxBytes);
+        InternalTestSerializeType<AZ::s64>(7, "signed bounded", boundedBytes, -8, 7);
+        InternalTestSerializeType<AZ::u64>(1015, "unsigned bounded", boundedBytes, 1000, 1015);
     }
 
     TEST_F(InputOutputSerializerTests, TestFixedSerialization)

@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzToolsFramework/Prefab/Instance/InstanceUpdateExecutor.h>
 
 #include <AzCore/Component/TickBus.h>
@@ -117,7 +118,7 @@ namespace AzToolsFramework
             {
                 AZ_Warning("Prefab", false,
                     "InstanceUpdateExecutor::AddTemplateInstancesToQueue - "
-                    "Could not find Template with Id '%llu' in Template Instance Mapper.",
+                    "Could not find Template with Id '%" PRIu64 "' in Template Instance Mapper.",
                     instanceTemplateId);
 
                 return;
@@ -236,7 +237,7 @@ namespace AzToolsFramework
                                 AZ_Error(
                                     "Prefab", false,
                                     "InstanceUpdateExecutor::UpdateTemplateInstancesInQueue - "
-                                    "Could not find Template using Id '%llu'. Unable to update Instance.",
+                                    "Could not find Template using Id '%" PRIu64 "'. Unable to update Instance.",
                                     currentTemplateId);
 
                                 // Remove the instance from update queue if its corresponding template couldn't be found
@@ -247,7 +248,7 @@ namespace AzToolsFramework
 
                         auto findInstancesResult = m_templateInstanceMapperInterface->FindInstancesOwnedByTemplate(instanceTemplateId);
                         AZ_Assert(
-                            findInstancesResult.has_value(), "Prefab Instances corresponding to template with id %llu couldn't be found.",
+                            findInstancesResult.has_value(), "Prefab Instances corresponding to template with id %" PRIu64 " couldn't be found.",
                             instanceTemplateId);
 
                         if (findInstancesResult == AZStd::nullopt ||

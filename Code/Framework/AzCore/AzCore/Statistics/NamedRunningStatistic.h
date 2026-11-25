@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include <cinttypes>
+
 #include <AzCore/std/string/string.h>
 
 #include "RunningStatistic.h"
@@ -46,7 +48,7 @@ namespace AZ
             
             AZStd::string GetFormatted() const
             {
-                return AZStd::string::format("Name=\"%s\", Units=\"%s\", numSamples=%llu, avg=%f, min=%f, max=%f, stdev=%f",
+                return AZStd::string::format("Name=\"%s\", Units=\"%s\", numSamples=%" PRIu64 ", avg=%f, min=%f, max=%f, stdev=%f",
                     m_name.c_str(), m_units.c_str(), GetNumSamples(), GetAverage(), GetMinimum(), GetMaximum(), GetStdev());
             }
 
@@ -57,7 +59,7 @@ namespace AZ
 
             AZStd::string GetCsvFormatted() const
             {
-                return AZStd::string::format("\"%s\", \"%s\", %llu, %f, %f, %f, %f",
+                return AZStd::string::format("\"%s\", \"%s\", %" PRIu64 ", %f, %f, %f, %f",
                     m_name.c_str(), m_units.c_str(), GetNumSamples(), GetAverage(), GetMinimum(), GetMaximum(), GetStdev());
             }
 

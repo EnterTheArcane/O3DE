@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/IO/CompressorStream.h>
@@ -168,7 +169,7 @@ bool CompressorStream::WriteCompressedHeader(AZ::u32 compressorId, int compressi
     }
     if (GetCompressedLength() > 0)
     {
-        AZ_Warning("IO", false, "We can start compressing a stream only before we have written any data to it! Currently you have %llu bytes written!", GetCompressedLength());
+        AZ_Warning("IO", false, "We can start compressing a stream only before we have written any data to it! Currently you have %" PRIu64 " bytes written!", GetCompressedLength());
         return false;
     }
 

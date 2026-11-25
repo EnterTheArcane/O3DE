@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <cctype>
 
 #include <AzCore/AzCoreModule.h>
@@ -168,7 +169,7 @@ namespace AZ
             entityName = componentApplicationRequests->GetEntityName(AZ::EntityId(entityIdValue));
         }
 
-        AZ_Printf("Entity Debug", "EntityId: %llu, Entity Name: %s", entityIdValue, entityName.c_str());
+        AZ_Printf("Entity Debug", "EntityId: %" PRIu64 ", Entity Name: %s", entityIdValue, entityName.c_str());
     }
 
     AZ_CONSOLEFREEFUNC(PrintEntityName, AZ::ConsoleFunctorFlags::Null,

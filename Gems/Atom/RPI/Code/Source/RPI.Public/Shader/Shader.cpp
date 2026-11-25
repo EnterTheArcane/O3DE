@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+#include <cinttypes>
+
 #include <Atom/RPI.Public/Shader/Shader.h>
 
 #include <Atom/RHI/Factory.h>
@@ -246,7 +248,7 @@ namespace AZ
                 if (asset.GetType() == AZ::AzTypeInfo<ShaderVariantAsset>::Uuid())
                 {
                     ShaderReloadDebugTracker::Printf(
-                        "{%p}->Shader::OnRootVariantReloaded [current time %lld] got new variant {%p}'%s'",
+                        "{%p}->Shader::OnRootVariantReloaded [current time %" PRId64 "] got new variant {%p}'%s'",
                         this,
                         now,
                         asset.Get(),
@@ -257,7 +259,7 @@ namespace AZ
                     const auto* newShaderAsset = asset.GetAs<ShaderAsset>();
                     const auto shaderVariantAsset = newShaderAsset->GetRootVariantAsset();
                     ShaderReloadDebugTracker::Printf(
-                        "{%p}->Shader::OnShaderAssetReloaded [current time %lld] got new shader {%p}'%s' with included variant {%p}'%s'",
+                        "{%p}->Shader::OnShaderAssetReloaded [current time %" PRId64 "] got new shader {%p}'%s' with included variant {%p}'%s'",
                         this,
                         now,
                         newShaderAsset,
@@ -468,7 +470,7 @@ namespace AZ
             {
                 AZStd::sys_time_t now = AZStd::GetTimeUTCMilliSecond();
 
-                ShaderReloadDebugTracker::Printf("{%p}->Shader::GetVariant for shader '%s' [current time %lld] found variant '%s'",
+                ShaderReloadDebugTracker::Printf("{%p}->Shader::GetVariant for shader '%s' [current time %" PRId64 "] found variant '%s'",
                     this, m_asset.GetHint().c_str(), now, variant.GetShaderVariantAsset().GetHint().c_str());
             }
 

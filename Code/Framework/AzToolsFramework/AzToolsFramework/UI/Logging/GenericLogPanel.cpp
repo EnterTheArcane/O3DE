@@ -7,6 +7,8 @@
  */
 
 
+#include <cinttypes>
+
 #include "GenericLogPanel.h"
 
 #include <AzCore/IO/FileIO.h>
@@ -78,7 +80,7 @@ namespace AzToolsFramework
             tempStorage.resize_no_construct(logSize + 1);
             if (!mainInstance->Read(openedFile, tempStorage.data(), logSize, true))
             {
-                Logging::LogLine line(AZStd::string::format("Unable to read %llu bytes from log file %s", logSize, fileName.c_str()).c_str(), "LOGGING", Logging::LogLine::TYPE_WARNING, QDateTime::currentMSecsSinceEpoch());
+                Logging::LogLine line(AZStd::string::format("Unable to read %" PRIu64 " bytes from log file %s", logSize, fileName.c_str()).c_str(), "LOGGING", Logging::LogLine::TYPE_WARNING, QDateTime::currentMSecsSinceEpoch());
                 AddLogLine(line);
                 mainInstance->Close(openedFile);
                 CommitAddedLines();

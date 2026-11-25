@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <AzCore/Console/IConsole.h>
 #include <AzCore/Date/DateFormat.h>
 #include <AzCore/Debug/StackTracer.h>
@@ -197,7 +199,7 @@ namespace AZ
             auto allocationRecordsSecondsEstimate = AZStd::chrono::ceil<AZStd::chrono::seconds>(SecondsAsDouble(estimateAllocationCount / double(AllocationRecordsPerSecondEstimate)));
 
             AllocationString printString = AllocationString::format(
-                R"(Printing allocation records for allocator %s. Estimated time to print all records is %lld seconds)"
+                "Printing allocation records for allocator %s. Estimated time to print all records is %" PRId64 " seconds"
                 "\n",
                 allocator->GetName(),
                 static_cast<AZ::s64>(allocationRecordsSecondsEstimate.count()));
@@ -223,7 +225,7 @@ namespace AZ
             }
 
             printString = AllocationString::format(
-                R"(Printed %zu allocations in %lld seconds for allocator "%s" (%s records per seconds))"
+                "Printed %zu allocations in %" PRId64 " seconds for allocator \"%s\" (%s records per seconds)"
                 "\n",
                 totalAllocations,
                 static_cast<AZ::s64>(durationInSeconds.count()),

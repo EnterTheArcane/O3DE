@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Debug/ProfilerBus.h>
 #include <AzCore/Debug/Profiler_Platform.inl>
@@ -21,7 +22,7 @@ namespace AZ::Debug
     AZStd::string GenerateOutputFile(const char* nameHint)
     {
         AZ::IO::FixedMaxPathString captureOutput = GetProfilerCaptureLocation();
-        return AZStd::string::format("%s/capture_%s_%lld.json", captureOutput.c_str(), nameHint, AZStd::GetTimeNowSecond());
+        return AZStd::string::format("%s/capture_%s_%" PRId64 ".json", captureOutput.c_str(), nameHint, AZStd::GetTimeNowSecond());
     }
 
     void ProfilerCaptureFrame([[maybe_unused]] const AZ::ConsoleCommandContainer& arguments)

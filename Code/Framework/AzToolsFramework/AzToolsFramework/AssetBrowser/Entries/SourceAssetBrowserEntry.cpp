@@ -43,11 +43,11 @@ namespace AzToolsFramework
             {
             case Column::SourceID:
             {
-                return QVariant(m_sourceId);
+                return QVariant(static_cast<qlonglong>(m_sourceId));
             }
             case Column::ScanFolderID:
             {
-                return QVariant(m_scanFolderId);
+                return QVariant(static_cast<qlonglong>(m_scanFolderId));
             }
             default:
             {

@@ -429,12 +429,12 @@ namespace ScriptCanvas
     DATUM_GET_NUMBER_SPECIALIZE(int);
     DATUM_GET_NUMBER_SPECIALIZE(long);
     DATUM_GET_NUMBER_SPECIALIZE(AZ::s8);
-    DATUM_GET_NUMBER_SPECIALIZE(AZ::s64);
+    DATUM_GET_NUMBER_SPECIALIZE(long long);
     DATUM_GET_NUMBER_SPECIALIZE(unsigned char);
     DATUM_GET_NUMBER_SPECIALIZE(unsigned int);
     DATUM_GET_NUMBER_SPECIALIZE(unsigned long);
     DATUM_GET_NUMBER_SPECIALIZE(unsigned short);
-    DATUM_GET_NUMBER_SPECIALIZE(AZ::u64);
+    DATUM_GET_NUMBER_SPECIALIZE(unsigned long long);
     DATUM_GET_NUMBER_SPECIALIZE(float);
     // only requred if the ScriptCanvas::NumberType changes from double, see set specialization below
     //DATUM_GET_NUMBER_SPECIALIZE(double); 
@@ -533,12 +533,12 @@ namespace ScriptCanvas
     DATUM_SET_NUMBER_SPECIALIZE(int);
     DATUM_SET_NUMBER_SPECIALIZE(long);
     DATUM_SET_NUMBER_SPECIALIZE(AZ::s8);
-    DATUM_SET_NUMBER_SPECIALIZE(AZ::s64);
+    DATUM_SET_NUMBER_SPECIALIZE(long long);
     DATUM_SET_NUMBER_SPECIALIZE(unsigned char);
     DATUM_SET_NUMBER_SPECIALIZE(unsigned int);
     DATUM_SET_NUMBER_SPECIALIZE(unsigned long);
     DATUM_SET_NUMBER_SPECIALIZE(unsigned short);
-    DATUM_SET_NUMBER_SPECIALIZE(AZ::u64);
+    DATUM_SET_NUMBER_SPECIALIZE(unsigned long long);
     DATUM_SET_NUMBER_SPECIALIZE(float);
     // only requried if the ScriptCanvas::NumberType changes from double, see get specialization above
     //DATUM_SET_NUMBER_SPECIALIZE(double);

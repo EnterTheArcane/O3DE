@@ -1779,6 +1779,71 @@ namespace UnitTest
         }
     }
 
+    TEST_F(Serialization, Legacy64BitPrimitivesKeepTheirIdsAndNames)
+    {
+        constexpr AZ::Uuid signedId{ "{70D8A282-A1EA-462D-9D04-51EDE81FAC2F}" };
+        constexpr AZ::Uuid unsignedId{ "{D6597933-47CD-4FC8-B911-63F3E2B0993A}" };
+
+        EXPECT_EQ(m_serializeContext->FindClassId(AZ::Crc32("AZ::s64")), (AZStd::vector<AZ::Uuid>{ signedId }));
+        EXPECT_EQ(m_serializeContext->FindClassId(AZ::Crc32("AZ::u64")), (AZStd::vector<AZ::Uuid>{ unsignedId }));
+        EXPECT_EQ(m_serializeContext->FindClassId(AZ::Crc32("i64")), (AZStd::vector<AZ::Uuid>{ signedId }));
+        EXPECT_EQ(m_serializeContext->FindClassId(AZ::Crc32("u64")), (AZStd::vector<AZ::Uuid>{ unsignedId }));
+
+        constexpr AZStd::string_view legacyXml = R"(<ObjectStream version="3">
+            <Class name="AZ::s64" value="-9223372036854775808" type="{70D8A282-A1EA-462D-9D04-51EDE81FAC2F}"/>
+            <Class name="AZ::u64" value="18446744073709551615" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+            </ObjectStream>)";
+        IO::MemoryStream legacyStream(legacyXml.data(), legacyXml.size());
+        size_t loadedCount = 0;
+        EXPECT_TRUE(ObjectStream::LoadBlocking(
+            &legacyStream, *m_serializeContext,
+            [&](void* object, const AZ::Uuid& id, SerializeContext* context)
+            {
+                ++loadedCount;
+                if (id == signedId)
+                {
+                    EXPECT_EQ(*static_cast<AZ::s64*>(object), AZStd::numeric_limits<AZ::s64>::min());
+                }
+                else if (id == unsignedId)
+                {
+                    EXPECT_EQ(*static_cast<AZ::u64*>(object), AZStd::numeric_limits<AZ::u64>::max());
+                }
+                else
+                {
+                    ADD_FAILURE() << "Unexpected primitive type";
+                }
+                context->FindClassData(id)->m_factory->Destroy(object);
+            }));
+        EXPECT_EQ(loadedCount, 2);
+    }
+
+    TEST_F(Serialization, ExactWidth64BitContainersRoundTrip)
+    {
+        using IntegerContainers = AZStd::pair<AZStd::vector<i64>, AZStd::vector<u64>>;
+        AZ::SerializeGenericTypeInfo<IntegerContainers>::GetGenericInfo()->Reflect(m_serializeContext.get());
+        const IntegerContainers source{
+            { AZStd::numeric_limits<AZ::s64>::min(), -42, 0, AZStd::numeric_limits<AZ::s64>::max() },
+            { 0, 42, AZStd::numeric_limits<AZ::u64>::max() }
+        };
+
+        for (auto format : { DataStream::ST_XML, DataStream::ST_JSON, DataStream::ST_BINARY })
+        {
+            AZStd::vector<char> buffer;
+            IO::ByteContainerStream<AZStd::vector<char>> stream(&buffer);
+            ASSERT_TRUE(Utils::SaveObjectToStream(stream, format, &source, m_serializeContext.get()));
+            if (format == DataStream::ST_XML)
+            {
+                AZStd::string_view output(buffer.data(), buffer.size());
+                EXPECT_NE(output.find(R"(name="i64")"), AZStd::string_view::npos);
+                EXPECT_NE(output.find(R"(name="u64")"), AZStd::string_view::npos);
+            }
+            stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+            IntegerContainers loaded;
+            ASSERT_TRUE(Utils::LoadObjectFromStreamInPlace(stream, loaded, m_serializeContext.get()));
+            EXPECT_EQ(source, loaded);
+        }
+    }
+
     TEST_F(Serialization, ElementOverrideTest_DefaultSerializationWorks)
     {
         ElementOverrideType::Reflect(*m_serializeContext);

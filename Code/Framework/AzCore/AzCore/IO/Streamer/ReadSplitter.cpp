@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/IO/Streamer/FileRequest.h>
@@ -297,7 +298,7 @@ namespace AZ::IO
                     readSize = AZStd::min(pending.m_readSize, m_maxReadSize);
                     copySize = readSize;
                 }
-                AZ_Assert(readSize <= m_maxReadSize, "Read size %llu in read splitter exceeds the maximum split size of %llu.",
+                AZ_Assert(readSize <= m_maxReadSize, "Read size %" PRIu64 " in read splitter exceeds the maximum split size of %" PRIu64 ".",
                     readSize, m_maxReadSize);
                 copyInfo.m_size = copySize;
 

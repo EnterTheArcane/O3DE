@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <cinttypes>
+
 #include <AzCore/std/functional.h>
 
 namespace Archive
@@ -102,7 +104,7 @@ namespace Archive
             ArchiveTocValidationResult tocValidationResult;
             tocValidationResult.m_errorCode = ArchiveTocErrorCode::InvalidMagicBytes;
             tocValidationResult.m_errorMessage = ArchiveTocValidationResult::ErrorString::format(
-                "The Archive TOC has an invalid magic byte sequence of %llx", tocView.m_magicBytes);
+                "The Archive TOC has an invalid magic byte sequence of %" PRIx64, tocView.m_magicBytes);
             return tocValidationResult;
         }
 
@@ -155,7 +157,7 @@ namespace Archive
                 ArchiveTocValidationResult tocValidationResult;
                 tocValidationResult.m_errorCode = ArchiveTocErrorCode::BlockOffsetTableCountMismatch;
                 tocValidationResult.m_errorMessage = ArchiveTocValidationResult::ErrorString::format(
-                    "The count of blocks lines used by each compressed file is %llu, which does not match the count"
+                    "The count of blocks lines used by each compressed file is %" PRIu64 ", which does not match the count"
                     " of entries in the block offset table %zu",
                     expectedBlockLineCount,
                     tocView.m_blockOffsetTable.size());
@@ -205,8 +207,8 @@ namespace Archive
         if (blockLineFirstIndex >= tocView.m_blockOffsetTable.size()
             && (blockLineFirstIndex + fileBlockLineCount) >= tocView.m_blockOffsetTable.size())
         {
-            return AZStd::unexpected(ResultString::format("Either the first block index for the file with value %llu"
-                "is incorrect or the uncompressed size (%llu) for the file is incorrect", blockLineFirstIndex,
+            return AZStd::unexpected(ResultString::format("Either the first block index for the file with value %" PRIu64
+                "is incorrect or the uncompressed size (%" PRIu64 ") for the file is incorrect", blockLineFirstIndex,
                 uncompressedSize));
         }
 
@@ -281,8 +283,8 @@ namespace Archive
         if (blockLineFirstIndex >= tocBlockOffsetTable.size()
             && (blockLineFirstIndex + fileBlockLineCount) >= tocBlockOffsetTable.size())
         {
-            return AZStd::unexpected(ResultString::format("The first block offset entry for the file with value %llu"
-                "is incorrect or the uncompressed size (%llu) is incorrect", blockLineFirstIndex,
+            return AZStd::unexpected(ResultString::format("The first block offset entry for the file with value %" PRIu64
+                "is incorrect or the uncompressed size (%" PRIu64 ") is incorrect", blockLineFirstIndex,
                 uncompressedSize));
         }
 

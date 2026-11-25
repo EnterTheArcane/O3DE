@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/DOM/Backends/JSON/JsonSerializationUtils.h>
 
 #include <AzCore/IO/ByteContainerStream.h>
@@ -106,7 +107,7 @@ namespace AZ::Dom::Json
             return VisitorFailure(
                 VisitorErrorCode::InternalError,
                 AZStd::string::format(
-                    "EndObject: Expected %llu attributes but received %llu attributes instead", attributeCount,
+                    "EndObject: Expected %" PRIu64 " attributes but received %" PRIu64 " attributes instead", attributeCount,
                     frontEntry.m_entryCount));
         }
 
@@ -161,7 +162,7 @@ namespace AZ::Dom::Json
             return VisitorFailure(
                 VisitorErrorCode::InternalError,
                 AZStd::string::format(
-                    "EndArray: Expected %llu elements but received %llu elements instead", elementCount, frontEntry.m_entryCount));
+                    "EndArray: Expected %" PRIu64 " elements but received %" PRIu64 " elements instead", elementCount, frontEntry.m_entryCount));
         }
 
         m_entryStack.pop_front();

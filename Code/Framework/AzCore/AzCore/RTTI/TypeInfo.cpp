@@ -8,7 +8,45 @@
 
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/Memory/OSAllocator.h>
+#include <AzCore/std/function/function_template.h>
 
+#include <climits>
+
+static_assert(sizeof(f32) * CHAR_BIT == 32);
+static_assert(sizeof(f64) * CHAR_BIT == 64);
+
+
+namespace
+{
+    template<class T>
+    constexpr const char* IntegerTypeName(const char* nativeName)
+    {
+        if constexpr (std::is_same_v<T, std::int64_t>)
+        {
+            return "i64";
+        }
+        if constexpr (std::is_same_v<T, std::uint64_t>)
+        {
+            return "u64";
+        }
+        return nativeName;
+    }
+
+    template<class T>
+    constexpr AZ::TypeId IntegerTypeId(AZ::TypeId nativeId)
+    {
+        // Keep the IDs already stored in assets when the STL changes the underlying type.
+        if constexpr (std::is_same_v<T, std::int64_t>)
+        {
+            return AZ::TypeId{ "{70D8A282-A1EA-462D-9D04-51EDE81FAC2F}" };
+        }
+        if constexpr (std::is_same_v<T, std::uint64_t>)
+        {
+            return AZ::TypeId{ "{D6597933-47CD-4FC8-B911-63F3E2B0993A}" };
+        }
+        return nativeId;
+    }
+}
 
 //! Add GetO3deTypeName and GetO3deTypeId definitions for commonly used O3DE types
 namespace AZ
@@ -20,17 +58,34 @@ namespace AZ
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(AZ::s8, "AZ::s8", "{58422C0E-1E47-4854-98E6-34098F6FE12D}");
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(short, "short", "{B8A56D56-A10D-4dce-9F63-405EE243DD3C}");
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(int, "int", "{72039442-EB38-4d42-A1AD-CB68F7E0EEF6}");
-    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(long, "long", "{8F24B9AD-7C51-46cf-B2F8-277356957325}");
-    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(AZ::s64, "AZ::s64", "{70D8A282-A1EA-462d-9D04-51EDE81FAC2F}");
+    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(long, IntegerTypeName<long>("long"),
+        IntegerTypeId<long>(AZ::TypeId{ "{8F24B9AD-7C51-46CF-B2F8-277356957325}" }));
+    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(long long, IntegerTypeName<long long>("long long"),
+        IntegerTypeId<long long>(AZ::TypeId{ "{DCFD653E-42C3-4A51-B632-1A612DF420AA}" }));
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(unsigned char, "unsigned char", "{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}");
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(unsigned short, "unsigned short", "{ECA0B403-C4F8-4b86-95FC-81688D046E40}");
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(unsigned int, "unsigned int", "{43DA906B-7DEF-4ca8-9790-854106D3F983}");
-    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(unsigned long, "unsigned long", "{5EC2D6F7-6859-400f-9215-C106F5B10E53}");
-    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(AZ::u64, "AZ::u64", "{D6597933-47CD-4fc8-B911-63F3E2B0993A}");
+    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(unsigned long, IntegerTypeName<unsigned long>("unsigned long"),
+        IntegerTypeId<unsigned long>(AZ::TypeId{ "{5EC2D6F7-6859-400F-9215-C106F5B10E53}" }));
+    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(unsigned long long, IntegerTypeName<unsigned long long>("unsigned long long"),
+        IntegerTypeId<unsigned long long>(AZ::TypeId{ "{3BEFE48C-42A6-402B-8020-5F065DCFC767}" }));
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(float, "float", "{EA2C3E90-AFBE-44d4-A90D-FAAF79BAF93D}");
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(double, "double", "{110C4B14-11A8-4e9d-8638-5051013A56AC}");
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(bool, "bool", "{A0CA880C-AFE4-43cb-926C-59AC48496112}");
     AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(void, "void", "{C0F1AFAD-5CB3-450E-B0F5-ADB5D46B0E22}");
+}
+
+namespace AZ::inline DeprecatedTypeNames
+{
+    void AzDeprecatedTypeNameVisitor<std::int64_t>::operator()(const DeprecatedTypeNameCallback& visitCallback) const
+    {
+        visitCallback("AZ::s64");
+    }
+
+    void AzDeprecatedTypeNameVisitor<std::uint64_t>::operator()(const DeprecatedTypeNameCallback& visitCallback) const
+    {
+        visitCallback("AZ::u64");
+    }
 }
 
 namespace AZStd

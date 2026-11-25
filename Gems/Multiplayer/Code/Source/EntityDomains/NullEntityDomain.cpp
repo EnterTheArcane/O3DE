@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include <Source/EntityDomains/NullEntityDomain.h>
 #include <Multiplayer/IMultiplayer.h>
 #include <AzCore/Console/ILogger.h>
@@ -30,7 +32,7 @@ namespace Multiplayer
 
     void NullEntityDomain::HandleLossOfAuthoritativeReplicator([[maybe_unused]] const ConstNetworkEntityHandle& entityHandle)
     {
-        AZLOG_ERROR("Timed out entity id %llu during migration, marking for removal", aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()));
+        AZLOG_ERROR("Timed out entity id %" PRIu64 " during migration, marking for removal", aznumeric_cast<AZ::u64>(entityHandle.GetNetEntityId()));
         GetNetworkEntityManager()->MarkForRemoval(entityHandle);
     }
 

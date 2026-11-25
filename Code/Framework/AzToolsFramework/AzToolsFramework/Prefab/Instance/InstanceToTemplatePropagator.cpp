@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Serialization/Json/JsonSerialization.h>
 #include <AzCore/Component/Entity.h>
@@ -89,7 +90,7 @@ namespace AzToolsFramework
 
             if (!findLinkResult.has_value())
             {
-                AZ_Assert(false, "Link with id %llu couldn't be found. Patch cannot be generated.", linkId);
+                AZ_Assert(false, "Link with id %" PRIu64 " couldn't be found. Patch cannot be generated.", linkId);
                 return false;
             }
 
@@ -106,7 +107,7 @@ namespace AzToolsFramework
             if (!instanceOptionalReference)
             {
                 AZ_Error(
-                    "Prefab", false, "Failed to find an owning instance for the entity with id %llu.",
+                    "Prefab", false, "Failed to find an owning instance for the entity with id %" PRIu64 ".",
                     static_cast<AZ::u64>(entityId));
                 return false;
             }
@@ -122,7 +123,7 @@ namespace AzToolsFramework
             InstanceOptionalReference owningInstance = m_instanceEntityMapperInterface->FindOwningInstance(entityId);
             if (!owningInstance.has_value())
             {
-                AZ_Error("Prefab", false, "Failed to find an owning instance for entity with id %llu.", static_cast<AZ::u64>(entityId));
+                AZ_Error("Prefab", false, "Failed to find an owning instance for entity with id %" PRIu64 ".", static_cast<AZ::u64>(entityId));
                 return AZStd::string();
             }
 
@@ -148,7 +149,7 @@ namespace AzToolsFramework
             InstanceOptionalReference owningInstance = m_instanceEntityMapperInterface->FindOwningInstance(entityId);
             if (!owningInstance.has_value())
             {
-                AZ_Error("Prefab", false, "Failed to find an owning instance for entity with id %llu.", static_cast<AZ::u64>(entityId));
+                AZ_Error("Prefab", false, "Failed to find an owning instance for entity with id %" PRIu64 ".", static_cast<AZ::u64>(entityId));
                 return AZ::Dom::Path();
             }
 
@@ -247,7 +248,7 @@ namespace AzToolsFramework
             EntityAliasOptionalReference entityAliasOptionalReference = owningInstance->get().GetEntityAlias(entityId);
             if (!entityAliasOptionalReference)
             {
-                AZ_Error("Prefab", false, "Entity alias for entity with id %llu cannot be found.", static_cast<AZ::u64>(entityId));
+                AZ_Error("Prefab", false, "Entity alias for entity with id %" PRIu64 " cannot be found.", static_cast<AZ::u64>(entityId));
                 return;
             }
 

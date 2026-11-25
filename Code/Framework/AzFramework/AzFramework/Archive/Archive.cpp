@@ -187,7 +187,7 @@ namespace AZ::IO::ArchiveInternal
 
         if (static_cast<size_t>(nReadBytes) != nTotal)
         {
-            AZ_Warning("Archive", false, "FRead did not read expected number of byte from file, only %zu of %lld bytes read", nTotal, nReadBytes);
+            AZ_Warning("Archive", false, "FRead did not read expected number of byte from file, only %zu of %" PRId64 " bytes read", nTotal, nReadBytes);
             nTotal = (size_t)nReadBytes;
         }
         m_nCurSeek += nTotal;

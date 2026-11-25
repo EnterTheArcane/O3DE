@@ -6,6 +6,7 @@
  *
  */
 
+#include <cinttypes>
 #include <AzNetworking/Framework/NetworkingSystemComponent.h>
 #include <AzNetworking/TcpTransport/TcpNetworkInterface.h>
 #include <AzNetworking/UdpTransport/UdpNetworkInterface.h>
@@ -179,9 +180,9 @@ namespace AzNetworking
     void NetworkingSystemComponent::DumpStats([[maybe_unused]] const AZ::ConsoleCommandContainer& arguments)
     {
         AZLOG_INFO("Total sockets monitored by TcpListenThread: %u", GetTcpListenThreadSocketCount());
-        AZLOG_INFO("Total time spent updating TcpListenThread: %lld", aznumeric_cast<AZ::s64>(GetTcpListenThreadUpdateTime()));
+        AZLOG_INFO("Total time spent updating TcpListenThread: %" PRId64, aznumeric_cast<AZ::s64>(GetTcpListenThreadUpdateTime()));
         AZLOG_INFO("Total sockets monitored by UdpReaderThread: %u", GetUdpReaderThreadSocketCount());
-        AZLOG_INFO("Total time spent updating UdpReaderThread: %lld", aznumeric_cast<AZ::s64>(GetUdpReaderThreadUpdateTime()));
+        AZLOG_INFO("Total time spent updating UdpReaderThread: %" PRId64, aznumeric_cast<AZ::s64>(GetUdpReaderThreadUpdateTime()));
 
         for (auto& networkInterface : m_networkInterfaces)
         {
@@ -191,20 +192,20 @@ namespace AzNetworking
             AZLOG_INFO("%sNetworkInterface: %s - open to %s on port %u", protocol, networkInterface.second->GetName().GetCStr(), trustZone, port);
 
             const NetworkInterfaceMetrics& metrics = networkInterface.second->GetMetrics();
-            AZLOG_INFO(" - Total time spent updating in milliseconds: %lld", aznumeric_cast<AZ::s64>(metrics.m_updateTimeMs));
-            AZLOG_INFO(" - Total number of connections: %llu", aznumeric_cast<AZ::u64>(metrics.m_connectionCount));
-            AZLOG_INFO(" - Total send time in milliseconds: %lld", aznumeric_cast<AZ::s64>(metrics.m_sendTimeMs));
-            AZLOG_INFO(" - Total sent packets: %llu", aznumeric_cast<AZ::s64>(metrics.m_sendPackets));
-            AZLOG_INFO(" - Total sent bytes after compression: %llu", aznumeric_cast<AZ::u64>(metrics.m_sendBytes));
-            AZLOG_INFO(" - Total sent bytes before compression: %llu", aznumeric_cast<AZ::u64>(metrics.m_sendBytesUncompressed));
-            AZLOG_INFO(" - Total sent compressed packets without benefit: %llu", aznumeric_cast<AZ::u64>(metrics.m_sendCompressedPacketsNoGain));
-            AZLOG_INFO(" - Total gain from packet compression: %lld", aznumeric_cast<AZ::s64>(metrics.m_sendBytesCompressedDelta));
-            AZLOG_INFO(" - Total packets resent: %llu", aznumeric_cast<AZ::u64>(metrics.m_resentPackets));
-            AZLOG_INFO(" - Total receive time in milliseconds: %lld", aznumeric_cast<AZ::s64>(metrics.m_recvTimeMs));
-            AZLOG_INFO(" - Total received packets: %llu", aznumeric_cast<AZ::u64>(metrics.m_recvPackets));
-            AZLOG_INFO(" - Total received bytes after compression: %llu", aznumeric_cast<AZ::u64>(metrics.m_recvBytes));
-            AZLOG_INFO(" - Total received bytes before compression: %llu", aznumeric_cast<AZ::u64>(metrics.m_recvBytesUncompressed));
-            AZLOG_INFO(" - Total packets discarded due to load: %llu", aznumeric_cast<AZ::u64>(metrics.m_discardedPackets));
+            AZLOG_INFO(" - Total time spent updating in milliseconds: %" PRId64, aznumeric_cast<AZ::s64>(metrics.m_updateTimeMs));
+            AZLOG_INFO(" - Total number of connections: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_connectionCount));
+            AZLOG_INFO(" - Total send time in milliseconds: %" PRId64, aznumeric_cast<AZ::s64>(metrics.m_sendTimeMs));
+            AZLOG_INFO(" - Total sent packets: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_sendPackets));
+            AZLOG_INFO(" - Total sent bytes after compression: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_sendBytes));
+            AZLOG_INFO(" - Total sent bytes before compression: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_sendBytesUncompressed));
+            AZLOG_INFO(" - Total sent compressed packets without benefit: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_sendCompressedPacketsNoGain));
+            AZLOG_INFO(" - Total gain from packet compression: %" PRId64, aznumeric_cast<AZ::s64>(metrics.m_sendBytesCompressedDelta));
+            AZLOG_INFO(" - Total packets resent: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_resentPackets));
+            AZLOG_INFO(" - Total receive time in milliseconds: %" PRId64, aznumeric_cast<AZ::s64>(metrics.m_recvTimeMs));
+            AZLOG_INFO(" - Total received packets: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_recvPackets));
+            AZLOG_INFO(" - Total received bytes after compression: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_recvBytes));
+            AZLOG_INFO(" - Total received bytes before compression: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_recvBytesUncompressed));
+            AZLOG_INFO(" - Total packets discarded due to load: %" PRIu64, aznumeric_cast<AZ::u64>(metrics.m_discardedPackets));
         }
     }
 }

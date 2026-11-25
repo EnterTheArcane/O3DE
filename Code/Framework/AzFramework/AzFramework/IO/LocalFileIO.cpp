@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+#include <cinttypes>
+
 #include <AzFramework/IO/LocalFileIO.h>
 #include <sys/stat.h>
 #include <AzCore/IO/SystemFile.h>
@@ -709,7 +711,7 @@ namespace AZ
             {
                 if (inBuffer.size() >= outBufferLength)
                 {
-                    AZ_Error("FileIO", false, R"(Path "%.*s" cannot fit in output buffer. The output buffer is too small (max len %llu, actual len %zu))",
+                    AZ_Error("FileIO", false, "Path \"%.*s\" cannot fit in output buffer. The output buffer is too small (max len %" PRIu64 ", actual len %zu)",
                         aznumeric_cast<int>(inBuffer.size()), inBuffer.data(), outBufferLength, inBuffer.size());
                     return AZStd::nullopt;
                 }
@@ -755,7 +757,7 @@ namespace AZ
 
             size_t requiredResolvedPathSize = pathView.size() - aliasKey.size() + aliasValue.size() + 1;
             AZ_Assert(path != resolvedPath, "ResolveAliases does not support inplace update of the path");
-            AZ_Assert(resolvedPathSize >= requiredResolvedPathSize, "Resolved path size %llu not large enough. It needs to be %zu",
+            AZ_Assert(resolvedPathSize >= requiredResolvedPathSize, "Resolved path size %" PRIu64 " not large enough. It needs to be %zu",
                 resolvedPathSize, requiredResolvedPathSize);
             // we assert above, but we also need to properly handle the case when the resolvedPath buffer size
             // is too small to copy the source into.

@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+#include <cinttypes>
+
 #include <Editor/DistributionCacheComponent.h>
 
 namespace OpenParticle
@@ -46,7 +48,7 @@ namespace OpenParticle
     AZStd::string DistributionCacheComponent::GetKey(const void* detailInfo,
         const AZStd::string& className, const AZStd::string& moduleName, const AZ::TypeId& paramId)
     {
-        return AZStd::string::format("%llx_%s_%s_%zx", reinterpret_cast<AZ::u64>(detailInfo), className.data(), moduleName.data(), paramId.GetHash());
+        return AZStd::string::format("%" PRIx64 "_%s_%s_%zx", reinterpret_cast<AZ::u64>(detailInfo), className.data(), moduleName.data(), paramId.GetHash());
     }
 
     void DistributionCacheComponent::StashDistributionCurve(AZStd::string& key, CurveData& curve)

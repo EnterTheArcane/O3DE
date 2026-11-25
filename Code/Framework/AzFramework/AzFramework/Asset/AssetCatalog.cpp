@@ -6,6 +6,8 @@
  *
  */
 
+#include <cinttypes>
+
 #include "AssetCatalog.h"
 
 #include <AzCore/Asset/AssetCommon.h>
@@ -950,7 +952,7 @@ namespace AzFramework
 
             for (auto& it : m_registry->m_assetIdToInfo)
             {
-                AZ_TracePrintf("Asset Registry: AssetID->Info", "%s --> %s %llu bytes\n", it.first.ToString<AZStd::string>().c_str(), it.second.m_relativePath.c_str(), it.second.m_sizeBytes);
+                AZ_TracePrintf("Asset Registry: AssetID->Info", "%s --> %s %" PRIu64 " bytes\n", it.first.ToString<AZStd::string>().c_str(), it.second.m_relativePath.c_str(), it.second.m_sizeBytes);
             }
 
 #endif
