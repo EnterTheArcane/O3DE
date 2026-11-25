@@ -490,6 +490,7 @@ class PackagingTests(unittest.TestCase):
                         self.assertEqual(set(json.loads(index.read_text())), expected)
 
     def test_ownership_change_uses_a_new_cache(self):
+        exclusions = ["~ispc/*", "~ispc-texture-compressor/*"]
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             cache = root / "cache"
@@ -498,14 +499,14 @@ class PackagingTests(unittest.TestCase):
                 json.dumps(
                     {
                         "remotes": [
-                            {"name": "conancenter", "allowed_packages": ["~expat/*"]}
+                            {"name": "conancenter", "allowed_packages": exclusions}
                         ]
                     }
                 ),
                 encoding="utf-8",
             )
-            self.assertEqual(cache_folder(root, ["~expat/*"]), cache)
-            self.assertNotEqual(cache_folder(root, ["~expat/*", "~qt/*"]), cache)
+            self.assertEqual(cache_folder(root, exclusions), cache)
+            self.assertNotEqual(cache_folder(root, [*exclusions, "~qt/*"]), cache)
 
     def test_archive_and_cache_match(self):
         with tempfile.TemporaryDirectory() as folder:

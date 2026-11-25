@@ -84,7 +84,7 @@ def cache_folder(output, exclusions):
         center = next(
             (remote for remote in remotes if remote["name"] == "conancenter"), {}
         )
-        if sorted(center.get("allowed_packages", [])) != exclusions:
+        if sorted(center.get("allowed_packages", [])) != sorted(exclusions):
             # Conan checks cached recipes before remotes. A change of ownership
             # must not inherit recipes from the prior remote configuration.
             digest = hashlib.sha256("\n".join(exclusions).encode()).hexdigest()
