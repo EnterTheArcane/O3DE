@@ -13,6 +13,7 @@ from conan import ConanFile
 from conan.tools.build import can_run
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
 from conan.tools.env import VirtualRunEnv
+from conan.tools.files import copy
 
 
 class Recipe(ConanFile):
@@ -40,6 +41,13 @@ class Recipe(ConanFile):
     def test(self):
         executable = Path(self.build_folder) / self.cpp.build.bindir / "test_package"
         if self.settings.os == "Emscripten":
+            # Emscripten loads side modules relative to the JavaScript entry point.
+            for name in ("openimageio", "opencolorio"):
+                dependency = self.dependencies.host[name]
+                libraries = (
+                    Path(dependency.package_folder) / dependency.cpp_info.libdirs[0]
+                )
+                copy(self, "lib*.so*", libraries, executable.parent)
             node = os.environ.get("EMSDK_NODE") or "node"
             self.run(f'"{node}" "{executable.with_suffix(".js")}"', env="conanrun")
         elif can_run(self):
