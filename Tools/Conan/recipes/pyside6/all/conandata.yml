@@ -44,3 +44,6 @@ patches:
     - patch_file: "patches/macos-flat-python-framework.patch"
       patch_description: Find the library in an unversioned macOS Python framework
       patch_type: portability
+    - patch_file: "patches/flat-cross-python-layout.patch"
+      patch_description: Match the vendored Python SDK site-packages path on POSIX cross builds
+      patch_type: portability

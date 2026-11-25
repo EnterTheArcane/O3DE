@@ -1,0 +1,18 @@
+--- a/sources/shiboken6/cmake/ShibokenHelpers.cmake
++++ b/sources/shiboken6/cmake/ShibokenHelpers.cmake
+@@ -121,14 +121,6 @@
+             set(PYTHON_SITE_PACKAGES "${QFP_PYTHON_SITE_PACKAGES}")
+         else()
+-            # Assumes POSIX.
+-            # Convention can be checked in cpython's source code in
+-            # Lib/sysconfig.py's _INSTALL_SCHEMES
+-            set(__version_major_minor
+-                "${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}")
+-
+-            set(PYTHON_SITE_PACKAGES_WITHOUT_PREFIX
+-                "lib/python${__version_major_minor}/site-packages")
++            set(PYTHON_SITE_PACKAGES_WITHOUT_PREFIX "lib/python/site-packages")
+             set(PYTHON_SITE_PACKAGES
+                 "${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE_PACKAGES_WITHOUT_PREFIX}")
+-            unset(__version_major_minor)
+         endif()
