@@ -81,6 +81,7 @@ class Recipe(ConanFile):
         with_cuda = bool(self.options.get_safe("with_cuda"))
         tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = with_cuda
         if with_cuda:
+            tc.cache_variables["PX_GENERATE_GPU_STATIC_LIBRARIES"] = False
             # CUDA 13 targets Turing or newer. PTX lets the driver JIT for newer GPUs.
             tc.cache_variables["CMAKE_CUDA_ARCHITECTURES"] = "75-virtual"
         tc.cache_variables["PX_GENERATE_STATIC_LIBRARIES"] = True

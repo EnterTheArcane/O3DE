@@ -124,10 +124,12 @@ class Recipe(ConanFile):
         if not self._multi_config:
             variables["CMAKE_BUILD_TYPE"] = self._configuration
         cmake.configure(variables=variables)
-        cmake.build(build_type=self._configuration)
+        cmake.build(build_type=self._configuration if self._multi_config else None)
 
     def package(self):
-        CMake(self).install(build_type=self._configuration)
+        CMake(self).install(
+            build_type=self._configuration if self._multi_config else None
+        )
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "NvCloth")
