@@ -1,5 +1,4 @@
 include(common/llvm)
-include(common/msys2)
 include(common/windows-sdk)
 include(common/quiet-cmake)
 
