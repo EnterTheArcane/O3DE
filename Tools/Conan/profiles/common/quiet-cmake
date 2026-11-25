@@ -1,0 +1,4 @@
+[conf]
+tools.build:verbosity=quiet
+tools.cmake:configure_args+=["-Wno-dev", "-Wno-deprecated", "--no-warn-unused-cli"]
+tools.cmake.cmaketoolchain:extra_variables*={"CMAKE_INSTALL_MESSAGE": "NEVER"}

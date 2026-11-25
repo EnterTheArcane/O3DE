@@ -49,7 +49,7 @@ class Recipe(ConanFile):
 
     def build_requirements(self):
         if self.settings.os == "Windows":
-            self.tool_requires("msys2/cci.latest", options={"packages": "bison,flex"})
+            self.tool_requires("msys2/latest", options={"packages": "bison,flex"})
         else:
             self.tool_requires("bison/3.8.2")
             self.tool_requires("flex/2.6.4")
