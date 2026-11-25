@@ -12,3 +12,6 @@ patches:
       patch_description: "Pass resize observer pointers as integers supported by Emscripten embind"
     - patch_file: "patches/installed-build-metadata.patch"
       patch_description: "Keep the build workspace out of Qt SPDX and toolchain files"
+    - patch_file: "patches/wasm-relocatable-library-path.patch"
+      patch_description: "Resolve the shared WebAssembly library directory from the installed SDK"
+      patch_type: portability

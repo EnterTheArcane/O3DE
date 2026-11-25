@@ -1,0 +1,15 @@
+--- a/qtbase/cmake/QtWasmHelpers.cmake
++++ b/qtbase/cmake/QtWasmHelpers.cmake
+@@ -126,8 +126,9 @@
+         # Add Qt libdir to linker library paths
+         set(qt_lib_location
+             "${QT_BUILD_INTERNALS_RELOCATABLE_INSTALL_PREFIX}/${INSTALL_LIBDIR}")
+-        target_link_options("${wasmTarget}" INTERFACE
+-            "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:SHELL:" -L${qt_lib_location}/>)
++        target_link_directories("${wasmTarget}" INTERFACE
++            "$<BUILD_INTERFACE:$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${qt_lib_location}>>"
++            "$<INSTALL_INTERFACE:$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:$<INSTALL_PREFIX>/${INSTALL_LIBDIR}>>")
+-
++
+         target_compile_options("${wasmTarget}" INTERFACE "${set_shared_module_type_if_needed}")
+         target_link_options("${wasmTarget}" INTERFACE "${set_shared_module_type_if_needed}")
