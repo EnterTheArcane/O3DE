@@ -146,9 +146,23 @@ jobs:
           name: compilation-cache-${{ matrix.profile }}
           github-token: ${{ github.token }}
           run-id: ${{ inputs.cache_run_id || github.run_id }}
+      - name: Install ccache on Windows
+        if: runner.os == 'Windows'
+        run: |
+          # CMake passes clang-cl dependency flags that older ccache versions mishandle.
+          $release = 'ccache-4.14.3-windows-x86_64'
+          $zip = Join-Path $env:RUNNER_TEMP "$release.zip"
+          Invoke-WebRequest "https://github.com/ccache/ccache/releases/download/v4.14.3/$release.zip" -OutFile $zip
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne 'c845c3d65be81954c75659145a522a793a27586bf940c5dcfe18af33fa1a67dd') {
+            throw 'Unexpected ccache archive checksum.'
+          }
+          Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
+          Join-Path $env:RUNNER_TEMP $release | Out-File $env:GITHUB_PATH -Append -Encoding utf8
       - name: Set up ccache
         uses: chocobo1/setup-ccache-action@37c3347f8a7738e82aab7a06f276f7a12e3008fb
         with:
+          install_ccache: ${{ runner.os != 'Windows' }}
+          windows_compile_environment: msvc
           store_cache: false
           restore_cache: false
           ccache_options: |
