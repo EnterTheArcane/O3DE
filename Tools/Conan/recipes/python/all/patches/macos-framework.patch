@@ -240,7 +240,7 @@ diff --git a/Mac/Makefile.in b/Mac/Makefile.in
 +# Keep the object available for dsymutil during installation.
  pythonw: $(srcdir)/Tools/pythonw.c Makefile
 -	$(CC) $(LDFLAGS) -DPYTHONFRAMEWORK='"$(PYTHONFRAMEWORK)"' -o $@ \
-+	$(CC) $(LDFLAGS) -save-temps=obj -DPYTHONFRAMEWORK='"$(PYTHONFRAMEWORK)"' -o $@ \
++	$(CC) @CPPFLAGS@ $(LDFLAGS) -save-temps=obj -DPYTHONFRAMEWORK='"$(PYTHONFRAMEWORK)"' -o $@ \
  		$(srcdir)/Tools/pythonw.c -I.. -I$(srcdir)/../Include \
  		../$(PYTHONFRAMEWORK).framework/Versions/$(VERSION)/$(PYTHONFRAMEWORK)
  

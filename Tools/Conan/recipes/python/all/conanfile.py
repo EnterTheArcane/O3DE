@@ -235,7 +235,7 @@ class Recipe(ConanFile):
                 for var, language in (("CC", "c"), ("CXX", "cpp")):
                     compiler = Path(compilers[language]).with_suffix("")
                     env.define_path(var, compiler.as_posix())
-            env.define("CFLAGS", "-D__BIONIC_NO_PAGE_SIZE_MACRO")
+            env.append("CFLAGS", "-D__BIONIC_NO_PAGE_SIZE_MACRO")
             env.define(
                 "LDFLAGS",
                 "-Wl,--build-id=sha1,--no-rosegment,-z,max-page-size=16384,"
