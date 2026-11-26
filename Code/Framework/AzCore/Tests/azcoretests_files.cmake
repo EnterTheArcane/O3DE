@@ -125,6 +125,8 @@ set(FILES
     Math/FrustumPerformanceTests.cpp
     Math/Geometry3DUtilsTests.cpp
     Math/HemisphereTests.cpp
+    Math/HalfTests.cpp
+    Math/HalfBenchmarks.cpp
     Math/IntersectionPerformanceTests.cpp
     Math/IntersectionTestHelpers.cpp
     Math/IntersectionTestHelpers.h

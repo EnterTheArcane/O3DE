@@ -298,6 +298,7 @@ set(FILES
     Math/ColorGradient.h
     Math/ColorSerializer.h
     Math/ColorSerializer.cpp
+    Math/Half.h
     Math/Crc.cpp
     Math/Crc.inl
     Math/Crc.h

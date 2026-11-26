@@ -8,6 +8,8 @@
 
 
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/Math/Half.h>
+#include <cstring>
 
 #include <Processing/ImageObjectImpl.h>
 #include <Processing/ImageConvert.h>
@@ -40,14 +42,20 @@ namespace ImageProcessingAtom
         return static_cast<uint16>(round(AZ::GetClamp<float>(in, 0.f, 1.f) * 65535.f));
     }
 
-    float HalfToF32(SHalf in)
+    namespace
     {
-        return in;
-    }
+        float ReadHalf(const uint8* buffer, size_t channel)
+        {
+            AZ::u16 bits;
+            memcpy(&bits, buffer + channel * sizeof(bits), sizeof(bits));
+            return AZ::Half::FromBits(bits).ToFloat();
+        }
 
-    SHalf F32ToHalf(float in)
-    {
-        return SHalf(in);
+        void WriteHalf(uint8* buffer, size_t channel, float value)
+        {
+            const AZ::u16 bits = AZ::Half(value).GetBits();
+            memcpy(buffer + channel * sizeof(bits), &bits, sizeof(bits));
+        }
     }
 
     //stucture for RGBE pixel format
@@ -437,20 +445,18 @@ namespace ImageProcessingAtom
     public:
         void GetRGBA(const uint8* buf, float& r, float& g, float& b, float& a) override
         {
-            const SHalf* data = (SHalf*)(buf);
-            r = data[0];
-            g = data[1];
-            b = data[2];
-            a = data[3];
+            r = ReadHalf(buf, 0);
+            g = ReadHalf(buf, 1);
+            b = ReadHalf(buf, 2);
+            a = ReadHalf(buf, 3);
         }
 
         void SetRGBA(uint8* buf, const float& r, const float& g, const float& b, const float& a) override
         {
-            SHalf* data = (SHalf*)(buf);
-            data[0] = SHalf(r);
-            data[1] = SHalf(g);
-            data[2] = SHalf(b);
-            data[3] = SHalf(a);
+            WriteHalf(buf, 0, r);
+            WriteHalf(buf, 1, g);
+            WriteHalf(buf, 2, b);
+            WriteHalf(buf, 3, a);
         }
     };
 
@@ -461,18 +467,16 @@ namespace ImageProcessingAtom
     public:
         void GetRGBA(const uint8* buf, float& r, float& g, float& b, float& a) override
         {
-            const SHalf* data = (SHalf*)(buf);
-            r = data[0];
-            g = data[1];
+            r = ReadHalf(buf, 0);
+            g = ReadHalf(buf, 1);
             b = 0.f;
             a = 1.f;
         }
 
         void SetRGBA(uint8* buf, const float& r, const float& g, [[maybe_unused]] const float& b, [[maybe_unused]] const float& a) override
         {
-            SHalf* data = (SHalf*)(buf);
-            data[0] = SHalf(r);
-            data[1] = SHalf(g);
+            WriteHalf(buf, 0, r);
+            WriteHalf(buf, 1, g);
         }
     };
 
@@ -483,8 +487,7 @@ namespace ImageProcessingAtom
     public:
         void GetRGBA(const uint8* buf, float& r, float& g, float& b, float& a) override
         {
-            const SHalf* data = (SHalf*)(buf);
-            r = data[0];
+            r = ReadHalf(buf, 0);
             g = r;
             b = r;
             a = 1.f;
@@ -492,8 +495,7 @@ namespace ImageProcessingAtom
 
         void SetRGBA(uint8* buf, const float& r, [[maybe_unused]] const float& g, [[maybe_unused]] const float& b, [[maybe_unused]] const float& a) override
         {
-            SHalf* data = (SHalf*)(buf);
-            data[0] = SHalf(r);
+            WriteHalf(buf, 0, r);
         }
     };
 

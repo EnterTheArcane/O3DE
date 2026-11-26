@@ -23,6 +23,8 @@
 #include <Atom/RPI.Public/WindowContext.h>
 
 #include <AzCore/Math/Color.h>
+#include <AzCore/Math/Half.h>
+#include <cstring>
 #include <AzCore/std/containers/array.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 
@@ -32,83 +34,12 @@ namespace AZ
     {
         namespace Internal
         {
-            // The original implementation was from cryhalf's CryConvertFloatToHalf and CryConvertHalfToFloat function
-            // Will be replaced with centralized half float API
-            struct SHalf
+            float ReadHalf(const AZ::u8* buffer, size_t component)
             {
-                explicit SHalf(float floatValue)
-                {
-                    AZ::u32 Result;
-
-                    AZ::u32 intValue = ((AZ::u32*)(&floatValue))[0];
-                    AZ::u32 Sign = (intValue & 0x80000000U) >> 16U;
-                    intValue = intValue & 0x7FFFFFFFU;
-
-                    if (intValue > 0x47FFEFFFU)
-                    {
-                        // The number is too large to be represented as a half.  Saturate to infinity.
-                        Result = 0x7FFFU;
-                    }
-                    else
-                    {
-                        if (intValue < 0x38800000U)
-                        {
-                            // The number is too small to be represented as a normalized half.
-                            // Convert it to a denormalized value.
-                            AZ::u32 Shift = 113U - (intValue >> 23U);
-                            intValue = (0x800000U | (intValue & 0x7FFFFFU)) >> Shift;
-                        }
-                        else
-                        {
-                            // Rebias the exponent to represent the value as a normalized half.
-                            intValue += 0xC8000000U;
-                        }
-
-                        Result = ((intValue + 0x0FFFU + ((intValue >> 13U) & 1U)) >> 13U) & 0x7FFFU;
-                    }
-                    h = static_cast<AZ::u16>(Result | Sign);
-                }
-
-                operator float() const
-                {
-                    AZ::u32 Mantissa;
-                    AZ::u32 Exponent;
-                    AZ::u32 Result;
-
-                    Mantissa = h & 0x03FF;
-
-                    if ((h & 0x7C00) != 0)  // The value is normalized
-                    {
-                        Exponent = ((h >> 10) & 0x1F);
-                    }
-                    else if (Mantissa != 0)     // The value is denormalized
-                    {
-                        // Normalize the value in the resulting float
-                        Exponent = 1;
-
-                        do
-                        {
-                            Exponent--;
-                            Mantissa <<= 1;
-                        } while ((Mantissa & 0x0400) == 0);
-
-                        Mantissa &= 0x03FF;
-                    }
-                    else                        // The value is zero
-                    {
-                        Exponent = static_cast<AZ::u32>(-112);
-                    }
-
-                    Result = ((h & 0x8000) << 16) | // Sign
-                        ((Exponent + 112) << 23) | // Exponent
-                        (Mantissa << 13);          // Mantissa
-
-                    return *(float*)&Result;
-                }
-
-            private:
-                AZ::u16 h;
-            };
+                AZ::u16 bits;
+                memcpy(&bits, buffer + component * sizeof(bits), sizeof(bits));
+                return AZ::Half::FromBits(bits).ToFloat();
+            }
 
             float ScaleValue(float value, float origMin, float origMax, float scaledMin, float scaledMax)
             {
@@ -206,8 +137,7 @@ namespace AZ
                 case AZ::RHI::Format::R16G16_FLOAT:
                 case AZ::RHI::Format::R16G16B16A16_FLOAT:
                     {
-                        auto actualMem = reinterpret_cast<const float*>(mem);
-                        return SHalf(actualMem[indices.first + componentIndex]);
+                        return ReadHalf(mem, indices.first + componentIndex);
                     }
                 case AZ::RHI::Format::D32_FLOAT:
                 case AZ::RHI::Format::R32_FLOAT:
@@ -380,22 +310,19 @@ namespace AZ
                     }
                 case AZ::RHI::Format::R16_FLOAT:
                     {
-                        auto actualMem = reinterpret_cast<const float*>(mem);
-                        return AZ::Color(static_cast<float>(SHalf(actualMem[indices.first])), 0.0f, 0.0f, 1.0f);
+                        return AZ::Color(ReadHalf(mem, indices.first), 0.0f, 0.0f, 1.0f);
                     }
                 case AZ::RHI::Format::R16G16_FLOAT:
                     {
-                        auto actualMem = reinterpret_cast<const float*>(mem);
-                        return AZ::Color(static_cast<float>(SHalf(actualMem[indices.first + 0])), static_cast<float>(SHalf(actualMem[indices.first + 1])), 0.0f, 1.0f);
+                        return AZ::Color(ReadHalf(mem, indices.first + 0), ReadHalf(mem, indices.first + 1), 0.0f, 1.0f);
                     }
                 case AZ::RHI::Format::R16G16B16A16_FLOAT:
                     {
-                        auto actualMem = reinterpret_cast<const float*>(mem);
                         return AZ::Color(
-                            static_cast<float>(SHalf(actualMem[indices.first + 0])),
-                            static_cast<float>(SHalf(actualMem[indices.first + 1])),
-                            static_cast<float>(SHalf(actualMem[indices.first + 2])),
-                            static_cast<float>(SHalf(actualMem[indices.first + 3])));
+                            ReadHalf(mem, indices.first + 0),
+                            ReadHalf(mem, indices.first + 1),
+                            ReadHalf(mem, indices.first + 2),
+                            ReadHalf(mem, indices.first + 3));
                     }
                 case AZ::RHI::Format::D32_FLOAT:
                 case AZ::RHI::Format::R32_FLOAT:

@@ -7,5 +7,6 @@
 #
 
 set(FILES
+    Tests/HalfPixelTests.cpp
     Tests/ImageProcessing_Test.cpp
 )

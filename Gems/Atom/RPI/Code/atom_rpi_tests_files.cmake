@@ -52,4 +52,5 @@ set(FILES
     Tests/System/SceneTests.cpp
     Tests/System/ViewTests.cpp
     Tests/Utils/AssetUtilsTests.cpp
+    Tests/Utils/HalfImageTests.cpp
 )

@@ -1455,6 +1455,32 @@ namespace UnitTest
         AZ::IO::FileIOBase::GetInstance()->Remove(filepath.c_str());
     }
 
+    TEST_F(ImageProcessingTest, HalfHdrImageConversionPreservesFiniteProductBytes)
+    {
+        IImageObjectPtr source(IImageObject::CreateImage(2, 2, 1, ePixelFormat_R32G32B32A32F));
+        ASSERT_TRUE(source);
+        const float pixels[] = {
+            -2.0f, 0.5f, 32.0f, 1.0f, 0.25f, 100.0f, -8.0f, 0.0f,
+            65504.0f, 0x1p-14f, 0x1p-24f, -0.0f, 1.0f, 2.0f, 3.0f, 4.0f};
+        const AZ::u16 expected[] = {
+            0xc000, 0x3800, 0x5000, 0x3c00, 0x3400, 0x5640, 0xc800, 0,
+            0x7bff, 0x0400, 0x0001, 0x8000, 0x3c00, 0x4000, 0x4200, 0x4400};
+        AZ::u8* data = nullptr;
+        AZ::u32 pitch = 0;
+        source->GetImagePointer(0, data, pitch);
+        ASSERT_EQ(pitch, 2 * 4 * sizeof(float));
+        memcpy(data, pixels, sizeof(pixels));
+        ImageToProcess process(source);
+        process.ConvertFormatUncompressed(ePixelFormat_R16G16B16A16F);
+        ASSERT_TRUE(process.Get());
+        process.Get()->GetImagePointer(0, data, pitch);
+        ASSERT_EQ(pitch, 2 * 4 * sizeof(AZ::u16));
+        EXPECT_EQ(memcmp(data, expected, sizeof(expected)), 0);
+        process.ConvertFormatUncompressed(ePixelFormat_R32G32B32A32F);
+        process.Get()->GetImagePointer(0, data, pitch);
+        EXPECT_EQ(memcmp(data, pixels, sizeof(pixels)), 0);
+    }
+
 } // UnitTest
 
 AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
