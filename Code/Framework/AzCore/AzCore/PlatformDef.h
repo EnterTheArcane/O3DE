@@ -115,6 +115,7 @@
     __pragma(warning(pop))
 
 #   define AZ_FORCE_INLINE  __forceinline
+#   define AZ_NOINLINE      __declspec(noinline)
 
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS
@@ -179,6 +180,7 @@
 #endif // defined(AZ_COMPILER_CLANG)
 
 #   define AZ_FORCE_INLINE  inline
+#   define AZ_NOINLINE      __attribute__((noinline))
 
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS __attribute__((__may_alias__))

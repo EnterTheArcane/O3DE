@@ -7,41 +7,18 @@
  */
 
 #include <AzCore/RTTI/BehaviorContext.h>
-
+#include <AzCore/RTTI/BehaviorDefaultArguments.h>
 
 namespace AZ::Internal
 {
     //////////////////////////////////////////////////////////////////////////
     bool BehaviorEBusEvent::Call(AZStd::span<BehaviorArgument> arguments, BehaviorArgument* result) const
     {
-        size_t totalArguments = GetNumArguments();
+        const size_t totalArguments = GetNumArguments();
         if (arguments.size() < totalArguments)
         {
-            // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array
-            // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
-            AZStd::span<BehaviorArgument> newArguments(reinterpret_cast<BehaviorArgument*>(alloca(sizeof(BehaviorArgument) * totalArguments)), totalArguments);
-            // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
-            size_t argIndex = 0;
-            for (; argIndex < arguments.size(); ++argIndex)
-            {
-                new(&newArguments[argIndex]) BehaviorArgument(arguments[argIndex]);
-            }
-
-            // clone the default parameters if they exist
-            for (; argIndex < totalArguments; ++argIndex)
-            {
-                BehaviorDefaultValuePtr defaultValue = GetDefaultValue(argIndex);
-                if (!defaultValue)
-                {
-                    AZ_Warning("Behavior", false, "Not enough arguments to make a call! %d needed %d", arguments.size(), totalArguments);
-                    return false;
-                }
-                new(&newArguments[argIndex]) BehaviorArgument(defaultValue->GetValue());
-            }
-
-            arguments = newArguments;
+            return CallWithDefaultArguments(*this, arguments, totalArguments, result);
         }
-
         auto busIdArgument = HasBusId() ? GetArgument(0) : nullptr;
         if (busIdArgument != nullptr && !arguments[0].ConvertTo(busIdArgument->m_typeId))
         {
@@ -79,32 +56,10 @@ namespace AZ::Internal
     auto BehaviorEBusEvent::IsCallable(AZStd::span<BehaviorArgument> arguments, BehaviorArgument* result) const
         -> ResultOutcome
     {
-        size_t totalArguments = GetNumArguments();
+        const size_t totalArguments = GetNumArguments();
         if (arguments.size() < totalArguments)
         {
-            // Clone the arguments on the stack and validate that the method can be invoked with the arguments
-            AZStd::span<BehaviorArgument> newArguments(reinterpret_cast<BehaviorArgument*>(alloca(sizeof(BehaviorArgument) * totalArguments)), totalArguments);
-            // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
-            size_t argIndex = 0;
-            for (; argIndex < arguments.size(); ++argIndex)
-            {
-                new(&newArguments[argIndex]) BehaviorArgument(arguments[argIndex]);
-            }
-
-            // clone the default parameters if they exist
-            for (; argIndex < totalArguments; ++argIndex)
-            {
-                BehaviorDefaultValuePtr defaultValue = GetDefaultValue(argIndex);
-                if (!defaultValue)
-                {
-                    return ResultOutcome{ AZStd::unexpect, ResultOutcome::ErrorType::format(
-                        "Not enough arguments to make call to method %s. %zu supplied, needed %zu",
-                        m_name.c_str(), arguments.size(), newArguments.size()) };
-                }
-                new(&newArguments[argIndex]) BehaviorArgument(defaultValue->GetValue());
-            }
-
-            arguments = newArguments;
+            return IsCallableWithDefaultArguments(*this, arguments, totalArguments, result);
         }
         else if (arguments.size() > totalArguments)
         {

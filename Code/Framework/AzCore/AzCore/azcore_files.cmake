@@ -524,6 +524,7 @@ set(FILES
     RTTI/BehaviorContext.h
     RTTI/BehaviorContextUtilities.cpp
     RTTI/BehaviorContextUtilities.h
+    RTTI/BehaviorDefaultArguments.h
     RTTI/BehaviorEBusBuilder.cpp
     RTTI/BehaviorEBusBuilder.inl
     RTTI/BehaviorEBusEvent.cpp
