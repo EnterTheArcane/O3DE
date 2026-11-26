@@ -6,6 +6,7 @@
  *
  */
 
+#include <AzCore/IO/Streamer/StorageDrive.h>
 #include <AzCore/IO/Streamer/StorageDrive_Windows.h>
 #include <AzCore/IO/Streamer/StorageDriveConfig_Windows.h>
 #include <AzCore/IO/Streamer/StreamerConfiguration_Windows.h>
@@ -38,6 +39,11 @@ namespace AZ::IO
                 stackEntry->SetNext(AZStd::move(parent));
                 parent = stackEntry;
             }
+        }
+        else if (!parent)
+        {
+            AZ_Warning("Streamer", false, "No drives found that can make use of the available optimizations. Using generic storage.\n");
+            parent = AZStd::make_shared<StorageDrive>(m_maxFileHandles);
         }
         else
         {

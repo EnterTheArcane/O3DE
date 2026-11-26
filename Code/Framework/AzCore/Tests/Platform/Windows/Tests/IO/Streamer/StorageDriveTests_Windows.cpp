@@ -7,7 +7,9 @@
  */
 
 #include <AzCore/IO/Streamer/StorageDrive_Windows.h>
+#include <AzCore/IO/Streamer/StorageDriveConfig_Windows.h>
 #include <AzCore/IO/Streamer/Streamer.h>
+#include <AzCore/IO/Streamer/StreamerConfiguration_Windows.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Task/TaskExecutor.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
@@ -308,6 +310,33 @@ namespace AZ::IO
     {
         // Just make sure the storage drive was set up...
         EXPECT_NE(m_storageDriveWin.get(), nullptr);
+    }
+
+    TEST_F(Streamer_StorageDriveWindowsTestFixture, AddStreamStackEntry_NoOptimizedDrives_ReadsWithGenericStorage)
+    {
+        char output{};
+        ASSERT_NO_FATAL_FAILURE(CreateDummyFile(sizeof(output)));
+
+        HardwareInformation hardware;
+        hardware.m_platformData = DriveList{};
+        WindowsStorageDriveConfig config;
+        auto storage = config.AddStreamStackEntry(hardware, nullptr);
+        ASSERT_NE(storage, nullptr);
+        storage->SetContext(*m_context);
+
+        FileRequest* request = m_context->GetNewInternalRequest();
+        request->CreateRead(nullptr, &output, sizeof(output), m_dummyRequestPath, 0, sizeof(output));
+        storage->QueueRequest(request);
+        EXPECT_TRUE(storage->ExecuteRequests());
+        EXPECT_EQ(request->GetStatus(), IStreamerTypes::RequestStatus::Completed);
+        EXPECT_EQ(output, s_fileCharacter);
+        m_context->FinalizeCompletedRequests();
+    }
+
+    TEST_F(Streamer_StorageDriveWindowsTestFixture, AddStreamStackEntry_NoOptimizedDrives_PreservesExistingBackend)
+    {
+        WindowsStorageDriveConfig config;
+        EXPECT_EQ(config.AddStreamStackEntry(HardwareInformation{}, m_storageDriveWin), m_storageDriveWin);
     }
 
     TEST_F(Streamer_StorageDriveWindowsTestFixture, Constructor_MultipleDrivePaths_AllPathsAreIncludedInTheName)
