@@ -612,6 +612,25 @@ class PackagingTests(unittest.TestCase):
                     (packages / "packages.json").write_text(
                         json.dumps(metadata), encoding="utf-8"
                     )
+                layout_index = output / "oci/index.json"
+                layout_index.parent.mkdir(exist_ok=True)
+                layout_index.write_text(
+                    json.dumps(
+                        {
+                            "manifests": [
+                                {
+                                    "mediaType": IMAGE_MANIFEST,
+                                    "digest": digest,
+                                    "size": 123,
+                                    "annotations": {
+                                        "org.opencontainers.image.ref.name": digit
+                                    },
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
                 return profile, output
 
             windows = candidate("windows-x64", ("release", "debug"), "a")
@@ -642,7 +661,12 @@ class PackagingTests(unittest.TestCase):
                     },
                 ) as upload,
             ):
-                publish_catalogs([windows, ios, simulator], registry, push=True)
+                for build in (windows, ios, simulator):
+                    publish_catalogs([build], registry, command="upload")
+                client.get_container.assert_not_called()
+                self.assertEqual(upload.call_count, 3)
+
+                publish_catalogs([windows, ios, simulator], registry, command="index")
                 self.assertEqual(upload.call_count, 3)
                 first = json.loads(client.do_request.call_args.kwargs["data"])
                 self.assertEqual(first["mediaType"], IMAGE_INDEX)
@@ -659,7 +683,8 @@ class PackagingTests(unittest.TestCase):
                     Mock(status_code=201),
                 ]
                 updated = candidate("ios-a64", ("release",), "d")
-                publish_catalogs([updated], registry, push=True)
+                publish_catalogs([updated], registry, command="push")
+                self.assertEqual(upload.call_count, 4)
 
             self.assertEqual(client.get_container.call_count, 2)
             client.get_container.assert_called_with(f"{repo}:6.12.1")

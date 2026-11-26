@@ -112,6 +112,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      packages: write
     defaults:
       run:
         shell: pwsh
@@ -183,6 +184,12 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ccache
           CMAKE_CXX_COMPILER_LAUNCHER: ccache
         run: ./Tools/Conan/scripts/ci.ps1 -Profile $env:PACKAGE_PROFILE -Registry $env:REGISTRY -CacheArchive build/imaging/conan-cache.tgz
+      - name: Upload package images by digest
+        if: inputs.publish
+        env:
+          OCI_USERNAME: ${{ github.actor }}
+          OCI_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: python Tools/Conan/scripts/publish.py upload $env:PACKAGE_PROFILE --output build/imaging --registry $env:REGISTRY
       - name: Export completed Conan packages
         if: "!cancelled()"
         continue-on-error: true
@@ -203,15 +210,16 @@ jobs:
           path: |
             .ccache
             build/imaging/conan-cache.tgz
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: github.event_name == 'workflow_dispatch' && inputs.publish
+      - name: Save package index metadata
+        if: inputs.publish
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: oci-${{ matrix.profile }}
           overwrite: true
           if-no-files-found: error
           compression-level: 0
           path: |
-            build/imaging/oci
+            build/imaging/oci/index.json
             build/imaging/${{ matrix.profile }}.json
             build/imaging/release/packages/packages.json
             build/imaging/debug/packages/packages.json
@@ -282,7 +290,7 @@ jobs:
         env:
           OCI_USERNAME: ${{ github.actor }}
           OCI_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: build/imaging-publish/bin/python Tools/Conan/scripts/publish.py push --output build/candidates --registry "$REGISTRY"
+        run: build/imaging-publish/bin/python Tools/Conan/scripts/publish.py index --output build/candidates --registry "$REGISTRY"
       - name: Verify public access by digest
         if: steps.candidates.outputs.result != ''
         run: |

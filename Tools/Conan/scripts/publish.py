@@ -203,20 +203,30 @@ def authenticate_push(client, repo, username, password):
     client.auth.set_basic_auth(username, password)
 
 
-def publish_catalogs(candidates, registry, push):
+def publish_catalogs(candidates, registry, command):
     from oras.client import OrasClient
 
-    username = os.environ.get("OCI_USERNAME") if push else None
-    password = os.environ.get("OCI_PASSWORD") if push else None
+    writing = command != "verify"
+    username = os.environ.get("OCI_USERNAME") if writing else None
+    password = os.environ.get("OCI_PASSWORD") if writing else None
     if bool(username) != bool(password):
         raise ValueError(
             "Set both OCI_USERNAME and OCI_PASSWORD for authenticated publishing"
         )
 
     groups = {}
+    layout_descriptors = {}
     for profile, output in candidates:
+        if command == "index":
+            layout = json.loads((output / "oci/index.json").read_text(encoding="utf-8"))
+            layout_descriptors[output] = {
+                manifest["digest"]: {
+                    key: manifest[key] for key in ("mediaType", "digest", "size")
+                }
+                for manifest in layout["manifests"]
+            }
         for repo, digest, version, config in catalog_references(
-            profile, output, registry, push=push
+            profile, output, registry, push=writing
         ):
             groups.setdefault((repo, version), []).append(
                 (profile, config, digest, output)
@@ -229,24 +239,30 @@ def publish_catalogs(candidates, registry, push):
         client.session.auth = lambda request: request
         client.session.request = partial(client.session.request, timeout=(10, 120))
         with client.session:
-            if not push:
+            if not writing:
                 for digest in sorted({build[2] for build in builds}):
                     check_manifest(client, repo, digest)
                     print(f"Verified public access to {repo}@{digest}")
                 continue
             if username:
                 authenticate_push(client, repo, username, password)
-            uploaded = {}
+            manifests = {}
             descriptors = []
             for profile, config, digest, output in builds:
-                if digest not in uploaded:
-                    uploaded[digest] = push_manifest(
-                        client, output / "oci", repo, digest
-                    )
+                if digest not in manifests:
+                    if command == "index":
+                        manifests[digest] = layout_descriptors[output][digest]
+                    else:
+                        manifests[digest] = push_manifest(
+                            client, output / "oci", repo, digest
+                        )
+                        print(f"Uploaded {repo}@{digest}")
+                if command == "upload":
+                    continue
                 os_name, arch = profile.rsplit("-", 1)
                 descriptors.append(
                     {
-                        **uploaded[digest],
+                        **manifests[digest],
                         "platform": oci_platform(profile),
                         "annotations": {
                             "platform.os": os_name,
@@ -255,8 +271,9 @@ def publish_catalogs(candidates, registry, push):
                         },
                     }
                 )
-            push_index(client, repo, version, descriptors)
-            print(f"Published {repo}:{version}")
+            if descriptors:
+                push_index(client, repo, version, descriptors)
+                print(f"Published {repo}:{version}")
 
 
 def prepare(profile, output, registry, cache):
@@ -342,7 +359,9 @@ def prepare(profile, output, registry, cache):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("prepare", "push", "verify"))
+    parser.add_argument(
+        "command", choices=("prepare", "upload", "index", "push", "verify")
+    )
     parser.add_argument("profile", choices=PROFILES, nargs="?")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
@@ -357,7 +376,7 @@ def main():
     registry = args.registry.lower().rstrip("/")
     output = args.output.resolve()
     if args.profile is None:
-        if args.command != "push":
+        if args.command not in ("push", "index"):
             parser.error(f"{args.command} requires a profile")
         candidates = [
             (profile, output / f"oci-{profile}")
@@ -366,15 +385,13 @@ def main():
         ]
         if not candidates:
             parser.error(
-                "push requires a profile or a directory of oci-<profile> artifacts"
+                f"{args.command} requires a profile or a directory of oci-<profile> artifacts"
             )
-        publish_catalogs(candidates, registry, push=True)
+        publish_catalogs(candidates, registry, command=args.command)
     elif args.command == "prepare":
         prepare(args.profile, output, registry, args.seed_cache)
     else:
-        publish_catalogs(
-            [(args.profile, output)], registry, push=args.command == "push"
-        )
+        publish_catalogs([(args.profile, output)], registry, command=args.command)
 
 
 if __name__ == "__main__":
