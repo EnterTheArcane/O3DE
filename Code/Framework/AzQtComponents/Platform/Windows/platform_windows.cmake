@@ -8,5 +8,5 @@
 
 set(LY_BUILD_DEPENDENCIES
     PRIVATE
-        Magnification.lib
+        magnification.lib
 )

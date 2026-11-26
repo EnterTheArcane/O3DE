@@ -49,6 +49,6 @@ endforeach()
 # windows OS libs
 list(APPEND WWISE_LIBS
     dxguid.lib
-    DInput8.lib
+    dinput8.lib
     $<$<NOT:$<CONFIG:Release>>:ws2_32.lib>
 )

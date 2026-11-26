@@ -35,7 +35,7 @@
 #include <float.h>
 #include <shellapi.h> // Needed for ShellExecute.
 #include <Psapi.h>
-#include <Aclapi.h>
+#include <AclAPI.h>
 
 #include <shlobj.h>
 #endif

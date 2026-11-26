@@ -6,7 +6,6 @@
  *
  */
 
-
 // Description : implementation of the CLogFile class.
 
 #include "EditorDefs.h"
@@ -25,7 +24,6 @@
 #include "ProcessInfo.h"            // for ProcessMemInfo
 #include "Controls/ConsoleSCB.h"    // for CConsoleSCB
 
-
 #include <AzCore/std/ranges/ranges_algorithm.h>
 #include <stdarg.h>
 
@@ -33,7 +31,7 @@
 #include <time.h>
 #include <QTime>
 #else
-#include <Wbemidl.h>
+#include <WbemIdl.h>
 #pragma comment(lib, "wbemuuid.lib")
 #endif
 
@@ -43,7 +41,6 @@
 
 #include <Carbon/Carbon.h>
 #endif
-
 
 // Static member variables
 SANDBOX_API QListWidget* CLogFile::m_hWndListBox = nullptr;

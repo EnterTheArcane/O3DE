@@ -7,7 +7,7 @@
  */
 
 #include <AzCore/PlatformIncl.h>
-#include <Magnification.h>
+#include <magnification.h>
 
 #include <QApplication>
 #include <QScreen>

@@ -12,7 +12,7 @@
 #include <AzFramework/Device/DeviceAttributeDeviceModel.h>
 #include <AzFramework/Device/DeviceAttributeRAM.h>
 
-#include <Wbemidl.h>
+#include <WbemIdl.h>
 #pragma comment(lib, "wbemuuid.lib")
 
 namespace AzFramework

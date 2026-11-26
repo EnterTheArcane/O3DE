@@ -8,8 +8,8 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "winres.h"
-#include "colordlg.h"
-#include "Dlgs.h"
+#include "ColorDlg.h"
+#include "dlgs.h"
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 

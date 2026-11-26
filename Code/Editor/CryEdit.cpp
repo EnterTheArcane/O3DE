@@ -11,7 +11,7 @@
 
 #ifdef WIN32
 AZ_PUSH_DISABLE_WARNING(4458, "-Wunknown-warning-option")
-#include <Propidl.h>
+#include <PropIdl.h>
 #include <gdiplus.h>
 AZ_POP_DISABLE_WARNING
 #pragma comment (lib, "Gdiplus.lib")
