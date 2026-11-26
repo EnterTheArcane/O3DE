@@ -8,7 +8,9 @@
 #pragma once
 
 #include <QDir>
+#include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QtLogging>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <native/utilities/assetUtils.h>
 
@@ -20,12 +22,23 @@ namespace AssetProcessor
     {
     public:
         MockAssetDatabaseRequestsHandler()
+            : m_temporaryDir(GetTemporaryDirectoryTemplate())
         {
+            if (!m_temporaryDir.isValid())
+            {
+                qFatal("Unable to create Asset Processor test directory: %s", qPrintable(m_temporaryDir.errorString()));
+            }
+
             // the canonicalization of the path here is to get around the fact that on some platforms
             // the "temporary" folder location could be junctioned into some other folder and getting "QDir::current()"
             // and other similar functions may actually return a different string but still be referring to the same folder
-            QString canonicalTempDirPath = AssetUtilities::NormalizeDirectoryPath(QDir(m_temporaryDir.path()).canonicalPath());
-            m_assetDatabasePath = QDir(canonicalTempDirPath).absoluteFilePath("test_database.sqlite").toUtf8().data();
+            const QString canonicalTempDirPath = QDir(m_temporaryDir.path()).canonicalPath();
+            if (canonicalTempDirPath.isEmpty())
+            {
+                qFatal("Unable to resolve Asset Processor test directory '%s'", qPrintable(m_temporaryDir.path()));
+            }
+
+            m_assetDatabasePath = QDir(AssetUtilities::NormalizeDirectoryPath(canonicalTempDirPath)).absoluteFilePath("test_database.sqlite").toUtf8().data();
 
             BusConnect();
         }
@@ -50,6 +63,17 @@ namespace AssetProcessor
         AZStd::string m_assetDatabasePath;
 
     private:
+        static QString GetTemporaryDirectoryTemplate()
+        {
+            // Asset path case correction enumerates ancestors, so keep fixtures out of the shared temp directory.
+            const QString cachePath = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
+            if (cachePath.isEmpty() || !QDir().mkpath(cachePath))
+            {
+                qFatal("Unable to create Asset Processor test cache directory '%s'", qPrintable(cachePath));
+            }
+            return QDir(cachePath).absoluteFilePath("APTests-XXXXXX");
+        }
+
         QTemporaryDir m_temporaryDir;
     };
 }
