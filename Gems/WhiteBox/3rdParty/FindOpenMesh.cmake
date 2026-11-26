@@ -106,6 +106,14 @@ block()
             ${O3DE_COMPILE_OPTION_EXPORT_SYMBOLS}       # OpenMesh requires symbols to be exported.
             ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS})   # OpenMesh requires Exceptions enabled in it, and things that use it
 
+        if(MSVC)
+            set_target_properties(${OpenMesh_Target} PROPERTIES
+                O3DE_ENABLE_EXCEPTIONS ON
+                INTERFACE_O3DE_ENABLE_EXCEPTIONS ON
+            )
+            set_property(TARGET ${OpenMesh_Target} APPEND PROPERTY COMPATIBLE_INTERFACE_BOOL O3DE_ENABLE_EXCEPTIONS)
+        endif()
+
         target_compile_definitions(${OpenMesh_Target}
             PRIVATE WIN32_LEAN_AND_MEAN)                # Fix compile errors in Windows kit header files
                 

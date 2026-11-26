@@ -34,11 +34,16 @@ foreach(conf ${CMAKE_CONFIGURATION_TYPES})
     ly_set(LY_BUILD_CONFIGURATION_TYPE_${UCONF} ${conf})
 endforeach()
 
+# Evaluate the MSVC STL exception mode for each target, including requirements inherited from dependencies.
+set(o3de_stl_exceptions 0)
+if(MSVC)
+    set(o3de_stl_exceptions "$<BOOL:$<TARGET_PROPERTY:O3DE_ENABLE_EXCEPTIONS>>")
+endif()
+
 # Common configurations
 ly_append_configurations_options(
     DEFINES
-        # Since we disable exceptions, we need to define _HAS_EXCEPTIONS=0 so the STD does not add exception handling 
-        _HAS_EXCEPTIONS=0
+        "_HAS_EXCEPTIONS=${o3de_stl_exceptions}"
     DEFINES_DEBUG
         _DEBUG            # TODO: this should be able to removed since it gets added automatically by some compilation flags
         AZ_DEBUG_BUILD
