@@ -636,6 +636,7 @@ class PackagingTests(unittest.TestCase):
             windows = candidate("windows-x64", ("release", "debug"), "a")
             ios = candidate("ios-a64", ("release",), "b")
             simulator = candidate("ios-simulator-a64", ("release",), "c")
+            macos = candidate("macos-a64", ("release",), "e")
             self.assertEqual(
                 catalog_references(*windows, registry, push=False),
                 [(repo, "sha256:" + "a" * 64, None, None)],
@@ -661,22 +662,24 @@ class PackagingTests(unittest.TestCase):
                     },
                 ) as upload,
             ):
-                for build in (windows, ios, simulator):
+                for build in (windows, ios, simulator, macos):
                     publish_catalogs([build], registry, command="upload")
                 client.get_container.assert_not_called()
-                self.assertEqual(upload.call_count, 3)
+                self.assertEqual(upload.call_count, 4)
 
-                publish_catalogs([windows, ios, simulator], registry, command="index")
-                self.assertEqual(upload.call_count, 3)
+                publish_catalogs(
+                    [windows, ios, simulator, macos], registry, command="index"
+                )
+                self.assertEqual(upload.call_count, 4)
                 first = json.loads(client.do_request.call_args.kwargs["data"])
                 self.assertEqual(first["mediaType"], IMAGE_INDEX)
-                self.assertEqual(len(first["manifests"]), 4)
+                self.assertEqual(len(first["manifests"]), 5)
                 self.assertEqual(
                     [
                         entry["annotations"]["build.type"]
                         for entry in first["manifests"]
                     ],
-                    ["Release", "Release", "Release", "Debug"],
+                    ["Release", "Release", "Release", "Release", "Debug"],
                 )
                 client.do_request.side_effect = [
                     Mock(status_code=200, json=lambda: first),
@@ -684,7 +687,7 @@ class PackagingTests(unittest.TestCase):
                 ]
                 updated = candidate("ios-a64", ("release",), "d")
                 publish_catalogs([updated], registry, command="push")
-                self.assertEqual(upload.call_count, 4)
+                self.assertEqual(upload.call_count, 5)
 
             self.assertEqual(client.get_container.call_count, 2)
             client.get_container.assert_called_with(f"{repo}:6.12.1")
@@ -692,9 +695,15 @@ class PackagingTests(unittest.TestCase):
             entries = updated_index["manifests"]
             self.assertEqual(
                 [entry["digest"] for entry in entries],
-                ["sha256:" + digit * 64 for digit in "dcaa"],
+                ["sha256:" + digit * 64 for digit in "dceaa"],
             )
-            self.assertEqual(entries[0]["platform"], entries[1]["platform"])
+            self.assertEqual(
+                [entry["platform"] for entry in entries[:3]],
+                [
+                    {"os": os_name, "architecture": "arm64"}
+                    for os_name in ("ios", "ios-simulator", "macos")
+                ],
+            )
             self.assertEqual(entries[1]["annotations"]["platform.os"], "ios-simulator")
             self.assertEqual(entries[1]["annotations"]["platform.architecture"], "a64")
 
