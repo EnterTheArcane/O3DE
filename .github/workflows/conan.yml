@@ -6,47 +6,47 @@ on:
       build-android-a64:
         description: Android (A64)
         type: boolean
-        default: false
+        default: true
       build-android-x64:
         description: Android (X64)
         type: boolean
-        default: false
+        default: true
       build-emscripten-w32:
         description: Emscripten (W32)
         type: boolean
-        default: false
+        default: true
       build-emscripten-w64:
         description: Emscripten (W64)
         type: boolean
-        default: false
+        default: true
       build-ios-a64:
         description: iOS (A64)
         type: boolean
-        default: false
+        default: true
       build-ios-simulator-a64:
         description: iOS-Simulator (A64)
         type: boolean
-        default: false
+        default: true
       build-linux-a64:
         description: Linux (A64)
         type: boolean
-        default: false
+        default: true
       build-linux-x64:
         description: Linux (X64)
         type: boolean
-        default: false
+        default: true
       build-macos-a64:
         description: macOS (A64)
         type: boolean
-        default: false
+        default: true
       build-windows-a64:
         description: Windows (A64)
         type: boolean
-        default: false
+        default: true
       build-windows-x64:
         description: Windows (X64)
         type: boolean
-        default: false
+        default: true
       cache_run_id:
         description: Previous Cache Run Id
         type: string
@@ -105,7 +105,7 @@ jobs:
     needs: prepare
     strategy:
       fail-fast: false
-      matrix: &package_matrix
+      matrix:
         include: ${{ fromJSON(needs.prepare.outputs.targets) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 300
@@ -207,6 +207,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.publish
         with:
           name: oci-${{ matrix.profile }}
+          overwrite: true
+          if-no-files-found: error
           compression-level: 0
           path: |
             build/imaging/oci
@@ -216,36 +218,73 @@ jobs:
 
   publish:
     name: Publish
-    if: github.event_name == 'workflow_dispatch' && inputs.publish
-    needs: build
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && inputs.publish }}
+    needs: [prepare, build]
     concurrency:
       group: conan-package-publish
       queue: max
     runs-on: ubuntu-26.04
     timeout-minutes: 300
     permissions:
+      actions: read
       contents: read
       packages: write
     env:
       REGISTRY: ghcr.io/${{ github.repository_owner }}/3rdparty
     steps:
+      - name: Select successful build artifacts
+        id: candidates
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          BUILD_TARGETS: ${{ needs.prepare.outputs.targets }}
+        with:
+          result-encoding: string
+          script: |
+            const run = { ...context.repo, run_id: context.runId };
+            const [jobs, artifacts] = await Promise.all([
+              github.paginate(github.rest.actions.listJobsForWorkflowRun, { ...run, filter: "all" }),
+              github.paginate(github.rest.actions.listWorkflowRunArtifacts, run),
+            ]);
+            // Failed-job reruns can reuse earlier successes. Use the newest attempt for each build.
+            const latestJobs = new Map();
+            for (const job of jobs) {
+              const previous = latestJobs.get(job.name);
+              if (!previous || previous.run_attempt < job.run_attempt) {
+                latestJobs.set(job.name, job);
+              }
+            }
+            const names = new Set(JSON.parse(process.env.BUILD_TARGETS)
+              .filter(({ profile }) => latestJobs.get(`Build (${profile})`)?.conclusion === "success")
+              .map(({ profile }) => `oci-${profile}`));
+            const candidates = artifacts.filter(({ name, expired }) => names.has(name) && !expired);
+            if (candidates.length === 0) {
+              core.notice("No successful build artifacts to publish.");
+            }
+            return candidates.map(({ id }) => id).join(",");
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: steps.candidates.outputs.result != ''
         with:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: steps.candidates.outputs.result != ''
         with:
-          pattern: oci-*
+          artifact-ids: ${{ steps.candidates.outputs.result }}
+          github-token: ${{ github.token }}
+          run-id: ${{ github.run_id }}
           path: build/candidates
       - name: Install Python publisher
+        if: steps.candidates.outputs.result != ''
         run: |
           python3 -m venv build/imaging-publish
           build/imaging-publish/bin/python -m pip install -r Tools/Conan/requirements.txt
       - name: Publish package version indexes
+        if: steps.candidates.outputs.result != ''
         env:
           OCI_USERNAME: ${{ github.actor }}
           OCI_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: build/imaging-publish/bin/python Tools/Conan/scripts/publish.py push --output build/candidates --registry "$REGISTRY"
       - name: Verify public access by digest
+        if: steps.candidates.outputs.result != ''
         run: |
           publisher=build/imaging-publish/bin/python
           for candidate in build/candidates/oci-*; do
@@ -253,50 +292,8 @@ jobs:
           done
           jq -s add build/candidates/oci-*/*.json > build/imaging-catalog.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: imaging-candidate-catalog
-          path: build/imaging-catalog.json
-
-  consume:
-    name: Consume
-    needs: [prepare, publish]
-    strategy:
-      fail-fast: false
-      matrix: *package_matrix
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 300
-    env:
-      PACKAGE_PROFILE: ${{ matrix.profile }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
-        with:
-          python-version: '3.15'
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: imaging-candidate-catalog
-          path: build/catalog
-      - uses: emscripten-core/setup-emsdk@667eb33f24e84e7f362c16d8d7fff0629a73e15e
-        if: startsWith(matrix.profile, 'emscripten-')
-        with:
-          emsdk-version: '7.0.1'
-      - name: Build and test against an empty OCI cache
-        shell: pwsh
-        run: ./Tools/Conan/scripts/ci.ps1 -Profile $env:PACKAGE_PROFILE -Registry ghcr.io -PublishedCatalog build/catalog/imaging-catalog.json
-
-  promote:
-    name: Promote
-    needs: consume
-    runs-on: ubuntu-26.04
-    timeout-minutes: 300
-    steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: imaging-candidate-catalog
-          path: build/catalog
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.candidates.outputs.result != ''
         with:
           name: imaging-catalog
-          path: build/catalog/imaging-catalog.json
+          overwrite: true
+          path: build/imaging-catalog.json
