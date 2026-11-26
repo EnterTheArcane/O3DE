@@ -124,9 +124,7 @@ def push_manifest(client, layout, repo, digest):
 def oci_platform(profile):
     os_name, arch = profile.rsplit("-", 1)
     return {
-        "os": {"macos": "darwin", "ios-simulator": "ios", "emscripten": "js"}.get(
-            os_name, os_name
-        ),
+        "os": "js" if os_name == "emscripten" else os_name,
         "architecture": {
             "a64": "arm64",
             "x64": "amd64",

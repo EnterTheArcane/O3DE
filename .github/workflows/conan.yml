@@ -1,124 +1,16 @@
-name: Conan Packages
+name: OCI Apple platform labels preview
 
 on:
   workflow_dispatch:
-    inputs:
-      build-android-a64:
-        description: Android (A64)
-        type: boolean
-        default: true
-      build-android-x64:
-        description: Android (X64)
-        type: boolean
-        default: true
-      build-emscripten-w32:
-        description: Emscripten (W32)
-        type: boolean
-        default: true
-      build-emscripten-w64:
-        description: Emscripten (W64)
-        type: boolean
-        default: true
-      build-ios-a64:
-        description: iOS (A64)
-        type: boolean
-        default: true
-      build-ios-simulator-a64:
-        description: iOS-Simulator (A64)
-        type: boolean
-        default: true
-      build-linux-a64:
-        description: Linux (A64)
-        type: boolean
-        default: true
-      build-linux-x64:
-        description: Linux (X64)
-        type: boolean
-        default: true
-      build-macos-a64:
-        description: macOS (A64)
-        type: boolean
-        default: true
-      build-windows-a64:
-        description: Windows (A64)
-        type: boolean
-        default: true
-      build-windows-x64:
-        description: Windows (X64)
-        type: boolean
-        default: true
-      cache_run_id:
-        description: Previous Cache Run Id
-        type: string
-      publish:
-        description: Publish
-        type: boolean
-        default: false
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
-  prepare:
-    name: Prepare
-    runs-on: ubuntu-slim
-    permissions: {}
-    outputs:
-      targets: ${{ steps.targets.outputs.result }}
-    steps:
-      - name: Collect build targets
-        id: targets
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          DISPATCH_INPUTS: ${{ toJSON(inputs) }}
-        with:
-          script: |
-            const runners = {
-              android: "ubuntu-26.04",
-              emscripten: "ubuntu-26.04",
-              ios: "macos-26",
-              linux: "ubuntu-26.04",
-              macos: "macos-26",
-              windows: "windows-2025-vs2026",
-            };
-            const inputs = JSON.parse(process.env.DISPATCH_INPUTS);
-            const prefix = "build-";
-            const targets = [];
-            for (const [name, enabled] of Object.entries(inputs)) {
-              if (!name.startsWith(prefix) || enabled !== true) {
-                continue;
-              }
-              const profile = name.slice(prefix.length);
-              const platform = profile.split("-", 1)[0];
-              if (!Object.hasOwn(runners, platform)) {
-                throw new Error(`No runner for profile ${profile}.`);
-              }
-              targets.push({ profile, runner: runners[platform] });
-            }
-            if (targets.length === 0) {
-              throw new Error("Select at least one target profile.");
-            }
-            return targets;
-
-  build:
-    name: Build (${{ matrix.profile }})
-    needs: prepare
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(needs.prepare.outputs.targets) }}
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 300
-    permissions:
-      contents: read
-      actions: read
-      packages: write
-    defaults:
-      run:
-        shell: pwsh
-    env:
-      PACKAGE_PROFILE: ${{ matrix.profile }}
-      REGISTRY: ghcr.io/${{ github.repository_owner }}/3rdparty
+  probe:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -126,182 +18,73 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.15'
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
-        if: startsWith(matrix.profile, 'android-')
-        with:
-          distribution: zulu
-          java-version: '21'
-      - name: Make room for native and target Linux SDKs
-        if: matrix.profile == 'linux-a64'
-        shell: bash
-        run: sudo rm -rf -- /usr/local/lib/android/sdk/ndk
-      - uses: emscripten-core/setup-emsdk@667eb33f24e84e7f362c16d8d7fff0629a73e15e
-        if: startsWith(matrix.profile, 'emscripten-')
-        with:
-          emsdk-version: '7.0.1'
-      - name: Restore compilation cache
-        if: github.run_attempt > 1 || inputs.cache_run_id != ''
-        continue-on-error: true
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: compilation-cache-${{ matrix.profile }}
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.cache_run_id || github.run_id }}
-      - name: Install ccache on Windows
-        if: runner.os == 'Windows'
-        run: |
-          # CMake passes clang-cl dependency flags that older ccache versions mishandle.
-          $release = 'ccache-4.14.3-windows-x86_64'
-          $zip = Join-Path $env:RUNNER_TEMP "$release.zip"
-          Invoke-WebRequest "https://github.com/ccache/ccache/releases/download/v4.14.3/$release.zip" -OutFile $zip
-          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne 'c845c3d65be81954c75659145a522a793a27586bf940c5dcfe18af33fa1a67dd') {
-            throw 'Unexpected ccache archive checksum.'
-          }
-          Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
-          Join-Path $env:RUNNER_TEMP $release | Out-File $env:GITHUB_PATH -Append -Encoding utf8
-      - name: Set up ccache
-        uses: chocobo1/setup-ccache-action@37c3347f8a7738e82aab7a06f276f7a12e3008fb
-        with:
-          install_ccache: ${{ runner.os != 'Windows' }}
-          windows_compile_environment: msvc
-          store_cache: false
-          restore_cache: false
-          ccache_options: |
-            cache_dir=${{ github.workspace }}/.ccache
-            hash_dir=false
-            max_size=3G
-      - name: Load Apple signing identity
-        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.publish
-        shell: bash
-        env:
-          APPLE_CODE_SIGN_IDENTITY: ${{ vars.APPLE_CODE_SIGN_IDENTITY }}
-          APPLE_SIGNING_CERTIFICATE_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_BASE64 }}
-          APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
-        run: bash Tools/Conan/scripts/install_apple_signing.sh
-      - name: Build and validate OCI layout
-        timeout-minutes: 285
-        env:
-          CMAKE_C_COMPILER_LAUNCHER: ccache
-          CMAKE_CXX_COMPILER_LAUNCHER: ccache
-        run: ./Tools/Conan/scripts/ci.ps1 -Profile $env:PACKAGE_PROFILE -Registry $env:REGISTRY -CacheArchive build/imaging/conan-cache.tgz
-      - name: Upload package images by digest
-        if: inputs.publish
+      - run: python -m pip install -r Tools/Conan/requirements.txt
+      - name: Publish the OpenEXR Apple label preview
         env:
           OCI_USERNAME: ${{ github.actor }}
           OCI_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: python Tools/Conan/scripts/publish.py upload $env:PACKAGE_PROFILE --output build/imaging --registry $env:REGISTRY
-      - name: Export completed Conan packages
-        if: "!cancelled()"
-        continue-on-error: true
+          PREVIEW_TAG: platform-names-preview-${{ github.run_id }}
         run: |
-          if (Get-Command conan -ErrorAction SilentlyContinue) {
-            python Tools/Conan/scripts/build.py export-cache --output build/imaging --cache-archive build/imaging/conan-cache.tgz
-          }
-      - name: Save compilation cache for reruns
-        if: "!cancelled()"
-        continue-on-error: true
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: compilation-cache-${{ matrix.profile }}
-          overwrite: true
-          retention-days: 2
-          compression-level: 0
-          include-hidden-files: true
-          path: |
-            .ccache
-            build/imaging/conan-cache.tgz
-      - name: Save package index metadata
-        if: inputs.publish
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: oci-${{ matrix.profile }}
-          overwrite: true
-          if-no-files-found: error
-          compression-level: 0
-          path: |
-            build/imaging/oci/index.json
-            build/imaging/${{ matrix.profile }}.json
-            build/imaging/release/packages/packages.json
-            build/imaging/debug/packages/packages.json
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import sys
 
-  publish:
-    name: Publish
-    if: ${{ !cancelled() && needs.prepare.result == 'success' && inputs.publish }}
-    needs: [prepare, build]
-    concurrency:
-      group: conan-package-publish
-      queue: max
-    runs-on: ubuntu-26.04
-    timeout-minutes: 300
-    permissions:
-      actions: read
-      contents: read
-      packages: write
-    env:
-      REGISTRY: ghcr.io/${{ github.repository_owner }}/3rdparty
-    steps:
-      - name: Select successful build artifacts
-        id: candidates
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          BUILD_TARGETS: ${{ needs.prepare.outputs.targets }}
-        with:
-          result-encoding: string
-          script: |
-            const run = { ...context.repo, run_id: context.runId };
-            const [jobs, artifacts] = await Promise.all([
-              github.paginate(github.rest.actions.listJobsForWorkflowRun, { ...run, filter: "all" }),
-              github.paginate(github.rest.actions.listWorkflowRunArtifacts, run),
-            ]);
-            // Failed-job reruns can reuse earlier successes. Use the newest attempt for each build.
-            const latestJobs = new Map();
-            for (const job of jobs) {
-              const previous = latestJobs.get(job.name);
-              if (!previous || previous.run_attempt < job.run_attempt) {
-                latestJobs.set(job.name, job);
-              }
-            }
-            const names = new Set(JSON.parse(process.env.BUILD_TARGETS)
-              .filter(({ profile }) => latestJobs.get(`Build (${profile})`)?.conclusion === "success")
-              .map(({ profile }) => `oci-${profile}`));
-            const candidates = artifacts.filter(({ name, expired }) => names.has(name) && !expired);
-            if (candidates.length === 0) {
-              core.notice("No successful build artifacts to publish.");
-            }
-            return candidates.map(({ id }) => id).join(",");
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        if: steps.candidates.outputs.result != ''
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        if: steps.candidates.outputs.result != ''
-        with:
-          artifact-ids: ${{ steps.candidates.outputs.result }}
-          github-token: ${{ github.token }}
-          run-id: ${{ github.run_id }}
-          path: build/candidates
-      - name: Install Python publisher
-        if: steps.candidates.outputs.result != ''
-        run: |
-          python3 -m venv build/imaging-publish
-          build/imaging-publish/bin/python -m pip install -r Tools/Conan/requirements.txt
-      - name: Publish package version indexes
-        if: steps.candidates.outputs.result != ''
-        env:
-          OCI_USERNAME: ${{ github.actor }}
-          OCI_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: build/imaging-publish/bin/python Tools/Conan/scripts/publish.py index --output build/candidates --registry "$REGISTRY"
-      - name: Verify public access by digest
-        if: steps.candidates.outputs.result != ''
-        run: |
-          publisher=build/imaging-publish/bin/python
-          for candidate in build/candidates/oci-*; do
-            "$publisher" Tools/Conan/scripts/publish.py verify "${candidate##*/oci-}" --output "$candidate" --registry "$REGISTRY"
-          done
-          jq -s add build/candidates/oci-*/*.json > build/imaging-catalog.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: steps.candidates.outputs.result != ''
-        with:
-          name: imaging-catalog
-          overwrite: true
-          path: build/imaging-catalog.json
+          import requests
+
+          sys.path.insert(0, "Tools/Conan/scripts")
+          from publish import IMAGE_INDEX, IMAGE_MANIFEST, prepare, publish_catalogs
+
+          registry = "ghcr.io/enterthearcane/3rdparty"
+          repository = "enterthearcane/3rdparty/openexr"
+          base = f"https://ghcr.io/v2/{repository}"
+          baseline = "sha256:e7cfb7909d2d781ea235ec213edccd0eb54dc72bfa5ca265b3a47ca2c2d5c417"
+          tag = os.environ["PREVIEW_TAG"]
+          targets = {"ios-a64", "ios-simulator-a64", "macos-a64"}
+          candidates = []
+          token_result = requests.get(
+              "https://ghcr.io/token",
+              params={"service": "ghcr.io", "scope": f"repository:{repository}:pull"},
+              timeout=30,
+          )
+          token_result.raise_for_status()
+          token = token_result.json()["token"]
+
+          def fetch(kind, digest, accept="*/*"):
+              response = requests.get(
+                  f"{base}/{kind}/{digest}",
+                  headers={"Authorization": f"Bearer {token}", "Accept": accept},
+                  timeout=60,
+              )
+              response.raise_for_status()
+              if f"sha256:{hashlib.sha256(response.content).hexdigest()}" != digest:
+                  raise ValueError(f"Digest mismatch for {digest}")
+              return response.content
+
+          index = json.loads(fetch("manifests", baseline, IMAGE_INDEX))
+          for descriptor in index["manifests"]:
+              annotations = descriptor["annotations"]
+              profile = f"{annotations['platform.os']}-{annotations['platform.architecture']}"
+              if profile not in targets or annotations["build.type"] != "Release":
+                  continue
+              manifest = json.loads(fetch("manifests", descriptor["digest"], IMAGE_MANIFEST))
+              layer, = manifest["layers"]
+              output = Path("build/preview") / profile
+              packages = output / "release/packages"
+              packages.mkdir(parents=True)
+              archive = Path(layer["annotations"]["org.opencontainers.image.title"]).name
+              (packages / archive).write_bytes(fetch("blobs", layer["digest"]))
+              (packages / "packages.json").write_text(
+                  json.dumps({"openexr": {"archive": archive, "identity": f"openexr/{tag}"}}),
+                  encoding="utf-8",
+              )
+              prepare(profile, output, registry, cache=None)
+              candidates.append((profile, output))
+
+          if {profile for profile, _ in candidates} != targets:
+              raise ValueError("The source index is missing an Apple platform")
+          publish_catalogs(candidates, registry, command="push")
+          print(f"Preview tag: {registry}/openexr:{tag}")
+          PY
