@@ -1,0 +1,10 @@
+{
+    "PackageName": "slang",
+    "Version": "2026.22.1",
+    "URL": "https://github.com/shader-slang/slang",
+    "License": "Apache-2.0 WITH LLVM-exception",
+    "LicenseFile": "LICENSE.txt",
+    "Source": {
+        "URL": "https://github.com/shader-slang/slang/releases/tag/v2026.22.1"
+    }
+}
