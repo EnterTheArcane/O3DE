@@ -1,14 +1,5 @@
-//
-// CRYEDIT.RC2 - resources Microsoft Visual C++ does not edit directly
-//
+// Resources maintained outside the Visual Studio resource editor.
 
 #ifdef APSTUDIO_INVOKED
-	#error this file is not editable by Microsoft Visual C++
-#endif //APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-// Add manually edited resources here...
-//#include "XTToolkitPro.rc"
-
-/////////////////////////////////////////////////////////////////////////////
+    #error this file is not editable by Microsoft Visual C++
+#endif
