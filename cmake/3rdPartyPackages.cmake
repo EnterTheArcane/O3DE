@@ -920,4 +920,10 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS AND NOT O3DE_SCRIPT_ONLY)
     ly_parse_third_party_dependencies(3rdParty::Freetype)
     # Importing this globally to handle AUTOMOC, AUTOUIC, AUTORCC
     ly_parse_third_party_dependencies(3rdParty::Qt)
+    if(PAL_PLATFORM_NAME STREQUAL "Windows" AND TARGET Qt6::EntryPointImplementation)
+        set_property(
+            TARGET Qt6::EntryPointImplementation
+            PROPERTY MAP_IMPORTED_CONFIG_PROFILE RELEASE
+        )
+    endif()
 endif()

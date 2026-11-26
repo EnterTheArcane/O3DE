@@ -12,6 +12,12 @@
 # is being avoided to prevent overriding functions declared in other targets platfrom
 # specific cmake files
 
+set(LY_BUILD_DEPENDENCIES
+    PRIVATE
+        version.lib
+        ws2_32.lib
+)
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     SET(LY_LINK_OPTIONS
         PRIVATE

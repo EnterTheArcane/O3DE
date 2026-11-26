@@ -6,3 +6,7 @@
 #
 #
 
+set(LY_BUILD_DEPENDENCIES
+    PRIVATE
+        wbemuuid.lib
+)

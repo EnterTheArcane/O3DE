@@ -50,11 +50,6 @@
 #include "LocalizedStringManager.h"
 #include "XML/XmlUtils.h"
 
-#if defined(WIN32)
-__pragma(comment(lib, "wininet.lib"))
-__pragma(comment(lib, "Winmm.lib"))
-#endif
-
 #if defined(APPLE)
 #include <AzCore/Utils/SystemUtilsApple_Platform.h>
 #endif

@@ -373,8 +373,3 @@ namespace AZ
         }
     };
 }
-
-/**
-* Windows platform-specific net modules
-*/
-#pragma comment(lib, WIN_SOCK_LIB_TO_LINK)

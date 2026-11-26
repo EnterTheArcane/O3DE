@@ -14,7 +14,6 @@ AZ_PUSH_DISABLE_WARNING(4458, "-Wunknown-warning-option")
 #include <PropIdl.h>
 #include <gdiplus.h>
 AZ_POP_DISABLE_WARNING
-#pragma comment (lib, "Gdiplus.lib")
 
 #include <WinUser.h> // needed for MessageBoxW in the assert handler
 #endif
@@ -3446,10 +3445,6 @@ extern "C"
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
     __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
-#endif
-
-#ifdef Q_OS_WIN
-#pragma comment(lib, "Shell32.lib")
 #endif
 
 extern "C" int AZ_DLL_EXPORT CryEditMain(int argc, char* argv[])

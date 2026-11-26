@@ -9,4 +9,6 @@
 set(LY_BUILD_DEPENDENCIES
     PRIVATE
         version.lib
+        wininet.lib
+        winmm.lib
 )

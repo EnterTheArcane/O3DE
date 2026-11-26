@@ -19,7 +19,6 @@
 AZ_PUSH_DISABLE_WARNING(4091, "-Wmissing-declarations"); // 4091: 'typedef ': ignored on left of '' when no variable is declared
 #   include <dbghelp.h>
 AZ_POP_DISABLE_WARNING;
-#pragma comment(lib, "version.lib")  // for "VerQueryValue"
 
 #include <NTSecAPI.h> // for LdrDllNotification dll load hook (UNICODE_STRING)
 

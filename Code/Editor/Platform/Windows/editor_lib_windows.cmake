@@ -7,5 +7,8 @@
 #
 set(LY_BUILD_DEPENDENCIES
     PRIVATE
+        gdiplus.lib
+        shell32.lib
         version.lib
+        wbemuuid.lib
 )

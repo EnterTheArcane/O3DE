@@ -32,7 +32,6 @@
 #include <QTime>
 #else
 #include <WbemIdl.h>
-#pragma comment(lib, "wbemuuid.lib")
 #endif
 
 #if defined(AZ_PLATFORM_MAC)

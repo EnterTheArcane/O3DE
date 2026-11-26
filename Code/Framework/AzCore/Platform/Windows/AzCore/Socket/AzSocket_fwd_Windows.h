@@ -9,4 +9,3 @@
 #pragma once
 
 #include "../../../Common/WinAPI/AzCore/Socket/AzSocket_fwd_WinAPI.h"
-#define WIN_SOCK_LIB_TO_LINK "WS2_32.lib"
