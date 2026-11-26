@@ -47,12 +47,13 @@ namespace AZ
                 return false;
             }
 
-            PROCESS_MEMORY_COUNTERS pc;
-            HANDLE hProcess = GetCurrentProcess();
+            PROCESS_MEMORY_COUNTERS pc{};
             pc.cb = sizeof(pc);
-            procGetProcessMemoryInfo(hProcess, &pc, sizeof(pc));
+            if (!procGetProcessMemoryInfo(::GetCurrentProcess(), &pc, pc.cb))
+            {
+                return false;
+            }
 
-            memset(&meminfo, 0, sizeof(ProcessMemInfo));
             meminfo.m_workingSet = pc.WorkingSetSize;
             meminfo.m_peakWorkingSet = pc.PeakWorkingSetSize;
             meminfo.m_pagefileUsage = pc.PagefileUsage;
