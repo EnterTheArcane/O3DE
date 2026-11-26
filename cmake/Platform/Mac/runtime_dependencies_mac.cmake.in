@@ -463,6 +463,9 @@ function(ly_copy source_files relative_target_directory)
     set(source_is_gem "${${CMAKE_CURRENT_FUNCTION}_SOURCE_GEM_MODULE}")
 
     foreach(source_file IN LISTS source_files)
+        if(@ly_stage_flat_runtime_files@ AND NOT IS_DIRECTORY "${source_file}" AND NOT source_file MATCHES "\\.[Ff]ramework(/|$)")
+            continue()
+        endif()
         # target is a bundle
         if(target_bundle_dir)
             o3de_copy_file_to_bundle(

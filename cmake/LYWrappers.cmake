@@ -358,12 +358,19 @@ function(ly_add_target)
         endif()
     endif()
 
-    # Custom commands need to be declared in the same folder as the target that they use.
-    # Not all the targets will require runtime dependencies, but we will generate at least an
-    # empty file for them.
     set(runtime_dependencies_list SHARED MODULE EXECUTABLE APPLICATION)
-    if(NOT ly_add_target_IMPORTED AND linking_options IN_LIST runtime_dependencies_list)
+    if(
+        LY_RUNTIME_FILE_STAGING
+        AND NOT ly_add_target_IMPORTED
+        AND linking_options IN_LIST runtime_dependencies_list
+    )
+        set_property(GLOBAL APPEND PROPERTY LY_RUNTIME_STAGING_TARGETS ${ly_add_target_NAME})
+        if(COMMAND ly_add_runtime_staging_build_event)
+            ly_add_runtime_staging_build_event("${ly_add_target_NAME}")
+        endif()
+    elseif(NOT ly_add_target_IMPORTED AND linking_options IN_LIST runtime_dependencies_list)
 
+        # Declare the bulk copy command in the target's directory even if its script will be empty.
         get_property(is_multi_config_generator GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
         # XCode generator doesnt support different source files per configuration, so we cannot have
         # the runtime dependencies using file-tracking, instead, we will have them as a post build step

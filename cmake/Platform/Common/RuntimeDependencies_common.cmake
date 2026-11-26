@@ -423,6 +423,13 @@ function(ly_delayed_generate_runtime_dependencies)
     get_property(additional_module_paths GLOBAL PROPERTY LY_ADDITIONAL_MODULE_PATH)
     list(APPEND CMAKE_MODULE_PATH ${additional_module_paths})
 
+    if(LY_RUNTIME_FILE_STAGING)
+        ly_stage_runtime_files()
+        if(NOT PAL_PLATFORM_NAME STREQUAL "Mac")
+            return()
+        endif()
+    endif()
+
     get_property(all_targets GLOBAL PROPERTY LY_ALL_TARGETS)
     foreach(aliased_target IN LISTS all_targets)
 
@@ -433,6 +440,24 @@ function(ly_delayed_generate_runtime_dependencies)
         get_target_property(target_type ${target} TYPE)
         if(NOT target_type IN_LIST LY_TARGET_TYPES_WITH_RUNTIME_OUTPUTS)
             continue()
+        endif()
+
+        set(ly_stage_flat_runtime_files FALSE)
+        unset(directory_dependencies)
+        if(LY_RUNTIME_FILE_STAGING)
+            get_property(is_bundle TARGET "${target}" PROPERTY MACOSX_BUNDLE)
+            get_property(is_imported TARGET "${target}" PROPERTY IMPORTED)
+            if(is_imported)
+                continue()
+            endif()
+            if(NOT is_bundle)
+                get_property(directory_dependencies TARGET "${target}" PROPERTY LY_RUNTIME_DIRECTORY_DEPENDENCIES)
+                if(NOT directory_dependencies)
+                    continue()
+                endif()
+                list(REMOVE_DUPLICATES directory_dependencies)
+                set(ly_stage_flat_runtime_files TRUE)
+            endif()
         endif()
 
         unset(LY_COPY_COMMANDS)
@@ -467,10 +492,11 @@ function(ly_delayed_generate_runtime_dependencies)
             "link files -> \"${target_copy_files}\""
             "imported files -> \"${target_copy_files}\"")
 
-        foreach(dependency_for_target IN LISTS target_copy_dependencies
-            target_link_dependencies
-            target_target_dependencies
-            target_imported_dependencies)
+        if(NOT ly_stage_flat_runtime_files)
+            set(directory_dependencies ${target_copy_dependencies} ${target_link_dependencies}
+                ${target_target_dependencies} ${target_imported_dependencies})
+        endif()
+        foreach(dependency_for_target IN LISTS directory_dependencies)
             unset(runtime_command)
             unset(runtime_depend)
 
@@ -518,13 +544,18 @@ function(ly_delayed_generate_runtime_dependencies)
         ly_file_read(${LY_RUNTIME_DEPENDENCIES_TEMPLATE} template_file)
         string(CONFIGURE "${LY_COPY_COMMANDS}" LY_COPY_COMMANDS @ONLY)
         string(CONFIGURE "${template_file}" configured_template_file @ONLY)
+        set(runtime_dependency_script "${CMAKE_BINARY_DIR}/runtime_dependencies/$<CONFIG>/${target}.cmake")
         file(GENERATE
-            OUTPUT ${CMAKE_BINARY_DIR}/runtime_dependencies/$<CONFIG>/${target}.cmake
+            OUTPUT "${runtime_dependency_script}"
             CONTENT "${configured_template_file}"
         )
 
         # set the property that is consumed from the custom command generated in LyWrappers.cmake
-        set_target_properties(${target} PROPERTIES RUNTIME_DEPENDENCIES_DEPENDS "${runtime_depends}")
+        if(LY_RUNTIME_FILE_STAGING)
+            set_property(TARGET ${target} PROPERTY LY_RUNTIME_DEPENDENCY_SCRIPT "${runtime_dependency_script}")
+        else()
+            set_property(TARGET ${target} PROPERTY RUNTIME_DEPENDENCIES_DEPENDS "${runtime_depends}")
+        endif()
 
     endforeach()
 
