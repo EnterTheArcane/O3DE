@@ -114,6 +114,7 @@ class Recipe(ConanFile):
         tc.variables["CMAKE_DEBUG_POSTFIX"] = "_d"
         tc.variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
         tc.variables["CMAKE_INSTALL_LIBDIR"] = "lib"
+        tc.variables["CMAKE_INSTALL_RPATH_USE_LINK_PATH"] = False
         tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = True
         # OpenImageIO uses headers and the Emscripten scanner needs an initialized sysroot.
         tc.variables["CMAKE_CXX_SCAN_FOR_MODULES"] = False
