@@ -9,9 +9,9 @@
 set(PAL_TRAIT_PHYSX_SUPPORTED TRUE)
 
 if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-   ly_associate_package(PACKAGE_NAME PhysX-5.13.0-rev1-linux-x64 TARGETS PhysX5 PACKAGE_HASH 5855bb5e63aabb436bd7f60432872523a8b8945b09c86c04a72794da7179e928)
+    ly_associate_package(PACKAGE_NAME PhysX-5.13.0-rev1-linux-x64 TARGETS PhysX5 PACKAGE_HASH 90c063157b1b2eeac6b213ba558a494f4e7c8ef5f73663fceebf10bdb3e776cd)
 elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-    ly_associate_package(PACKAGE_NAME PhysX-5.13.0-rev1-linux-arm TARGETS PhysX5 PACKAGE_HASH 5b6ca1a38a33dc4c893e02ac02e1ae0a65bfe27184ad19d0422a57b51be82c45)
+    ly_associate_package(PACKAGE_NAME PhysX-5.13.0-rev1-linux-aarch64 TARGETS PhysX5 PACKAGE_HASH d712744e5b8a3f74e00b154b08b9d6a8ba996ae21488312476bcb9c5b341cacc)
 else()
     message(FATAL_ERROR "Unsupported linux architecture ${CMAKE_SYSTEM_PROCESSOR}")
 endif()

@@ -12,4 +12,4 @@ if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
     message(FATAL_ERROR "PhysX 5.13 supports only macOS ARM64. Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-ly_associate_package(PACKAGE_NAME PhysX-5.13.0-rev1-mac-arm64 TARGETS PhysX5 PACKAGE_HASH 61d8e74da77e8826cf731bdfed47f4e570e7460d1604ad17547b0794b6f9b153)
+ly_associate_package(PACKAGE_NAME PhysX-5.13.0-rev1-mac-arm64 TARGETS PhysX5 PACKAGE_HASH 4d7ab350bb6bd0f1cea29fc8ad94f759580a522341ffcc32b05f8060f704fe1a)
