@@ -160,7 +160,7 @@ namespace OpenParticle
         return true;
     }
 
-    void ParticleSystem::Tick(float delta, const AZ::Transform& activeCameraTransform)
+    void ParticleSystem::Tick(float delta)
     {
         if (!m_particleSystem || m_particleSystem->GetAllEmitters().size() == 0)
         {
@@ -170,7 +170,7 @@ namespace OpenParticle
         OpenParticleSystem::CameraTransform cameraTransform;
         if (!m_rtConfig.m_inParticleEditor)
         {
-            cameraTransform.m_transform = activeCameraTransform;
+            cameraTransform.m_transform = m_particleFp->GetActiveCameraTransform();
 
             if (m_rtConfig.m_followActiveCamera)
             {

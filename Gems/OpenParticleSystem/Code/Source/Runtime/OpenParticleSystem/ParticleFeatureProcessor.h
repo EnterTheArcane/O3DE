@@ -48,7 +48,7 @@ namespace OpenParticle
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
-        void Simulate(float delta, const AZ::Transform& activeCameraTransform);
+        void Simulate(float delta);
         void Render(const AZ::RPI::FeatureProcessor::RenderPacket& packet);
 
         void Init();
@@ -112,6 +112,8 @@ namespace OpenParticle
 
         AZ::RHI::Ptr<AZ::RHI::BufferPool> GetBufferPool() const { return m_bufferPool; }
         AZ::RHI::Ptr<AZ::RHI::BufferPool> GetShaderReadBufferPool() const { return m_shaderReadBufferPool; }
+
+        const AZ::Transform& GetActiveCameraTransform() const { return m_activeCameraTransform; }
 
     private:
         void Init() override;

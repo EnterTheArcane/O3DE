@@ -152,11 +152,11 @@ namespace OpenParticle
         AZ_Error("ParticleDataInstance", false, "Failed to load asset %s.", asset.GetHint().c_str());
     }
 
-    void ParticleDataInstance::Simulate(float delta, const AZ::Transform& activeCameraTransform)
+    void ParticleDataInstance::Simulate(float delta)
     {
         if (m_particleInstance)
         {
-            m_particleInstance->Tick(delta, activeCameraTransform);
+            m_particleInstance->Tick(delta);
         }
     }
 
@@ -285,7 +285,7 @@ namespace OpenParticle
                     {
                         continue;
                     }
-                    iter->Simulate(deltaTime, m_activeCameraTransform);
+                    iter->Simulate(deltaTime);
                 }
             };
             AZ::Job* executeGroupJob = aznew AZ::JobFunction<decltype(jobLambda)>(jobLambda, true, nullptr); // Auto-deletes
