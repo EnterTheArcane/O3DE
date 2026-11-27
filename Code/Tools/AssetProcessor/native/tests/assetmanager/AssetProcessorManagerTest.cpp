@@ -2319,7 +2319,9 @@ void PathDependencyTest::CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& 
     // tell the APM about the file:
     m_isIdling = false;
     QMetaObject::invokeMethod(m_assetProcessorManager.get(), "AssessModifiedFile", Qt::QueuedConnection, Q_ARG(QString, absPath));
-    ASSERT_TRUE(BlockUntilIdle(5000));
+    const bool becameIdle = BlockUntilIdle(5000);
+    QObject::disconnect(connection);
+    ASSERT_TRUE(becameIdle) << "Timed out while capturing jobs for " << sourceFilePath;
 
     // Some tests intentionally finish with mixed slashes, so only use the corrected path to perform the job comparison.
     AZStd::string absPathCorrectSeparator(absPath.toUtf8().constData());
@@ -2342,8 +2344,6 @@ void PathDependencyTest::CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& 
     }
 
     ASSERT_TRUE(foundJob);
-
-    QObject::disconnect(connection);
 }
 
 bool PathDependencyTest::ProcessAsset(TestAsset& asset, const OutputAssetSet& outputAssets, const AssetBuilderSDK::ProductPathDependencySet& dependencies, const AZStd::string& folderPath, const AZStd::string& extension)
@@ -5999,7 +5999,7 @@ TEST_F(ChainJobDependencyTest, TestChainDependency_Multi)
     // Run through the dependencies in forward order so everything gets added to the database
     for (int i = 0; i < ChainLength; ++i)
     {
-        CaptureJobs(capturedDetails, AZStd::string::format("subfolder1/%d.txt", i).c_str());
+        ASSERT_NO_FATAL_FAILURE(CaptureJobs(capturedDetails, AZStd::string::format("subfolder1/%d.txt", i).c_str()));
 
         ASSERT_EQ(capturedDetails.size(), 1);
         ASSERT_EQ(capturedDetails[0].m_jobDependencyList.size(), i > 0 ? 1 : 0);
@@ -6014,7 +6014,7 @@ TEST_F(ChainJobDependencyTest, TestChainDependency_Multi)
     // Ex: 3 triggers -> 2 -> 1 -> 0
     for (int i = ChainLength - 1; i >= 0; --i)
     {
-        CaptureJobs(capturedDetails, AZStd::string::format("subfolder1/%d.txt", i).c_str());
+        ASSERT_NO_FATAL_FAILURE(CaptureJobs(capturedDetails, AZStd::string::format("subfolder1/%d.txt", i).c_str()));
 
         ASSERT_EQ(capturedDetails.size(), ChainLength - i);
         ASSERT_EQ(capturedDetails[0].m_jobDependencyList.size(), i > 0 ? 1 : 0);
