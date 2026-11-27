@@ -6,9 +6,13 @@
  *
  */
 
-#include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/time.h>
 #include <AzCore/PlatformIncl.h>
+#include <AzCore/std/string/fixed_string.h>
+
+#if defined(_M_X64) && !defined(_M_ARM64EC)
+#include <intrin.h>
+#endif
 
 namespace AZStd
 {
@@ -46,66 +50,108 @@ namespace AZStd
         return timeNowSecond;
     }
 
-    AZStd::chrono::microseconds GetCpuThreadTimeNowMicrosecond()
+    // Keep the diagnostic buffer off the successful query's stack frame.
+    static AZ_NOINLINE AZStd::chrono::microseconds ReportCpuThreadTimeQueryFailure(const char* failedFunction, DWORD error)
     {
-        auto ComputeTimestampCounterPerMicrosecond = []() -> int64_t
+        auto FormatFunc = [error](wchar_t* buffer, size_t size)
         {
-            static int64_t timeStampCounterPerMicrosecond = 0;
-            if (timeStampCounterPerMicrosecond > 0)
-            {
-                return timeStampCounterPerMicrosecond;
-            }
-
-            // To measure the Cpu time with microsecond precision
-            // on Windows Intel CPUs, the QueryThreadCycleTime is being used
-            // despite the documentation indicating that this function
-            // shouldn't be used to convert to elapsed time
-            // https://learn.microsoft.com/en-us/windows/win32/api/realtimeapiset/nf-realtimeapiset-querythreadcycletime#remarks
-
-            // What is being done here is to measure the processor timestamp difference
-            // over a period of 50 milliseconds and use that as the rate at which the thread ticks per microsecond
-            static const unsigned long long initialProcessorTimestamp = __rdtsc();
-            static const AZStd::chrono::steady_clock::time_point initialTime = AZStd::chrono::steady_clock::now();
-            const unsigned long long processorTimestamp = __rdtsc();
-            const auto elapsedTimeSinceFirstCall =
-                AZStd::chrono::duration_cast<AZStd::chrono::microseconds>(AZStd::chrono::steady_clock::now() - initialTime);
-
-            // Wait 50 milliseconds after the first call to this function
-            // to measure the thread difference in the time-stamp counter for the processor
-            if (elapsedTimeSinceFirstCall <= AZStd::chrono::milliseconds(50))
-            {
-                // return 0 until more accurate data can be gathered
-                return 0;
-            }
-
-            // elapsedTimeSinceFirstCall is in microseconds
-            timeStampCounterPerMicrosecond = static_cast<int64_t>((processorTimestamp - initialProcessorTimestamp) / elapsedTimeSinceFirstCall.count());
-            return timeStampCounterPerMicrosecond;
+            return ::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, error, 0, buffer, static_cast<DWORD>(size), nullptr);
         };
+        constexpr size_t messageBufferSize = 1024;
+        AZStd::fixed_wstring<messageBufferSize> errorMessage;
+        errorMessage.resize_and_overwrite(errorMessage.capacity(), AZStd::move(FormatFunc));
+        AZ_Assert(false, "Failed to query CPU thread time through %s: "
+            AZ_TRAIT_FORMAT_STRING_PRINTF_WSTRING "\n", failedFunction, errorMessage.c_str());
+        return AZStd::chrono::microseconds::zero();
+    }
 
-        if (int64_t timeStampCounterPerMicrosecond = ComputeTimestampCounterPerMicrosecond();
-            timeStampCounterPerMicrosecond > 0)
+    static AZ_NOINLINE AZStd::chrono::microseconds GetCpuThreadTimeFromThreadTimes(HANDLE thread)
+    {
+        FILETIME creationTime, exitTime, kernelTime, userTime;
+        if (!::GetThreadTimes(thread, &creationTime, &exitTime, &kernelTime, &userTime))
         {
-            unsigned long long threadCycleCount;
-            BOOL result = ::QueryThreadCycleTime(GetCurrentThread(), &threadCycleCount);
-            if (!result)
-            {
-                auto FormatFunc = [](wchar_t* buffer, size_t size)
-                {
-                    return ::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, GetLastError(), 0, buffer, static_cast<DWORD>(size),
-                        nullptr);
-                };
-                constexpr size_t messageBufferSize = 1024;
-                AZStd::fixed_wstring<messageBufferSize> errorMessage;
-                errorMessage.resize_and_overwrite(errorMessage.capacity(), AZStd::move(FormatFunc));
-                AZ_Assert(false, "Failed to query thread cycle time through QueryThreadCycleTime: "
-                    AZ_TRAIT_FORMAT_STRING_PRINTF_WSTRING "\n", errorMessage.c_str());
-                return AZStd::chrono::microseconds::zero();
-            }
-            return AZStd::chrono::microseconds(threadCycleCount / timeStampCounterPerMicrosecond);
+            return ReportCpuThreadTimeQueryFailure("GetThreadTimes", ::GetLastError());
+        }
+        const uint64_t kernelTicks = (static_cast<uint64_t>(kernelTime.dwHighDateTime) << 32) | kernelTime.dwLowDateTime;
+        const uint64_t userTicks = (static_cast<uint64_t>(userTime.dwHighDateTime) << 32) | userTime.dwLowDateTime;
+        // FILETIME counts intervals of 100 nanoseconds.
+        return AZStd::chrono::microseconds((kernelTicks + userTicks) / 10);
+    }
+
+#if defined(_M_X64) && !defined(_M_ARM64EC)
+    static AZ_NOINLINE uint64_t CalibrateTimestampCounterPerMicrosecond(HANDLE thread)
+    {
+        // Skip calibration when the runtime does not implement the cycle counter.
+        unsigned long long unusedCycleCount;
+        if (!::QueryThreadCycleTime(thread, &unusedCycleCount) && ::GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+        {
+            return 0;
         }
 
-        // return 0 until more accurate data can be gathered
-        return AZStd::chrono::microseconds::zero();
+        struct Sample
+        {
+            AZStd::chrono::steady_clock::time_point m_time;
+            uint64_t m_ticks;
+            AZStd::chrono::steady_clock::duration m_window;
+        };
+
+        const auto sampleCounter = []
+        {
+            Sample bestSample{ {}, 0, AZStd::chrono::steady_clock::duration::max() };
+            constexpr int sampleCount = 3;
+            // Use the closest clock readings to limit the effect of preemption during a sample.
+            for (int sample = 0; sample < sampleCount; ++sample)
+            {
+                const auto before = AZStd::chrono::steady_clock::now();
+                _mm_lfence();
+                const uint64_t ticks = __rdtsc();
+                _mm_lfence();
+                const auto window = AZStd::chrono::steady_clock::now() - before;
+                if (window < bestSample.m_window)
+                {
+                    bestSample = { before + window / 2, ticks, window };
+                }
+            }
+            return bestSample;
+        };
+
+        const Sample start = sampleCounter();
+        const auto deadline = start.m_time + AZStd::chrono::milliseconds(2);
+        while (AZStd::chrono::steady_clock::now() < deadline)
+        {
+            YieldProcessor();
+        }
+        const Sample end = sampleCounter();
+        const auto elapsed = AZStd::chrono::duration_cast<AZStd::chrono::microseconds>(end.m_time - start.m_time);
+        if (end.m_ticks > start.m_ticks)
+        {
+            return (end.m_ticks - start.m_ticks) / elapsed.count();
+        }
+        return 0;
+    }
+#endif
+
+    AZStd::chrono::microseconds GetCpuThreadTimeNowMicrosecond()
+    {
+        const HANDLE thread = ::GetCurrentThread();
+
+#if defined(_M_X64) && !defined(_M_ARM64EC)
+        // Preserve the fine-grained estimate from thread cycles. Windows does not guarantee a fixed cycle rate.
+        static const uint64_t timestampCounterPerMicrosecond = CalibrateTimestampCounterPerMicrosecond(thread);
+        if (timestampCounterPerMicrosecond != 0)
+        {
+            unsigned long long threadCycleCount;
+            if (::QueryThreadCycleTime(thread, &threadCycleCount))
+            {
+                return AZStd::chrono::microseconds(threadCycleCount / timestampCounterPerMicrosecond);
+            }
+            const DWORD error = ::GetLastError();
+            if (error != ERROR_CALL_NOT_IMPLEMENTED)
+            {
+                return ReportCpuThreadTimeQueryFailure("QueryThreadCycleTime", error);
+            }
+        }
+#endif
+        return GetCpuThreadTimeFromThreadTimes(thread);
     }
 }

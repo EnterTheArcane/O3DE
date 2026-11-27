@@ -73,20 +73,14 @@ namespace UnitTest
 
     TEST_F(TimeTests, QueryCPUThreadTime_ReturnsNonZero)
     {
-        (void)AZStd::GetCpuThreadTimeNowMicrosecond();
-
-        // Windows need at least 50 milliseconds of running time to measure the processer tick scale
-        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(50));
-
-        // The cpu thread time should now return non-zero values
-        AZStd::chrono::microseconds initialCpuThreadTime = AZStd::GetCpuThreadTimeNowMicrosecond();
-        // Sleep for 1 millisecond (or 1000 microseconds) and check the CPU time
-        // less than 1 miilisecond of CPU should have elapsed
-        // Now due to the fact that thread sleep can last got longer than it's duration
-        // this test is only checking that the new CPUThreadTime is at least greater than or equal to the initial
-        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
-        AZStd::chrono::microseconds newCpuThreadTime = AZStd::GetCpuThreadTimeNowMicrosecond();
-
-        EXPECT_GT((newCpuThreadTime - initialCpuThreadTime).count(), 0);
+        const auto initialCpuThreadTime = AZStd::GetCpuThreadTimeNowMicrosecond();
+        const auto deadline = AZStd::chrono::steady_clock::now() + AZStd::chrono::milliseconds(250);
+        auto newCpuThreadTime = initialCpuThreadTime;
+        // Measure CPU time while the thread is actively running.
+        while (newCpuThreadTime == initialCpuThreadTime && AZStd::chrono::steady_clock::now() < deadline)
+        {
+            newCpuThreadTime = AZStd::GetCpuThreadTimeNowMicrosecond();
+        }
+        EXPECT_GT(newCpuThreadTime, initialCpuThreadTime);
     }
 } // namespace UnitTest
