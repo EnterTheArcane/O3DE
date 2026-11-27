@@ -52,7 +52,7 @@ namespace FileWatcherTests
         void WatchUntilNoMoreEvents(int expectedAddFiles, int expectedModifyFiles, int expectedRemoveFiles);
         virtual void SetupWatches();
         void Flush();
-        virtual QString GetFenceFolder(); // some tests may need to override this
+        virtual QStringList GetFenceFolders() const;
 
     protected:
         AZStd::unique_ptr<FileWatcher> m_fileWatcher;
@@ -78,17 +78,12 @@ namespace FileWatcherTests
         AZStd::unique_ptr<AZ::IO::FileIOBase> m_baseFileIO;
         AZStd::unique_ptr<AZ::Test::ScopedAutoTempDirectory> m_tempDir;
 
-        // to appear in the notify queue.  Once that happens we know that all prior events have already been handled and nothing
-        // is still forthcoming from the OS. 
-        // Known as a 'fence' file since its similar to issuing 'fence' CPU instructions.
-        QString m_currentFenceFilePath; 
-        bool m_fenceFileFound = false;
-        void CreateFenceFile();
+        void WaitForFences();
+        QSet<QString> m_pendingFences;
     };
 
     void FileWatcherUnitTest::SetUp()
     {
-        m_fenceFileFound = false;
         int m_dummyArgC = 0;
         char** m_dummyArgV = nullptr;
         m_app = AZStd::make_unique<QCoreApplication>(m_dummyArgC, m_dummyArgV);
@@ -111,11 +106,7 @@ namespace FileWatcherTests
 
         m_addFileConnection = QObject::connect(m_fileWatcher.get(), &FileWatcher::fileAdded, [&](QString filename)
             {
-                if (filename == m_currentFenceFilePath)
-                {
-                    m_fenceFileFound = true;
-                }
-                else
+                if (!m_pendingFences.remove(filename))
                 {
                     m_filesAdded.push_back(filename);
                 }
@@ -146,35 +137,36 @@ namespace FileWatcherTests
         m_fileWatcher->AddFolderWatch(m_assetRootPath);
     }
 
-    QString FileWatcherUnitTest::GetFenceFolder()
+    QStringList FileWatcherUnitTest::GetFenceFolders() const
     {
-        return m_assetRootPath;
+        return { m_assetRootPath };
     }
 
-    void FileWatcherUnitTest::CreateFenceFile()
+    void FileWatcherUnitTest::WaitForFences()
     {
-        AZ::IO::Path fencePath = AZ::IO::Path(GetFenceFolder().toUtf8().constData()) / "__fence__";
-        AZStd::string fenceString; 
-        ASSERT_TRUE(AZ::IO::CreateTempFileName(fencePath.String().c_str(), fenceString));
-        m_currentFenceFilePath = QString::fromUtf8(fenceString.c_str());
-        QFile fenceFile(m_currentFenceFilePath);
-        ASSERT_TRUE(fenceFile.open(QFile::WriteOnly));
-        fenceFile.close();
-    }
-    
-    void FileWatcherUnitTest::Flush()
-    {
-        QCoreApplication::processEvents(QEventLoop::AllEvents);
-        m_fenceFileFound = false;
-        CreateFenceFile();
+        // Each watch root has its own notification queue.
+        for (const QString& folder : GetFenceFolders())
+        {
+            AZ::IO::Path fencePath = AZ::IO::Path(folder.toUtf8().constData()) / "__fence__";
+            AZStd::string fenceString;
+            ASSERT_TRUE(AZ::IO::CreateTempFileName(fencePath.c_str(), fenceString));
+            const QString filename = QString::fromUtf8(fenceString.c_str());
+            m_pendingFences.insert(filename);
+            QFile fenceFile(filename);
+            ASSERT_TRUE(fenceFile.open(QFile::WriteOnly));
+        }
         QElapsedTimer timer;
         timer.start();
-
-        // Wait for fence file to appear.
-        while ((!m_fenceFileFound) && (timer.elapsed() < c_MaxWaitForFileChangesMS))
+        while (!m_pendingFences.isEmpty() && timer.elapsed() < c_MaxWaitForFileChangesMS)
         {
             QCoreApplication::processEvents(QEventLoop::AllEvents);
         }
+        ASSERT_TRUE(m_pendingFences.isEmpty());
+    }
+
+    void FileWatcherUnitTest::Flush()
+    {
+        ASSERT_NO_FATAL_FAILURE(WaitForFences());
         m_filesAdded.clear();
         m_filesRemoved.clear();
         m_filesModified.clear();
@@ -182,20 +174,7 @@ namespace FileWatcherTests
 
     void FileWatcherUnitTest::WatchUntilNoMoreEvents(int expectedAddFiles, int expectedModifyFiles, int expectedRemoveFiles)
     {
-        m_fenceFileFound = false;
-        CreateFenceFile();
-        QElapsedTimer timer;
-        timer.start();
-
-        // Wait for timeout, or the fence file to appear to indicate nothing more is forthcoming
-        // since OS events are issued in the order they occur:
-        while ((timer.elapsed() < c_MaxWaitForFileChangesMS) && (!m_fenceFileFound))
-        {
-            QCoreApplication::processEvents(QEventLoop::AllEvents);
-        }
-
-        // if we didn't find the fence file everything else is not valid:
-        ASSERT_TRUE(m_fenceFileFound);
+        ASSERT_NO_FATAL_FAILURE(WaitForFences());
 
         EXPECT_EQ(m_filesAdded.count(), expectedAddFiles);
 
@@ -660,9 +639,9 @@ namespace FileWatcherTests
         QDir m_projectFolder;
         QDir m_cacheLocation;
 
-        QString GetFenceFolder() override
+        QStringList GetFenceFolders() const override
         {
-            return m_cacheLocation.absoluteFilePath("fence");
+            return { m_projectFolder.absolutePath(), m_cacheLocation.absoluteFilePath("fence") };
         }
 
         void SetupWatches() override
@@ -742,13 +721,13 @@ namespace FileWatcherTests
         int expectedCreates = 0;
         for (const auto& folderName : regularFldrs)
         {
-            QDir(folderName).mkpath(".");
+            ASSERT_TRUE(QDir(folderName).mkpath("."));
             ++expectedCreates; // we expect to see each folder in regularFldrs appear.
         }
 
         for (const auto& folderName : ignoredFldrs)
         {
-            QDir(folderName).mkpath(".");
+            ASSERT_TRUE(QDir(folderName).mkpath("."));
         }
 
         for (const auto& fileName : regularFiles)
