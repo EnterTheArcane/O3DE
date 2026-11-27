@@ -45,6 +45,7 @@ public:
         }
 
         bool ReadChanges();
+        void DispatchChanges(FileWatcher& watcher) const;
 
         AZStd::unique_ptr<OVERLAPPED> m_overlapped; // Identifies this root watch
         HandleUniquePtr m_directoryHandle;

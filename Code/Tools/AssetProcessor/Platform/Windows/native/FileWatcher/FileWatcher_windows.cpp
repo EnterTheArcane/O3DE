@@ -79,6 +79,39 @@ bool FileWatcher::PlatformImplementation::FolderRootWatch::ReadChanges()
     );
 }
 
+void FileWatcher::PlatformImplementation::FolderRootWatch::DispatchChanges(FileWatcher& watcher) const
+{
+    const QDir root(m_directoryRoot);
+    const auto* notification = reinterpret_cast<const FILE_NOTIFY_INFORMATION*>(&m_fileNotifyInformationList);
+    for (;;)
+    {
+        const QString file = QDir::toNativeSeparators(
+            root.filePath(QString::fromWCharArray(notification->FileName, notification->FileNameLength / sizeof(wchar_t))));
+
+        switch (notification->Action)
+        {
+        case FILE_ACTION_ADDED:
+        case FILE_ACTION_RENAMED_NEW_NAME:
+            watcher.rawFileAdded(file);
+            break;
+        case FILE_ACTION_REMOVED:
+        case FILE_ACTION_RENAMED_OLD_NAME:
+            watcher.rawFileRemoved(file);
+            break;
+        case FILE_ACTION_MODIFIED:
+            // Changes to size, attributes, data, or timestamps can produce multiple notifications.
+            watcher.rawFileModified(file);
+            break;
+        }
+
+        if (notification->NextEntryOffset == 0)
+        {
+            break;
+        }
+        notification = reinterpret_cast<const FILE_NOTIFY_INFORMATION*>(reinterpret_cast<const char*>(notification) + notification->NextEntryOffset);
+    }
+}
+
 void FileWatcher::PlatformStop()
 {
     // Send a special signal to the child thread, that is blocked in a GetQueuedCompletionStatus call, with a completion
@@ -92,63 +125,54 @@ void FileWatcher::PlatformStop()
 
 void FileWatcher::WatchFolderLoop()
 {
-    LPOVERLAPPED directoryId = nullptr;
-    ULONG_PTR completionKey = 0;
-
     m_startedSignal = true; // signal that we are no longer going to drop any events.
 
     while (!m_shutdownThreadSignal)
     {
-        DWORD dwByteCount = 0;
-        if (::GetQueuedCompletionStatus(m_platformImpl->m_ioHandle.get(), &dwByteCount, &completionKey, &directoryId, INFINITE))
+        LPOVERLAPPED directoryId = nullptr;
+        ULONG_PTR completionKey = 0;
+        DWORD byteCount = 0;
+        const BOOL completionSucceeded = ::GetQueuedCompletionStatus(m_platformImpl->m_ioHandle.get(), &byteCount, &completionKey, &directoryId, INFINITE);
+        DWORD completionError = ERROR_SUCCESS;
+        if (!completionSucceeded)
         {
-            if (m_shutdownThreadSignal || completionKey == static_cast<ULONG_PTR>(PlatformImplementation::EventType::Shutdown))
-            {
-                break;
-            }
-            if (dwByteCount == 0)
-            {
-                continue;
-            }
-
-            const auto foundFolderRoot = m_platformImpl->m_folderRootWatches.find(directoryId);
-            if (foundFolderRoot == end(m_platformImpl->m_folderRootWatches))
-            {
-                continue;
-            }
-
-            PlatformImplementation::FolderRootWatch& folderRoot = foundFolderRoot->second;
-            // Initialize offset to 1 to ensure that the first iteration is always processed
-            DWORD offset = 1;
-            for (
-                const FILE_NOTIFY_INFORMATION* pFileNotifyInformation = reinterpret_cast<const FILE_NOTIFY_INFORMATION*>(&folderRoot.m_fileNotifyInformationList);
-                offset;
-                pFileNotifyInformation = reinterpret_cast<const FILE_NOTIFY_INFORMATION*>(reinterpret_cast<const char*>(pFileNotifyInformation) + offset)
-            ){
-                const QString file = QDir::toNativeSeparators(QDir(folderRoot.m_directoryRoot)
-                    .filePath(QString::fromWCharArray(pFileNotifyInformation->FileName, pFileNotifyInformation->FileNameLength / 2)));
-
-                switch (pFileNotifyInformation->Action)
-                {
-                case FILE_ACTION_ADDED:
-                case FILE_ACTION_RENAMED_NEW_NAME:
-                    rawFileAdded(file);
-                    break;
-                case FILE_ACTION_REMOVED:
-                case FILE_ACTION_RENAMED_OLD_NAME:
-                    rawFileRemoved(file);
-                    break;
-                case FILE_ACTION_MODIFIED:
-                    // note that changing a files size, attributes, data, modified time, create time, all count as individual modifies
-                    // and may send multiple events asynchronously.
-                    rawFileModified(file);
-                    break;
-                }
-
-                offset = pFileNotifyInformation->NextEntryOffset;
-            }
-
-            folderRoot.ReadChanges();
+            completionError = ::GetLastError();
         }
+        if (m_shutdownThreadSignal || (completionSucceeded && completionKey == static_cast<ULONG_PTR>(PlatformImplementation::EventType::Shutdown)))
+        {
+            break;
+        }
+        if (!completionSucceeded && !directoryId)
+        {
+            AZ_Warning("FileWatcher", false, "Waiting for directory changes failed (Windows error %lu).", completionError);
+            break;
+        }
+
+        const auto foundFolderRoot = m_platformImpl->m_folderRootWatches.find(directoryId);
+        if (foundFolderRoot == end(m_platformImpl->m_folderRootWatches))
+        {
+            continue;
+        }
+
+        PlatformImplementation::FolderRootWatch& folderRoot = foundFolderRoot->second;
+        if (!completionSucceeded && completionError != ERROR_NOTIFY_ENUM_DIR)
+        {
+            AZ_Warning("FileWatcher", false, "Watching %s failed (Windows error %lu).", folderRoot.m_directoryRoot.toUtf8().constData(), completionError);
+            continue;
+        }
+
+        const bool notificationsLost = completionError == ERROR_NOTIFY_ENUM_DIR || byteCount == 0;
+        if (!notificationsLost)
+        {
+            folderRoot.DispatchChanges(*this);
+        }
+
+        // A completion reporting notification loss also consumes the pending read.
+        if (!folderRoot.ReadChanges())
+        {
+            const DWORD error = ::GetLastError();
+            AZ_Warning("FileWatcher", false, "Resuming the directory watch for %s failed (Windows error %lu).", folderRoot.m_directoryRoot.toUtf8().constData(), error);
+        }
+        AZ_Warning("FileWatcher", !notificationsLost, "Directory change notifications were lost for %s.", folderRoot.m_directoryRoot.toUtf8().constData());
     }
 }
