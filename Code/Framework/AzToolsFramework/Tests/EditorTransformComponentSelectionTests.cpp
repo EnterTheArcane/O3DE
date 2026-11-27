@@ -128,10 +128,15 @@ namespace UnitTest
         AZ::EntityId m_entityId2;
         AZ::EntityId m_entityId3;
 
-        static inline const AZ::Vector3 Entity1WorldTranslation = AZ::Vector3(5.0f, 15.0f, 10.0f);
-        static inline const AZ::Vector3 Entity2WorldTranslation = AZ::Vector3(5.0f, 14.0f, 10.0f);
-        static inline const AZ::Vector3 Entity3WorldTranslation = AZ::Vector3(5.0f, 16.0f, 10.0f);
+        static const AZ::Vector3 Entity1WorldTranslation;
+        static const AZ::Vector3 Entity2WorldTranslation;
+        static const AZ::Vector3 Entity3WorldTranslation;
     };
+
+    // Initialize the positions before the expected transforms below use them.
+    const AZ::Vector3 EditorTransformComponentSelectionViewportPickingFixture::Entity1WorldTranslation(5.0f, 15.0f, 10.0f);
+    const AZ::Vector3 EditorTransformComponentSelectionViewportPickingFixture::Entity2WorldTranslation(5.0f, 14.0f, 10.0f);
+    const AZ::Vector3 EditorTransformComponentSelectionViewportPickingFixture::Entity3WorldTranslation(5.0f, 16.0f, 10.0f);
 
     void ArrangeIndividualRotatedEntitySelection(const AzToolsFramework::EntityIdList& entityIds, const AZ::Quaternion& orientation)
     {
