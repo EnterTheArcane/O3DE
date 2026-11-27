@@ -11,6 +11,7 @@
 #include <native/unittests/AssetProcessorUnitTests.h>
 #include <native/unittests/UnitTestUtils.h> // for the assert absorber.
 #include <native/tests/MockAssetDatabaseRequestsHandler.h>
+#include <native/utilities/assetUtils.h>
 
 namespace UnitTest
 {
@@ -68,6 +69,7 @@ namespace UnitTest
         registry->Get(enginePath.Native(), AZ::SettingsRegistryMergeUtils::FilePathKey_EngineRootFolder);
         registry->Set(projectPathKey, (enginePath / "AutomatedTesting").Native());
         AZ::SettingsRegistryMergeUtils::MergeSettingsToRegistry_AddRuntimeFilePaths(*registry);
+        AssetUtilities::ComputeProjectPath(true);
 
         // Forcing the branch token into settings registry before starting the application manager.
         // This avoids writing the asset_processor.setreg file which can cause fileIO errors.
