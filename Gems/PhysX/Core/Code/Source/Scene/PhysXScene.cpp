@@ -38,6 +38,7 @@
 #include <AzFramework/Physics/Material/PhysicsMaterialManager.h>
 
 #include <Source/Articulation.h>
+#include <Source/ArticulationLinkComponent.h>
 
 namespace PhysX
 {
@@ -573,6 +574,16 @@ namespace PhysX
         m_pxScene->simulate(deltatime);
     }
 
+    void PhysXScene::RegisterArticulationRoot(ArticulationLinkComponent& root)
+    {
+        m_articulationRoots.push_back(&root);
+    }
+
+    void PhysXScene::UnregisterArticulationRoot(ArticulationLinkComponent& root)
+    {
+        AZStd::erase(m_articulationRoots, &root);
+    }
+
     void PhysXScene::FinishSimulation()
     {
         AZ_PROFILE_SCOPE(Physics, "PhysXScene::FinishSimulation");
@@ -602,6 +613,10 @@ namespace PhysX
 
             // Swap the buffers, invoke callbacks, build the list of active actors.
             m_pxScene->fetchResults(true);
+            for (auto* root : m_articulationRoots)
+            {
+                root->CaptureArticulationForces();
+            }
         }
 
         if (activeActorsEnabled)

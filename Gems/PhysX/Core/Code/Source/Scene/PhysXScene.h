@@ -27,6 +27,8 @@ namespace physx
 
 namespace PhysX
 {
+    class ArticulationLinkComponent;
+
     //! PhysX implementation of the AzPhysics::Scene.
     class PhysXScene final
         : public AzPhysics::Scene
@@ -86,6 +88,11 @@ namespace PhysX
         void FlushTransformSync();
         
     private:
+        friend class ArticulationLinkComponent;
+
+        //! The caller holds the scene write lock for both operations.
+        void RegisterArticulationRoot(ArticulationLinkComponent& root);
+        void UnregisterArticulationRoot(ArticulationLinkComponent& root);
 
         //! Data structure for efficient unique vector functionality.
         //! Body indices are inserted avoiding duplicated data and stored in a vector for efficient iteration.
@@ -142,6 +149,7 @@ namespace PhysX
         AZStd::queue<AzPhysics::JointIndex> m_freeJointSlots;
 
         AzPhysics::SystemEvents::OnConfigurationChangedEvent::Handler m_physicsSystemConfigChanged;
+        AZStd::vector<ArticulationLinkComponent*> m_articulationRoots;
 
         static thread_local AZStd::vector<physx::PxRaycastHit> s_rayCastBuffer; //!< thread local structure to hold hits for a single raycast or shapecast.
         static thread_local AZStd::vector<physx::PxSweepHit> s_sweepBuffer; //!< thread local structure to hold hits for a single shapecast.

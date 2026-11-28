@@ -14,6 +14,7 @@
 #include <PhysX/MathConversion.h>
 #include <PhysX/PhysXLocks.h>
 #include <PhysX/Utils.h>
+#include <Scene/PhysXScene.h>
 #include <System/PhysXSystem.h>
 
 namespace PhysX
@@ -70,6 +71,15 @@ namespace PhysX
 
     const AZ::Entity* ArticulationLinkComponent::GetArticulationRootEntity() const
     {
+        if (m_articulationRootEntityId.IsValid())
+        {
+            AZ::Entity* rootEntity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(rootEntity, &AZ::ComponentApplicationBus::Events::FindEntity, m_articulationRootEntityId);
+            if (rootEntity)
+            {
+                return rootEntity;
+            }
+        }
         bool rootFound = false;
         AZ::Entity* currentEntity = GetEntity();
         while (!rootFound)
@@ -104,6 +114,7 @@ namespace PhysX
 
     void ArticulationLinkComponent::Activate()
     {
+        m_articulationRootEntityId = GetArticulationRootEntity()->GetId();
         m_offsetInCorrectUnits = m_config.HingePropertiesVisible() ? AZ::DegToRad(m_config.m_offset) : m_config.m_offset;
         auto* sceneInterface = AZ::Interface<AzPhysics::SceneInterface>::Get();
         if (!sceneInterface)
@@ -203,6 +214,7 @@ namespace PhysX
         }
 
         m_link = nullptr;
+        m_articulationRootEntityId.SetInvalid();
 
         // set the behavior when the parent's transform changes back to default, since physics is no longer controlling the transform
         GetEntity()->GetTransform()->SetOnParentChangedBehavior(AZ::OnParentChangedBehavior::Update);
@@ -247,17 +259,21 @@ namespace PhysX
         CreateChildArticulationLinks(nullptr, *m_articulationLinkData.get());
 
         // Add articulation to the scene
-        AzPhysics::Scene* scene = sceneInterface->GetScene(m_attachedSceneHandle);
+        auto* scene = static_cast<PhysXScene*>(sceneInterface->GetScene(m_attachedSceneHandle));
         physx::PxScene* pxScene = static_cast<physx::PxScene*>(scene->GetNativePointer());
 
         PHYSX_SCENE_WRITE_LOCK(pxScene);
         pxScene->addArticulation(*m_articulation);
 
-        m_articulationCache = m_articulation->createCache();
-        AZ_Assert(m_articulationCache, "Failed to allocate articulation force cache");
-        if (m_articulationCache)
+        // A single root link has no inbound joint to sample.
+        if (m_articulation->getNbLinks() > 1)
         {
-            m_articulation->zeroCache(*m_articulationCache);
+            m_articulationCache = m_articulation->createCache();
+            AZ_Assert(m_articulationCache, "Failed to allocate articulation force cache");
+            if (m_articulationCache)
+            {
+                scene->RegisterArticulationRoot(*this);
+            }
         }
     }
 
@@ -286,19 +302,6 @@ namespace PhysX
 
         m_articulation->setSolverIterationCounts(
             rootLinkConfiguration.m_solverPositionIterations, rootLinkConfiguration.m_solverVelocityIterations);
-    }
-
-    void setInboundJointDriveParams(
-        physx::PxArticulationJointReducedCoordinate* inboundJoint,
-        [[maybe_unused]] physx::PxArticulationAxis articulationAxis,
-        const ArticulationJointMotorProperties& motorProperties)
-    {
-        physx::PxArticulationDrive drive;
-        drive.driveType = physx::PxArticulationDriveType::eFORCE;
-        drive.envelope.maxEffort = motorProperties.m_driveForceLimit;
-        drive.damping = motorProperties.m_driveDamping;
-        drive.stiffness = motorProperties.m_driveStiffness;
-        inboundJoint->setDriveParams(physx::PxArticulationAxis::eTWIST, drive);
     }
 
     void ArticulationLinkComponent::CreateChildArticulationLinks(
@@ -529,7 +532,7 @@ namespace PhysX
 
     void ArticulationLinkComponent::DestroyArticulation()
     {
-        AzPhysics::Scene* scene = AZ::Interface<AzPhysics::SceneInterface>::Get()->GetScene(m_attachedSceneHandle);
+        auto* scene = static_cast<PhysXScene*>(AZ::Interface<AzPhysics::SceneInterface>::Get()->GetScene(m_attachedSceneHandle));
         if (scene == nullptr)
         {
             // The scene can be removed before articulation is destroyed.
@@ -543,6 +546,7 @@ namespace PhysX
         PHYSX_SCENE_WRITE_LOCK(pxScene);
         if (m_articulationCache)
         {
+            scene->UnregisterArticulationRoot(*this);
             m_articulationCache->release();
             m_articulationCache = nullptr;
         }
@@ -563,6 +567,11 @@ namespace PhysX
             aznumeric_cast<int32_t>(AzPhysics::SceneEvents::PhysicsStartFinishSimulationPriority::Physics));
     }
 
+    void ArticulationLinkComponent::CaptureArticulationForces()
+    {
+        m_articulation->copyInternalStateToCache(*m_articulationCache, physx::PxArticulationCacheFlag::eLINK_INCOMING_JOINT_FORCE);
+    }
+
     void ArticulationLinkComponent::PostPhysicsTick([[maybe_unused]] float fixedDeltaTime)
     {
         AzPhysics::Scene* scene = AZ::Interface<AzPhysics::SceneInterface>::Get()->GetScene(m_attachedSceneHandle);
@@ -577,10 +586,6 @@ namespace PhysX
             if (!m_articulation)
             {
                 return;
-            }
-            if (m_articulationCache)
-            {
-                m_articulation->copyInternalStateToCache(*m_articulationCache, physx::PxArticulationCacheFlag::eLINK_INCOMING_JOINT_FORCE);
             }
             if (m_articulation->isSleeping())
             {
@@ -882,6 +887,10 @@ namespace PhysX
 
     bool ArticulationLinkComponent::IsRootArticulation() const
     {
+        if (m_articulationRootEntityId.IsValid())
+        {
+            return m_articulationRootEntityId == GetEntityId();
+        }
         return IsRootArticulationEntity<ArticulationLinkComponent>(GetEntity());
     }
 

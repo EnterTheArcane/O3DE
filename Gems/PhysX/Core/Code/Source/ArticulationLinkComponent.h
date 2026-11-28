@@ -100,6 +100,8 @@ namespace PhysX
         ArticulationLinkConfiguration m_config;
 
     private:
+        friend class PhysXScene;
+
         const AZ::Entity* GetArticulationRootEntity() const;
 
         void CreateArticulation();
@@ -115,6 +117,7 @@ namespace PhysX
         void AddCollisionShape(const ArticulationLinkData& thisLinkData, ArticulationLink* articulationLink);
 
         void PostPhysicsTick(float fixedDeltaTime);
+        void CaptureArticulationForces();
 
         // AZ::Component overrides ...
         void Activate() override;
@@ -129,6 +132,7 @@ namespace PhysX
         physx::PxArticulationJointReducedCoordinate* m_driveJoint = nullptr;
 
         AzPhysics::SceneHandle m_attachedSceneHandle = AzPhysics::InvalidSceneHandle;
+        AZ::EntityId m_articulationRootEntityId;
         AZStd::vector<AzPhysics::SimulatedBodyHandle> m_articulationLinks;
         AzPhysics::SimulatedBodyHandle m_bodyHandle = AzPhysics::InvalidSimulatedBodyHandle;
         AzPhysics::SceneEvents::OnSceneSimulationFinishHandler m_sceneFinishSimHandler;

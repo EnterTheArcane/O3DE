@@ -77,6 +77,8 @@ namespace PhysX
 
         bool m_isFixedBase = false;
         bool m_selfCollide = false;
+        // Fits in the padding before the aligned center of mass vector.
+        ArticulationJointFrictionProperties m_jointFrictionParameters;
 
         // Rigid Body configuration
 
@@ -126,7 +128,6 @@ namespace PhysX
         //! DEPRECATED: Friction coefficient retained for asset round trips and retuning. It has no simulation effect.
         //! Remove after legacy friction settings have been migrated to per-axis effort parameters.
         float m_jointFriction = 0.f;
-        ArticulationJointFrictionProperties m_jointFrictionParameters;
         AZ::Vector3 m_armature = AZ::Vector3::CreateZero();
 
         ArticulationJointMotorProperties m_motorConfiguration;
