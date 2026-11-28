@@ -6,9 +6,15 @@
 #
 #
 
-# Detect the ios SDK Path and set the SYSROOT
+# Resolve the selected iOS SDK with xcrun.
+if(CMAKE_OSX_SYSROOT MATCHES "[Ii][Pp]hone[Ss]imulator")
+    set(IOS_SDK_NAME "iphonesimulator")
+else()
+    set(IOS_SDK_NAME "iphoneos")
+endif()
+
 find_program(XCRUN_PROG "xcrun")
-execute_process(COMMAND ${XCRUN_PROG} --sdk iphoneos --show-sdk-path
+execute_process(COMMAND ${XCRUN_PROG} --sdk ${IOS_SDK_NAME} --show-sdk-path
                 OUTPUT_VARIABLE LY_IOS_SDK_PATH
                 RESULTS_VARIABLE GET_IOS_SDK_RESULT)
 if (NOT GET_IOS_SDK_RESULT EQUAL 0)
@@ -18,8 +24,4 @@ string(STRIP ${LY_IOS_SDK_PATH} LY_IOS_SDK_PATH)
 
 set(CMAKE_SYSROOT ${LY_IOS_SDK_PATH})
 
-set(SDKROOT "iphoneos")
-
-set(DEVROOT "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer")
-
-set(CMAKE_OSX_SYSROOT "${SDKROOT}")
+set(CMAKE_OSX_SYSROOT "${IOS_SDK_NAME}")
