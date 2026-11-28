@@ -7,6 +7,7 @@
  */
 
 #include <MCore/Source/AttributeFloat.h>
+#include <MCore/Source/AttributeVector3.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
@@ -14,6 +15,9 @@
 #include <EMotionFX/Source/AnimGraphParameterCondition.h>
 #include <EMotionFX/Source/AnimGraphStateTransition.h>
 #include <EMotionFX/Source/BlendTree.h>
+#include <EMotionFX/Source/BlendTreeFloatMath1Node.h>
+#include <EMotionFX/Source/BlendTreeLookAtNode.h>
+#include <EMotionFX/Source/BlendTreeParameterNode.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Source/Motion.h>
@@ -26,7 +30,9 @@
 #include <EMotionFX/Source/MotionEventTrack.h>
 #include <EMotionFX/Source/TwoStringEventData.h>
 #include <EMotionFX/Source/Parameter/BoolParameter.h>
+#include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
+#include <EMotionFX/Source/Parameter/Vector3Parameter.h>
 #include <EMotionFX/Source/MotionData/NonUniformMotionData.h>
 #include <Tests/JackGraphFixture.h>
 #include <Tests/TestAssetCode/TestMotionAssets.h>
@@ -130,6 +136,71 @@ namespace EMotionFX
         Skeleton* m_jackSkeleton = nullptr;
     };
     
+
+    class LocalGoalMotionExtractionFixture
+        : public MotionExtractionFixtureBase
+    {
+    protected:
+        void ConstructGraph() override
+        {
+            MotionExtractionFixtureBase::ConstructGraph();
+
+            m_goal = aznew Vector3Parameter();
+            m_goal->SetName("Goal");
+            m_goal->SetDefaultValue(AZ::Vector3(1.0f, 1.0f, 1.0f));
+            m_goal->SetSpace(Vector3Parameter::Space::Local);
+            m_animGraph->AddParameter(m_goal);
+
+            auto* weight = aznew FloatSliderParameter();
+            weight->SetName("Weight");
+            weight->SetDefaultValue(1.0f);
+            m_animGraph->AddParameter(weight);
+
+            m_parameters = aznew BlendTreeParameterNode();
+            auto* absWeight = aznew BlendTreeFloatMath1Node();
+            absWeight->SetMathFunction(BlendTreeFloatMath1Node::MATHFUNCTION_ABS);
+            auto* lookAt = aznew BlendTreeLookAtNode();
+            lookAt->SetTargetNodeName(m_hipNode->GetName());
+            lookAt->SetSmoothingEnabled(false);
+            m_blendTree->AddChildNode(m_parameters);
+            m_blendTree->AddChildNode(absWeight);
+            m_blendTree->AddChildNode(lookAt);
+
+            auto* finalNode = m_blendTree->GetChildNode(1);
+            finalNode->RemoveConnection(m_motionNode, AnimGraphMotionNode::OUTPUTPORT_POSE, BlendTreeFinalNode::INPUTPORT_POSE);
+            finalNode->AddConnection(lookAt, BlendTreeLookAtNode::OUTPUTPORT_POSE, BlendTreeFinalNode::INPUTPORT_POSE);
+            lookAt->AddConnection(m_motionNode, AnimGraphMotionNode::OUTPUTPORT_POSE, BlendTreeLookAtNode::INPUTPORT_POSE);
+            lookAt->AddUnitializedConnection(m_parameters, 0, BlendTreeLookAtNode::INPUTPORT_GOALPOS);
+            // Float Math requests the parameter node's output before root motion has been applied.
+            absWeight->AddUnitializedConnection(m_parameters, 1, BlendTreeFloatMath1Node::INPUTPORT_X);
+            lookAt->AddConnection(absWeight, BlendTreeFloatMath1Node::OUTPUTPORT_RESULT, BlendTreeLookAtNode::INPUTPORT_WEIGHT);
+        }
+
+        Vector3Parameter* m_goal = nullptr;
+        BlendTreeParameterNode* m_parameters = nullptr;
+    };
+
+    TEST_F(LocalGoalMotionExtractionFixture, LookAtUsesGoalFromCurrentActorTransform)
+    {
+        Evaluate(0.0f);
+        const AZ::Vector3 originalPosition = m_actorInstance->GetWorldSpaceTransform().m_position;
+        Evaluate(0.25f);
+
+        const Transform& actorTransform = m_actorInstance->GetWorldSpaceTransform();
+        ASSERT_GT(actorTransform.m_position.GetDistance(originalPosition), 0.01f);
+        const AZ::Vector3 expectedGoal = actorTransform.TransformPoint(m_goal->GetDefaultValue());
+        auto* goalValue = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeVector3>(0);
+        EXPECT_EQ(goalValue->GetValue(), m_goal->GetDefaultValue());
+        const AZ::Vector3 actualGoal = m_parameters->GetOutputVector3(m_animGraphInstance, 0)->GetValue();
+        EXPECT_TRUE(actualGoal.IsClose(expectedGoal)) << "Goal is " << actualGoal.GetDistance(expectedGoal) << " m away";
+        const AZ::Quaternion localGoalRotation = m_jackPose->GetModelSpaceTransform(m_jackHipIndex).m_rotation;
+
+        // At the same sample time, the equivalent world-space goal must give the same pose.
+        m_goal->SetSpace(Vector3Parameter::Space::World);
+        goalValue->SetValue(expectedGoal);
+        Evaluate(0.0f);
+        EXPECT_TRUE(m_jackPose->GetModelSpaceTransform(m_jackHipIndex).m_rotation.IsClose(localGoalRotation));
+    }
 
     class MotionExtractionFixture
         : public MotionExtractionFixtureBase

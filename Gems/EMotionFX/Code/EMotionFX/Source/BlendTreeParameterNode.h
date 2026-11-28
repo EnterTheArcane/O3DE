@@ -41,6 +41,7 @@ namespace EMotionFX
 
         const AZStd::vector<AZ::u32>& GetParameterIndices() const;
         uint32 GetParameterIndex(size_t portNr) const;
+        MCore::Attribute* GetOutputValue(AnimGraphInstance* animGraphInstance, size_t portIndex) const override;
 
         /// Add a parameter to the parameter mask and also add a port for it.
         void AddParameter(const AZStd::string& parameterName);
@@ -74,7 +75,6 @@ namespace EMotionFX
 
     private:
         bool GetTypeSupportsFloat(uint32 parameterType);
-        void ConvertToWorldSpace(const AnimGraphInstance* animGraphInstance, size_t parameterIndex, MCore::Attribute* value) const;
 
         AZStd::vector<AZStd::string>    m_parameterNames;
         AZStd::vector<AZ::u32>          m_parameterIndices;              /**< The indices of the visible and available parameters. */

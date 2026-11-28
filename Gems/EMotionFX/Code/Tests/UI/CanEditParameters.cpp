@@ -8,6 +8,22 @@
 
 #include <gtest/gtest.h>
 
+#include <AzCore/Component/TickBus.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzFramework/Viewport/CameraState.h>
+#include <AzToolsFramework/Manipulators/ManipulatorManager.h>
+#include <AzToolsFramework/Manipulators/SurfaceManipulator.h>
+#include <AzToolsFramework/Viewport/ViewportMessages.h>
+#include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
+#include <MCore/Source/AttributeVector3.h>
+#include <AzToolsFramework/Viewport/ViewportTypes.h>
+#include <EMotionFX/Source/ActorInstance.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/Parameter/Vector3GizmoParameter.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/Vector3GizmoParameterEditor.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
+#include <Tests/TestAssetCode/AnimGraphFactory.h>
+#include <Tests/TestAssetCode/SimpleActors.h>
 #include <QtTest>
 #include <QToolBar>
 #include <QPushButton>
@@ -195,5 +211,122 @@ namespace EMotionFX
         // Redo.
         EXPECT_TRUE(CommandSystem::GetCommandManager()->Redo(commandResult)) << commandResult.c_str();
         EXPECT_STREQ(groupParameter->GetName().c_str(), changedGroupName.c_str());
+    }
+
+    TEST_F(TestParametersFixture, LocalVector3GizmoTracksActor)
+    {
+        class GizmoDisplay : public AzFramework::DebugDisplayRequests
+        {
+        public:
+            void DrawBall(const AZ::Vector3& center, float, bool) override
+            {
+                m_origin = center;
+            }
+
+            AZ::Vector3 m_origin = AZ::Vector3::CreateZero();
+        };
+
+        class GizmoManager : public AzToolsFramework::ManipulatorManager
+        {
+        public:
+            GizmoManager()
+                : ManipulatorManager(EMStudio::g_animManipulatorManagerId)
+            {
+            }
+
+            AzToolsFramework::BaseManipulator* FindSurfaceManipulator()
+            {
+                for (const auto& entry : m_manipulatorIdToPtrMap)
+                {
+                    if (azrtti_istypeof<AzToolsFramework::SurfaceManipulator>(entry.second.get()))
+                    {
+                        return entry.second.get();
+                    }
+                }
+                return nullptr;
+            }
+        };
+
+        GizmoManager manager;
+        auto actor = ActorFactory::CreateAndInit<SimpleJointChainActor>(1);
+        auto graph = AnimGraphFactory::Create<EmptyAnimGraph>();
+        auto* parameter = aznew Vector3GizmoParameter();
+        parameter->SetName("Goal");
+        parameter->SetDefaultValue(AZ::Vector3::CreateAxisX());
+        parameter->SetSpace(Vector3Parameter::Space::Local);
+        ASSERT_TRUE(graph->AddParameter(parameter));
+        ASSERT_TRUE(graph->InitAfterLoading());
+
+        const auto destroyActor = [](ActorInstance* instance)
+        {
+            instance->Destroy();
+        };
+        AZStd::unique_ptr<ActorInstance, decltype(destroyActor)> actorInstance(ActorInstance::Create(actor.get()), destroyActor);
+        AnimGraphInstance* graphInstance = AnimGraphInstance::Create(graph.get(), actorInstance.get(), nullptr);
+        actorInstance->SetAnimGraphInstance(graphInstance);
+
+        EMStudio::Vector3GizmoParameterEditor editor(graph.get(), parameter, {graphInstance->GetParameterValue(0)});
+        editor.setIsReadOnly(false);
+        AZStd::unique_ptr<QWidget> widget(editor.CreateGizmoWidget({}));
+        auto* button = qobject_cast<QPushButton*>(widget.get());
+        ASSERT_NE(button, nullptr);
+        button->click();
+        ASSERT_TRUE(button->isChecked());
+
+        GizmoDisplay display;
+        const auto cameraPosition = AZ::Vector3(0.0f, -20.0f, 5.0f);
+        const auto camera = AzFramework::CreateDefaultCamera(
+            AZ::Transform::CreateTranslation(cameraPosition), AzFramework::ScreenSize(1280, 720));
+        AzToolsFramework::ViewportInteraction::MouseInteraction mouse;
+        mouse.m_mousePick.m_rayOrigin = cameraPosition;
+        mouse.m_mousePick.m_rayDirection = AZ::Vector3::CreateAxisY();
+        manager.DrawManipulators(display, camera, mouse);
+        ASSERT_TRUE(display.m_origin.IsClose(AZ::Vector3::CreateAxisX()));
+
+        actorInstance->SetLocalSpacePosition(AZ::Vector3(8.0f, 3.0f, 0.0f));
+        actorInstance->SetLocalSpaceRotation(AZ::Quaternion::CreateRotationZ(AZ::Constants::HalfPi));
+        actorInstance->UpdateWorldTransform();
+        AZ::TickBus::Broadcast(&AZ::TickBus::Events::OnTick, 0.0f, AZ::ScriptTimePoint{});
+        manager.DrawManipulators(display, camera, mouse);
+        EXPECT_TRUE(display.m_origin.IsClose(AZ::Vector3(8.0f, 4.0f, 0.0f)))
+            << display.m_origin.GetX() << ", " << display.m_origin.GetY();
+
+#ifndef EMFX_SCALE_DISABLED
+        actorInstance->SetLocalSpaceScale(AZ::Vector3(2.0f, 3.0f, 4.0f));
+        actorInstance->UpdateWorldTransform();
+        editor.UpdateValue();
+        manager.DrawManipulators(display, camera, mouse);
+        EXPECT_TRUE(display.m_origin.IsClose(AZ::Vector3(8.0f, 5.0f, 0.0f)))
+            << display.m_origin.GetX() << ", " << display.m_origin.GetY();
+
+        using namespace AzToolsFramework::ViewportInteraction;
+        class GizmoViewport : public ViewportInteractionRequestBus::Handler
+        {
+        public:
+            AzFramework::CameraState GetCameraState() override { return {}; }
+            AzFramework::ScreenPoint ViewportWorldToScreen(const AZ::Vector3&) override { return {}; }
+            AZ::Vector3 ViewportScreenToWorld(const AzFramework::ScreenPoint&) override { return AZ::Vector3::CreateZero(); }
+            ProjectedViewportRay ViewportScreenToWorldRay(const AzFramework::ScreenPoint&) override { return m_ray; }
+            float DeviceScalingFactor() override { return 1.0f; }
+
+            ProjectedViewportRay m_ray;
+        };
+
+        GizmoViewport viewport;
+        mouse.m_interactionId.m_viewportId = 777;
+        viewport.BusConnect(mouse.m_interactionId.m_viewportId);
+        const AZ::Vector3 target(8.0f, 9.0f, 0.0f);
+        const AZ::Vector3 rayDirection = AZ::Vector3::CreateAxisY();
+        viewport.m_ray = {target - rayDirection * AzToolsFramework::GetDefaultEntityPlacementDistance(), rayDirection};
+
+        auto* surface = manager.FindSurfaceManipulator();
+        ASSERT_NE(surface, nullptr);
+        ASSERT_TRUE(surface->OnLeftMouseDown(mouse, 0.0f));
+        surface->OnMouseMove(mouse);
+        surface->OnLeftMouseUp(mouse);
+
+        const auto* stored = static_cast<const MCore::AttributeVector3*>(graphInstance->GetParameterValue(0));
+        EXPECT_TRUE(stored->GetValue().IsClose(AZ::Vector3(3.0f, 0.0f, 0.0f))) << stored->GetValue().GetX();
+#endif
     }
 } // namespace EMotionFX

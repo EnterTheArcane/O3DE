@@ -135,55 +135,46 @@ namespace EMotionFX
     }
 
 
-    // the main process method of the final node
     void BlendTreeParameterNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         MCORE_UNUSED(timePassedInSeconds);
 
-        if (m_parameterIndices.empty())
+        for (size_t portIndex = 0; portIndex < m_outputPorts.size(); ++portIndex)
         {
-            // output all anim graph instance parameter values into the output ports
-            const uint32 numParameters = static_cast<uint32>(m_outputPorts.size());
-            for (uint32 i = 0; i < numParameters; ++i)
-            {
-                MCore::Attribute* outputValue = GetOutputValue(animGraphInstance, i);
-                outputValue->InitFrom(animGraphInstance->GetParameterValue(i));
-                ConvertToWorldSpace(animGraphInstance, i, outputValue);
-            }
-        }
-        else
-        {
-            // output only the parameter values that have been selected in the parameter mask
-            const size_t parameterCount = m_parameterIndices.size();
-            for (size_t i = 0; i < parameterCount; ++i)
-            {
-                MCore::Attribute* outputValue = GetOutputValue(animGraphInstance, static_cast<AZ::u32>(i));
-                outputValue->InitFrom(animGraphInstance->GetParameterValue(m_parameterIndices[i]));
-                ConvertToWorldSpace(animGraphInstance, m_parameterIndices[i], outputValue);
-            }
+            MCore::Attribute* outputValue = AnimGraphNode::GetOutputValue(animGraphInstance, portIndex);
+            outputValue->InitFrom(animGraphInstance->GetParameterValue(GetParameterIndex(portIndex)));
         }
     }
 
 
-    void BlendTreeParameterNode::ConvertToWorldSpace(const AnimGraphInstance* animGraphInstance, size_t parameterIndex, MCore::Attribute* value) const
+    MCore::Attribute* BlendTreeParameterNode::GetOutputValue(AnimGraphInstance* animGraphInstance, size_t portIndex) const
     {
-        if (value->GetType() != MCore::AttributeVector3::TYPE_ID)
+        MCore::Attribute* value = AnimGraphNode::GetOutputValue(animGraphInstance, portIndex);
+        if (!value || value->GetType() != MCore::AttributeVector3::TYPE_ID)
         {
-            return;
+            return value;
         }
+        const size_t parameterIndex = GetParameterIndex(portIndex);
         const Vector3Parameter* parameter = azrtti_cast<const Vector3Parameter*>(m_animGraph->FindValueParameter(parameterIndex));
         if (!parameter || parameter->GetSpace() != Vector3Parameter::Space::Local)
         {
-            return;
+            return value;
         }
 
-        // Build the world transform here, as the actor instance only refreshes its own after the anim graph update.
+        const auto* localValue = animGraphInstance->GetParameterValueChecked<MCore::AttributeVector3>(parameterIndex);
+        if (!localValue)
+        {
+            return value;
+        }
+
+        // Root motion can change the actor transform between the update and pose output passes.
         const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-        Transform worldTransform = actorInstance->GetLocalSpaceTransform();
-        worldTransform.Multiply(actorInstance->GetParentWorldSpaceTransform());
+        const Transform worldTransform =
+            actorInstance->GetLocalSpaceTransform().Multiplied(actorInstance->GetParentWorldSpaceTransform());
 
         MCore::AttributeVector3* vectorValue = static_cast<MCore::AttributeVector3*>(value);
-        vectorValue->SetValue(worldTransform.TransformPoint(vectorValue->GetValue()));
+        vectorValue->SetValue(worldTransform.TransformPoint(localValue->GetValue()));
+        return vectorValue;
     }
 
 

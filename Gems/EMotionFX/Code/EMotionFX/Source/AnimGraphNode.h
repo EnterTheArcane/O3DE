@@ -706,12 +706,13 @@ namespace EMotionFX
         }
         MCORE_INLINE MCore::AttributeVector3*       GetOutputVector3(AnimGraphInstance* animGraphInstance, size_t outputPortIndex) const
         {
-            if (m_outputPorts[outputPortIndex].GetAttribute(animGraphInstance) == nullptr)
+            MCore::Attribute* value = GetOutputValue(animGraphInstance, outputPortIndex);
+            if (value == nullptr)
             {
                 return nullptr;
             }
             MCORE_ASSERT(m_outputPorts[outputPortIndex].m_compatibleTypes[0] == MCore::AttributeVector3::TYPE_ID);
-            return static_cast<MCore::AttributeVector3*>(m_outputPorts[outputPortIndex].GetAttribute(animGraphInstance));
+            return static_cast<MCore::AttributeVector3*>(value);
         }
         MCORE_INLINE MCore::AttributeVector4*       GetOutputVector4(AnimGraphInstance* animGraphInstance, size_t outputPortIndex) const
         {
@@ -811,7 +812,10 @@ namespace EMotionFX
         size_t AddOutputPort();
         size_t AddInputPort();
         virtual bool GetIsStateTransitionNode() const                               { return false; }
-        MCORE_INLINE MCore::Attribute* GetOutputValue(AnimGraphInstance* animGraphInstance, size_t portIndex) const            { return animGraphInstance->GetInternalAttribute(m_outputPorts[portIndex].m_attributeIndex); }
+        virtual MCore::Attribute* GetOutputValue(AnimGraphInstance* animGraphInstance, size_t portIndex) const
+        {
+            return animGraphInstance->GetInternalAttribute(m_outputPorts[portIndex].m_attributeIndex);
+        }
         MCORE_INLINE Port& GetInputPort(size_t index)                               { return m_inputPorts[index]; }
         MCORE_INLINE Port& GetOutputPort(size_t index)                              { return m_outputPorts[index]; }
         MCORE_INLINE const Port& GetInputPort(size_t index) const                   { return m_inputPorts[index]; }

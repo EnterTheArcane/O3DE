@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <AzCore/Component/TickBus.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ValueParameterEditor.h>
 #include <AzToolsFramework/Manipulators/TranslationManipulators.h>
 #include <QPointer>
@@ -18,6 +19,7 @@ namespace EMStudio
 {
     class Vector3GizmoParameterEditor
         : public ValueParameterEditor
+        , private AZ::TickBus::Handler
     {
     public:
         AZ_RTTI(Vector3GizmoParameterEditor, "{9603AE76-2E84-4BAD-8351-FDED3B880C65}", ValueParameterEditor)
@@ -43,6 +45,7 @@ namespace EMStudio
         void OnValueChanged();
         void ToggleTranslationGizmo();
         void UpdateManipulatorSpace();
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
 
         AZ::Vector3 GetMinValue() const;
         AZ::Vector3 GetMaxValue() const;

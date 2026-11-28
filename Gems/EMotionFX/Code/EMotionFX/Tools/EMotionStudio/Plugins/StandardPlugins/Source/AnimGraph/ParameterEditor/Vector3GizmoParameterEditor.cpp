@@ -35,6 +35,7 @@ namespace EMStudio
 
     Vector3GizmoParameterEditor::~Vector3GizmoParameterEditor()
     {
+        AZ::TickBus::Handler::BusDisconnect();
         if (m_translationManipulators.Registered())
         {
             m_translationManipulators.Unregister();
@@ -93,7 +94,7 @@ namespace EMStudio
     void Vector3GizmoParameterEditor::UpdateManipulatorSpace()
     {
         // A local value is relative to the character, so the gizmo sits on it and its drags come back in the character's space.
-        AZ::Transform space = AZ::Transform::CreateIdentity();
+        EMotionFX::Transform space = EMotionFX::Transform::CreateIdentity();
         const EMotionFX::Vector3Parameter* parameter = static_cast<const EMotionFX::Vector3Parameter*>(m_valueParameter);
         if (m_animGraph && !m_attributes.empty() && parameter->GetSpace() == EMotionFX::Vector3Parameter::Space::Local)
         {
@@ -104,12 +105,18 @@ namespace EMStudio
                 const EMotionFX::AnimGraphInstance* animGraphInstance = m_animGraph->GetAnimGraphInstance(i);
                 if (animGraphInstance->GetParameterValue(parameterIndex.GetValue()) == m_attributes[0])
                 {
-                    space = animGraphInstance->GetActorInstance()->GetWorldSpaceTransform().ToAZTransform();
+                    space = animGraphInstance->GetActorInstance()->GetWorldSpaceTransform();
                     break;
                 }
             }
         }
-        m_translationManipulators.SetSpace(space);
+        m_translationManipulators.SetSpace(AZ::Transform::CreateFromQuaternionAndTranslation(space.m_rotation, space.m_position));
+        EMFX_SCALECODE(m_translationManipulators.SetNonUniformScale(space.m_scale);)
+    }
+
+    void Vector3GizmoParameterEditor::OnTick(float, AZ::ScriptTimePoint)
+    {
+        UpdateManipulatorSpace();
     }
 
     void Vector3GizmoParameterEditor::setIsReadOnly(bool isReadOnly)
@@ -132,17 +139,27 @@ namespace EMStudio
 
         // Setup the translation manipulator
         AzToolsFramework::ConfigureTranslationManipulatorAppearance3d(&m_translationManipulators);
-        auto mouseMoveHandlerFn = [this](const auto& action) {
-            SetValue(action.LocalPosition());
+        auto updatePosition = [this](const AZ::Vector3& position)
+        {
+            SetValue(position);
             if (m_manipulatorCallback)
             {
                 m_manipulatorCallback();
             }
         };
-        
-        m_translationManipulators.InstallLinearManipulatorMouseMoveCallback(mouseMoveHandlerFn);
-        m_translationManipulators.InstallPlanarManipulatorMouseMoveCallback(mouseMoveHandlerFn);
-        m_translationManipulators.InstallSurfaceManipulatorMouseMoveCallback(mouseMoveHandlerFn);
+
+        auto updateLocalPosition = [updatePosition](const auto& action)
+        {
+            updatePosition(action.LocalPosition());
+        };
+        m_translationManipulators.InstallLinearManipulatorMouseMoveCallback(updateLocalPosition);
+        m_translationManipulators.InstallPlanarManipulatorMouseMoveCallback(updateLocalPosition);
+        m_translationManipulators.InstallSurfaceManipulatorMouseMoveCallback(
+            [this, updatePosition](const AzToolsFramework::SurfaceManipulator::Action& action)
+            {
+                // The surface handle removes translation and rotation from the picked point.
+                updatePosition(action.LocalPosition() / m_translationManipulators.GetNonUniformScale());
+            });
 
         return m_gizmoButton;
     }
@@ -189,12 +206,18 @@ namespace EMStudio
         // These will enable/disable the translation manipulator for atom render viewport.
         if (m_translationManipulators.Registered())
         {
+            AZ::TickBus::Handler::BusDisconnect();
             m_translationManipulators.Unregister();
         }
         else
         {
             UpdateManipulatorSpace();
             m_translationManipulators.Register(g_animManipulatorManagerId);
+            const auto* parameter = static_cast<const EMotionFX::Vector3Parameter*>(m_valueParameter);
+            if (parameter->GetSpace() == EMotionFX::Vector3Parameter::Space::Local)
+            {
+                AZ::TickBus::Handler::BusConnect();
+            }
         }
 
     }
