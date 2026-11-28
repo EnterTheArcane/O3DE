@@ -401,32 +401,7 @@ namespace PhysX
             {
                 m_nativeD6Joint->setDrive(physx::PxD6Drive::eZ, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveZ));
             }
-            // Preserve the SDK 5.1 fallback when SLERP is inactive or an angular axis is locked.
-            const auto& slerpDrive = m_d6Configuration.m_driveSlerp;
-            const bool useSlerp = slerpDrive.IsActive()
-                && (slerpDrive.m_stiffness != 0.0f || slerpDrive.m_damping != 0.0f)
-                && m_d6Configuration.m_motionTwist != D6JointAxis::Locked
-                && m_d6Configuration.m_motionSwing1 != D6JointAxis::Locked
-                && m_d6Configuration.m_motionSwing2 != D6JointAxis::Locked;
-            if (useSlerp)
-            {
-                m_nativeD6Joint->setAngularDriveConfig(physx::PxD6AngularDriveConfig::eSLERP);
-                m_nativeD6Joint->setDrive(physx::PxD6Drive::eSLERP, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveSlerp));
-            }
-            else
-            {
-                m_nativeD6Joint->setAngularDriveConfig(physx::PxD6AngularDriveConfig::eSWING_TWIST);
-                if (m_d6Configuration.m_driveTwist.IsActive())
-                {
-                    m_nativeD6Joint->setDrive(physx::PxD6Drive::eTWIST, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveTwist));
-                }
-                if (m_d6Configuration.m_driveSwing.IsActive())
-                {
-                    const auto drive = PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveSwing);
-                    m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING1, drive);
-                    m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING2, drive);
-                }
-            }
+            ConfigureAngularDrive();
         }
         const AZ::EntityComponentIdPair entityComponentIdPair(GetEntityId(), GetId());
         JointRequestBus::Handler::BusConnect(entityComponentIdPair);
@@ -437,6 +412,44 @@ namespace PhysX
         JointRequestBus::Handler::BusDisconnect();
         JointComponent::DeinitNativeJoint();
         m_nativeD6Joint = nullptr;
+    }
+
+    void D6JointComponent::RefreshAngularDriveMode()
+    {
+        if (m_nativeD6Joint)
+        {
+            PHYSX_SCENE_WRITE_LOCK(m_nativeD6Joint->getScene());
+            ConfigureAngularDrive();
+        }
+    }
+
+    void D6JointComponent::ConfigureAngularDrive()
+    {
+        const auto& slerpDrive = m_d6Configuration.m_driveSlerp;
+        const bool useSlerp = slerpDrive.IsActive()
+            && (slerpDrive.m_stiffness != 0.0f || slerpDrive.m_damping != 0.0f)
+            && m_nativeD6Joint->getMotion(physx::PxD6Axis::eTWIST) != physx::PxD6Motion::eLOCKED
+            && m_nativeD6Joint->getMotion(physx::PxD6Axis::eSWING1) != physx::PxD6Motion::eLOCKED
+            && m_nativeD6Joint->getMotion(physx::PxD6Axis::eSWING2) != physx::PxD6Motion::eLOCKED;
+        if (useSlerp)
+        {
+            m_nativeD6Joint->setAngularDriveConfig(physx::PxD6AngularDriveConfig::eSLERP);
+            m_nativeD6Joint->setDrive(physx::PxD6Drive::eSLERP, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveSlerp));
+        }
+        else
+        {
+            m_nativeD6Joint->setAngularDriveConfig(physx::PxD6AngularDriveConfig::eSWING_TWIST);
+            if (m_d6Configuration.m_driveTwist.IsActive())
+            {
+                m_nativeD6Joint->setDrive(physx::PxD6Drive::eTWIST, PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveTwist));
+            }
+            if (m_d6Configuration.m_driveSwing.IsActive())
+            {
+                const auto drive = PhysX::ConvertD6JointDriveToPxD6Drive(m_d6Configuration.m_driveSwing);
+                m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING1, drive);
+                m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING2, drive);
+            }
+        }
     }
 
     float D6JointComponent::GetPosition() const
@@ -550,7 +563,9 @@ namespace PhysX
         m_nativeD6Joint->setDrive(driveAxis, drive);
         if (driveAxis == physx::PxD6Drive::eSWING1)
         {
-            m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING2, drive);
+            physx::PxD6JointDrive swing2Drive = m_nativeD6Joint->getDrive(physx::PxD6Drive::eSWING2);
+            swing2Drive.forceLimit = force;
+            m_nativeD6Joint->setDrive(physx::PxD6Drive::eSWING2, swing2Drive);
         }
     }
 } // namespace PhysX

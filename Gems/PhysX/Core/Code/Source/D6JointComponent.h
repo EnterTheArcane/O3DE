@@ -133,6 +133,9 @@ namespace PhysX
             const D6JointComponentConfiguration& d6Configuration);
         ~D6JointComponent() = default;
 
+        //! Reapply angular drives after changing native D6 angular motion through GetNativeJointPointer.
+        void RefreshAngularDriveMode();
+
     protected:
         // JointRequestBus::Handler overrides
         float GetPosition() const override;
@@ -155,6 +158,7 @@ namespace PhysX
         void DeinitNativeJoint() override;
 
     private:
+        void ConfigureAngularDrive();
         physx::PxD6Joint* m_nativeD6Joint{ nullptr };
         D6JointComponentConfiguration m_d6Configuration;
     };

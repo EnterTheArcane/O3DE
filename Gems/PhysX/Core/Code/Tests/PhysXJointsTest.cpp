@@ -28,8 +28,8 @@
 #include <AzFramework/Physics/PhysicsSystem.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
 #include <AzFramework/Physics/SystemBus.h>
-#include <extensions/PxD6Joint.h>
 #include <PxRigidDynamic.h>
+#include <extensions/PxD6Joint.h>
 
 namespace PhysX
 {
@@ -477,12 +477,48 @@ namespace PhysX
             EXPECT_FLOAT_EQ(joint->getDrive(physx::PxD6Drive::eSWING1).stiffness, 50.0f);
             EXPECT_FLOAT_EQ(joint->getDrive(physx::PxD6Drive::eSWING2).stiffness, 50.0f);
         }
+        {
+            PHYSX_SCENE_WRITE_LOCK(joint->getScene());
+            joint->setDrive(physx::PxD6Drive::eSWING2, physx::PxD6JointDrive(10.0f, 9.0f, 100.0f, false));
+        }
         JointRequestBus::Event(GetD6JointId(*bodies.m_follower), &JointRequests::SetMaximumForceAxis, 4, 42.0f);
         {
             PHYSX_SCENE_READ_LOCK(joint->getScene());
             EXPECT_FLOAT_EQ(joint->getDrive(physx::PxD6Drive::eSWING1).forceLimit, 42.0f);
             EXPECT_FLOAT_EQ(joint->getDrive(physx::PxD6Drive::eSWING2).forceLimit, 42.0f);
+            EXPECT_FLOAT_EQ(joint->getDrive(physx::PxD6Drive::eSWING2).stiffness, 10.0f);
+            EXPECT_FLOAT_EQ(joint->getDrive(physx::PxD6Drive::eSWING2).damping, 9.0f);
+            EXPECT_FALSE(joint->getDrive(physx::PxD6Drive::eSWING2).flags.isSet(physx::PxD6JointDriveFlag::eACCELERATION));
         }
+    }
+
+    TEST_F(PhysXJointsTest, Joint_D6Joint_RefreshesDriveAfterNativeMotionChange)
+    {
+        D6JointComponentConfiguration config;
+        config.m_motionTwist = D6JointAxis::Free;
+        config.m_motionSwing1 = D6JointAxis::Free;
+        config.m_motionSwing2 = D6JointAxis::Free;
+        config.m_driveSwing.m_driveType = D6JointDriveType::Velocity;
+        config.m_driveSwing.m_damping = 20.0f;
+        config.m_driveSwing.m_forceLimit = 100.0f;
+        config.m_driveSlerp = config.m_driveSwing;
+        auto bodies = CreateD6DriveTestBodies(m_testSceneHandle, config);
+        auto* component = bodies.m_follower->FindComponent<D6JointComponent>();
+        ASSERT_NE(component, nullptr);
+        void* pointer = nullptr;
+        JointRequestBus::EventResult(pointer, GetD6JointId(*bodies.m_follower), &JointRequests::GetNativeJointPointer);
+        auto* joint = static_cast<physx::PxD6Joint*>(pointer);
+        ASSERT_NE(joint, nullptr);
+        {
+            PHYSX_SCENE_WRITE_LOCK(joint->getScene());
+            joint->setMotion(physx::PxD6Axis::eTWIST, physx::PxD6Motion::eLOCKED);
+        }
+        component->RefreshAngularDriveMode();
+        {
+            PHYSX_SCENE_READ_LOCK(joint->getScene());
+            EXPECT_EQ(joint->getAngularDriveConfig(), physx::PxD6AngularDriveConfig::eSWING_TWIST);
+        }
+        ExpectD6AngularDriveDamps(m_testSceneHandle, *bodies.m_follower, physx::PxVec3(0.0f, 1.0f, 0.0f));
     }
 
     TEST_F(PhysXJointsTest, Joint_D6Joint_SlerpRetainsPrecedenceOverSwingAndTwist)
