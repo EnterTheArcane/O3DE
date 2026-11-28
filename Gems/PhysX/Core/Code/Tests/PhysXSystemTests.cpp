@@ -328,4 +328,47 @@ namespace PhysX
         physicsSystem->RemoveScenes(sceneHandles);
         EXPECT_EQ(removedCount, m_sceneConfigs.size());
     }
+
+    TEST_F(PhysXSystemFixture, RemoveAllScenes_RejectsReentrantLifecycleCalls)
+    {
+        auto* physicsSystem = AZ::Interface<AzPhysics::SystemInterface>::Get();
+        AzPhysics::SceneConfiguration sceneConfig;
+        sceneConfig.m_sceneName = "Scene during removal";
+        const auto sceneHandle = physicsSystem->AddScene(sceneConfig);
+        ASSERT_NE(sceneHandle, AzPhysics::InvalidSceneHandle);
+
+        int initializedCount = 0;
+        AzPhysics::SystemEvents::OnInitializedEvent::Handler onInitialized(
+            [&](const AzPhysics::SystemConfiguration*) { ++initializedCount; });
+        physicsSystem->RegisterSystemInitializedEvent(onInitialized);
+        int simulatedCount = 0;
+        AzPhysics::SystemEvents::OnPresimulateEvent::Handler onSimulated([&](float) { ++simulatedCount; });
+        physicsSystem->RegisterPreSimulateEvent(onSimulated);
+
+        int removedCount = 0;
+        AzPhysics::SystemEvents::OnSceneRemovedEvent::Handler onRemovedHandler(
+            [&](AzPhysics::SceneHandle removedHandle)
+            {
+                ++removedCount;
+                EXPECT_EQ(removedHandle, sceneHandle);
+                EXPECT_NE(physicsSystem->GetScene(removedHandle), nullptr);
+                EXPECT_EQ(physicsSystem->AddScene(sceneConfig), AzPhysics::InvalidSceneHandle);
+                physicsSystem->RemoveAllScenes();
+                physicsSystem->Shutdown();
+                physicsSystem->Initialize(&m_systemConfig);
+                physicsSystem->Simulate(AzPhysics::SystemConfiguration::DefaultFixedTimestep);
+            });
+        physicsSystem->RegisterSceneRemovedEvent(onRemovedHandler);
+
+        physicsSystem->RemoveAllScenes();
+        EXPECT_EQ(removedCount, 1);
+        EXPECT_TRUE(physicsSystem->GetAllScenes().empty());
+        EXPECT_EQ(initializedCount, 0);
+        EXPECT_EQ(simulatedCount, 0);
+
+        onRemovedHandler.Disconnect();
+        ASSERT_NE(physicsSystem->AddScene(sceneConfig), AzPhysics::InvalidSceneHandle);
+        physicsSystem->Simulate(AzPhysics::SystemConfiguration::DefaultFixedTimestep);
+        EXPECT_EQ(simulatedCount, 1);
+    }
 }

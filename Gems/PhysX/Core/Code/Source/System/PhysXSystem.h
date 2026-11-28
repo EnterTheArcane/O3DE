@@ -114,7 +114,8 @@ namespace PhysX
         {
             Uninitialized = 0,
             Initialized,
-            Shutdown
+            Shutdown,
+            RemovingScenes,
         };
         State m_state = State::Uninitialized;
 

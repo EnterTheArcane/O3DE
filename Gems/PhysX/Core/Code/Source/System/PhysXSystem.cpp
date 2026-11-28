@@ -141,6 +141,11 @@ namespace PhysX
 
     void PhysXSystem::Initialize(const AzPhysics::SystemConfiguration* config)
     {
+        if (m_state == State::RemovingScenes)
+        {
+            AZ_Warning("PhysXSystem", false, "Cannot initialize while removing all scenes.");
+            return;
+        }
         if (m_state == State::Initialized)
         {
             AZ_Warning("PhysXSystem", false, "PhysX system already initialized, Shutdown must be called first OR call Reinitialize or UpdateConfiguration(forceReinit=true) to reboot");
@@ -181,7 +186,7 @@ namespace PhysX
 
         if (m_state != State::Initialized)
         {
-            AZ_Warning("PhysXSystem", false, "Call Simulate when PhysX system is not initialized");
+            AZ_Warning("PhysXSystem", false, "Simulation requires an initialized PhysX system with no scene removal in progress.");
             return;
         }
 
@@ -262,6 +267,11 @@ namespace PhysX
 
     AzPhysics::SceneHandle PhysXSystem::AddScene(const AzPhysics::SceneConfiguration& config)
     {
+        if (m_state == State::RemovingScenes)
+        {
+            AZ_Warning("PhysXSystem", false, "Cannot add a scene while removing all scenes.");
+            return AzPhysics::InvalidSceneHandle;
+        }
         if (config.m_sceneName.empty())
         {
             AZ_Error("PhysXSystem", false, "AddScene: Trying to Add a scene without a name. SceneConfiguration::m_sceneName must have a value");
@@ -392,6 +402,12 @@ namespace PhysX
 
     void PhysXSystem::RemoveAllScenes()
     {
+        if (m_state == State::RemovingScenes)
+        {
+            return;
+        }
+        const State previousState = m_state;
+        m_state = State::RemovingScenes;
         for (size_t index = 0; index < m_sceneList.size(); ++index)
         {
             if (m_sceneList[index])
@@ -399,11 +415,11 @@ namespace PhysX
                 RemoveScene(AzPhysics::SceneHandle(m_sceneList[index]->GetId(), aznumeric_cast<AzPhysics::SceneIndex>(index)));
             }
         }
-        m_sceneList.clear();
 
-        //clear the free slots queue
+        m_sceneList.clear();
         AZStd::queue<AzPhysics::SceneIndex> empty;
         m_freeSceneSlots.swap(empty);
+        m_state = previousState;
     }
 
     AZStd::pair<AzPhysics::SceneHandle, AzPhysics::SimulatedBodyHandle> PhysXSystem::FindAttachedBodyHandleFromEntityId(AZ::EntityId entityId)
