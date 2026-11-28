@@ -433,6 +433,33 @@ namespace PhysX
         EXPECT_FALSE(restored.m_motorConfiguration.HasLegacyDriveImpulseLimit());
     }
 
+    TEST_F(PhysXUpgradeTest, LegacyPrefabMotorOverrideRemainsMarkedAfterParentRetuning)
+    {
+        rapidjson::Document legacyParent;
+        legacyParent.Parse(R"({"Motor configuration":{"UseMotor":true,"ForceLimit":2.5}})");
+        rapidjson::Document overridePatch;
+        overridePatch.Parse(R"([{"op":"replace","path":"/Motor configuration/ForceLimit","value":7.0}])");
+
+        ArticulationLinkConfiguration parent;
+        ASSERT_EQ(AZ::JsonSerialization::Load(parent, legacyParent).GetProcessing(), AZ::JsonSerializationResult::Processing::Completed);
+        parent.m_motorConfiguration.m_driveForceLimit = 150.0f;
+        parent.ClearLegacySettings();
+
+        rapidjson::Document savedParent;
+        ASSERT_EQ(
+            AZ::JsonSerialization::Store(savedParent, savedParent.GetAllocator(), parent).GetProcessing(),
+            AZ::JsonSerializationResult::Processing::Completed);
+        ASSERT_EQ(
+            AZ::JsonSerialization::ApplyPatch(savedParent, savedParent.GetAllocator(), overridePatch, AZ::JsonMergeApproach::JsonPatch).GetProcessing(),
+            AZ::JsonSerializationResult::Processing::Completed);
+
+        ArticulationLinkConfiguration variant;
+        ASSERT_EQ(AZ::JsonSerialization::Load(variant, savedParent).GetProcessing(), AZ::JsonSerializationResult::Processing::Completed);
+        EXPECT_FLOAT_EQ(variant.m_motorConfiguration.m_driveForceLimit, 150.0f);
+        ASSERT_TRUE(variant.m_motorConfiguration.m_legacyDriveImpulseLimit.has_value());
+        EXPECT_FLOAT_EQ(*variant.m_motorConfiguration.m_legacyDriveImpulseLimit, 7.0f);
+    }
+
     TEST_F(PhysXUpgradeTest, MotorJson_PreservesZeroAndRejectsInvalidLegacyValues)
     {
         ArticulationJointMotorProperties motor;

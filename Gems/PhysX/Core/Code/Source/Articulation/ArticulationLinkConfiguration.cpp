@@ -56,7 +56,15 @@ namespace PhysX
                 auto* motor = static_cast<ArticulationJointMotorProperties*>(output);
                 AZ::JsonSerializationResult::ResultCode result(AZ::JsonSerializationResult::Tasks::ReadField);
                 result.Combine(ContinueLoadingFromJsonObjectField(&motor->m_useMotor, azrtti_typeid<bool>(), input, "UseMotor", context));
-                result.Combine(ContinueLoadingFromJsonObjectField(&motor->m_driveForceLimit, azrtti_typeid<float>(), input, "ForceLimit", context));
+                const auto forceLimitNewtons = input.FindMember("ForceLimitNewtons");
+                if (forceLimitNewtons != input.MemberEnd())
+                {
+                    result.Combine(ContinueLoadingFromJsonObjectField(&motor->m_driveForceLimit, azrtti_typeid<float>(), input, "ForceLimitNewtons", context));
+                }
+                else
+                {
+                    result.Combine(ContinueLoadingFromJsonObjectField(&motor->m_driveForceLimit, azrtti_typeid<float>(), input, "ForceLimit", context));
+                }
                 result.Combine(ContinueLoadingFromJsonObjectField(&motor->m_driveStiffness, azrtti_typeid<float>(), input, "Stiffness", context));
                 result.Combine(ContinueLoadingFromJsonObjectField(&motor->m_driveDamping, azrtti_typeid<float>(), input, "Damping", context));
                 if (result.GetProcessing() != AZ::JsonSerializationResult::Processing::Completed)
@@ -64,9 +72,19 @@ namespace PhysX
                     return context.Report(result, "Failed to load articulation motor settings.");
                 }
                 const auto legacy = input.FindMember("LegacyImpulseLimit");
-                if (legacy == input.MemberEnd())
+                const auto oldForceLimit = input.FindMember("ForceLimit");
+                if (forceLimitNewtons != input.MemberEnd() && oldForceLimit != input.MemberEnd() && oldForceLimit->value.IsNumber())
                 {
-                    motor->m_legacyDriveImpulseLimit = motor->m_driveForceLimit;
+                    float oldLimit = 0.0f;
+                    result.Combine(ContinueLoadingFromJsonObjectField(&oldLimit, azrtti_typeid<float>(), input, "ForceLimit", context));
+                    motor->m_legacyDriveImpulseLimit = oldLimit;
+                }
+                else if (legacy == input.MemberEnd())
+                {
+                    if (!motor->m_legacyDriveImpulseLimit)
+                    {
+                        motor->m_legacyDriveImpulseLimit = motor->m_driveForceLimit;
+                    }
                 }
                 else if (legacy->value.IsNull())
                 {
@@ -104,7 +122,7 @@ namespace PhysX
                 output.SetObject();
                 AZ::JsonSerializationResult::ResultCode result(AZ::JsonSerializationResult::Tasks::WriteValue);
                 result.Combine(ContinueStoringToJsonObjectField(output, "UseMotor", &motor->m_useMotor, &defaultValue->m_useMotor, azrtti_typeid<bool>(), context));
-                result.Combine(ContinueStoringToJsonObjectField(output, "ForceLimit", &motor->m_driveForceLimit, &defaultValue->m_driveForceLimit, azrtti_typeid<float>(), context));
+                result.Combine(ContinueStoringToJsonObjectField(output, "ForceLimitNewtons", &motor->m_driveForceLimit, nullptr, azrtti_typeid<float>(), context));
                 result.Combine(ContinueStoringToJsonObjectField(output, "Stiffness", &motor->m_driveStiffness, &defaultValue->m_driveStiffness, azrtti_typeid<float>(), context));
                 result.Combine(ContinueStoringToJsonObjectField(output, "Damping", &motor->m_driveDamping, &defaultValue->m_driveDamping, azrtti_typeid<float>(), context));
                 rapidjson::Value legacy(rapidjson::kNullType);
@@ -112,7 +130,11 @@ namespace PhysX
                 {
                     result.Combine(ContinueStoring(legacy, &*motor->m_legacyDriveImpulseLimit, nullptr, azrtti_typeid<float>(), context));
                 }
-                // Always emit the slot so new defaults can be distinguished from old JSON, and null clears reused objects.
+                // Keep the old path so existing prefab overrides still update their impulse limit.
+                rapidjson::Value oldForceLimit;
+                oldForceLimit.CopyFrom(legacy, context.GetJsonAllocator());
+                output.AddMember("ForceLimit", AZStd::move(oldForceLimit), context.GetJsonAllocator());
+                // The marker distinguishes current settings from old json and clears reused objects.
                 output.AddMember("LegacyImpulseLimit", AZStd::move(legacy), context.GetJsonAllocator());
                 result.Combine(AZ::JsonSerializationResult::ResultCode(AZ::JsonSerializationResult::Tasks::WriteValue, AZ::JsonSerializationResult::Outcomes::Success));
                 return context.Report(result, "Stored articulation motor settings.");
